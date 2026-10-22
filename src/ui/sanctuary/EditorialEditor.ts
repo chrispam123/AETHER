@@ -38,6 +38,13 @@ export class EditorialEditor {
   }
 
   /**
+   * Obtiene la referencia al elemento editable del cuerpo de texto.
+   */
+  public getBodyElement(): HTMLDivElement {
+    return this.bodyElement;
+  }
+
+  /**
    * Muestra u oculta el santuario editorial según la fase activa.
    */
   public setVisible(visible: boolean): void {

@@ -312,7 +312,62 @@ header:hover {
   white-space: pre-wrap;
   word-break: break-word;
   user-select: text;
-  caret-color: var(--crystal-accent);
+  /* El cursor parpadeante mecánico se oculta para dar paso al Pulso de Presencia */
+  caret-color: transparent;
+}
+
+/* ============================================================================
+   PILAR 2: EL PULSO DE PRESENCIA (HALO GRAVITATORIO)
+   ============================================================================ */
+.presence-pulse {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 24px;
+  border-radius: 4px;
+  background: var(--crystal-accent);
+  box-shadow: 0 0 12px 2px var(--crystal-glow), 0 0 4px var(--crystal-accent);
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0.85;
+  transition: transform 0.06s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, height 0.1s ease;
+  animation: breathHalo 2.6s ease-in-out infinite;
+}
+
+.presence-pulse.active-typing {
+  opacity: 1;
+  box-shadow: 0 0 18px 4px var(--crystal-glow), 0 0 6px var(--crystal-accent);
+  animation: none;
+}
+
+@keyframes breathHalo {
+  0%, 100% {
+    opacity: 0.45;
+    box-shadow: 0 0 8px 1px var(--crystal-glow);
+  }
+  50% {
+    opacity: 0.95;
+    box-shadow: 0 0 16px 3px var(--crystal-glow), 0 0 5px var(--crystal-accent);
+  }
+}
+
+/* ============================================================================
+   PILAR 2: ATENUACIÓN PERIFÉRICA DE HIPERFOCO
+   ============================================================================ */
+body.hyperfocus-active header,
+body.hyperfocus-active #phase-dock,
+body.hyperfocus-active .crystal-drawer,
+body.hyperfocus-active .crystal-metrics,
+body.hyperfocus-active #canvas-hint {
+  opacity: 0.08 !important;
+  pointer-events: none;
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Transición suave al restaurar la periferia en reposo reflexivo */
+header, #phase-dock, .crystal-drawer, .crystal-metrics, #canvas-hint {
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .crystal-body:empty::before {

@@ -21,6 +21,7 @@ import { HarmonicSynthesizer } from './audio/HarmonicSynthesizer';
 import { DomProjectionBridge } from './ui/DomProjectionBridge';
 import { EditorialEditor } from './ui/sanctuary/EditorialEditor';
 import { PhaseDock } from './ui/dock/PhaseDock';
+import { FocusManager } from './ui/focus/FocusManager';
 import { Phase } from './core/types';
 
 class AetherApp {
@@ -32,6 +33,7 @@ class AetherApp {
   private bridge: DomProjectionBridge;
   private editor: EditorialEditor;
   private dock: PhaseDock;
+  private focusManager: FocusManager;
 
   constructor() {
     // 1. Inicialización de Capa 1: Modelo puro de datos
@@ -84,6 +86,10 @@ class AetherApp {
 
     this.editor = new EditorialEditor(this.graph, this.audio);
     this.dock = new PhaseDock(this.stateMachine);
+
+    // Pilar 2: El Foco Gravitatorio e Hiperfoco Sensorial
+    this.focusManager = new FocusManager({ idleDelayMs: 2500 });
+    this.focusManager.attach(this.editor.getBodyElement());
 
     this.initPhaseOrchestration();
     this.initAudioButton();
@@ -148,6 +154,12 @@ class AetherApp {
 
       // 2. Actualizar santuario en modo Cristal
       this.editor.setVisible(phase === 'crystal');
+      if (phase === 'crystal') {
+        this.focusManager.showPresenceHalo();
+        setTimeout(() => this.focusManager.updatePresencePosition(), 50);
+      } else {
+        this.focusManager.hidePresenceHalo();
+      }
 
       // 3. Modulación de atmósfera según la fase
       if (phase === 'vapor') {
