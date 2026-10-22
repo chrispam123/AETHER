@@ -29,6 +29,13 @@ export class DocumentGraph {
   }
 
   /**
+   * Obtiene únicamente los nodos de materia prima vírgenes (aún no consumidos ni integrados).
+   */
+  public getAvailableRawNodes(): ThoughtNode[] {
+    return Array.from(this.nodes.values()).filter(node => !node.consumed && node.text.trim().length > 0);
+  }
+
+  /**
    * Obtiene un nodo por su identificador único.
    */
   public getNode(id: string): ThoughtNode | undefined {
@@ -45,12 +52,24 @@ export class DocumentGraph {
       text,
       position: { ...position },
       velocity: { x: 0, y: 0 },
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      consumed: false
     };
 
     this.nodes.set(newNode.id, newNode);
     this.notify();
     return newNode;
+  }
+
+  /**
+   * Marca una idea como consumida (ya integrada en el cristal del ensayo).
+   */
+  public markAsConsumed(id: string): void {
+    const node = this.nodes.get(id);
+    if (node && !node.consumed) {
+      node.consumed = true;
+      this.notify();
+    }
   }
 
   /**

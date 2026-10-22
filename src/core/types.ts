@@ -42,6 +42,8 @@ export interface ThoughtNode {
   phase?: Phase;
   /** Marca temporal de creación (para el río temporal continuo) */
   timestamp: number;
+  /** Indica si la idea ya ha sido consumida e integrada en la prosa de Cristal */
+  consumed?: boolean;
 }
 
 /**

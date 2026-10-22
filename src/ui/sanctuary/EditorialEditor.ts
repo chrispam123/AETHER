@@ -6,6 +6,7 @@
  * - Título y cuerpo de prosa con tipografía calibrada.
  * - Métricas de ritmo en tiempo real (palabras y tiempo de lectura).
  * - Bandeja de "Materia Prima" con las ideas destiladas en fases previas.
+ * - Ciclo de consumo: al usar una idea, se integra en la prosa y desaparece de la bandeja.
  * - Intercepta el borrado intencional de frases hacia el Margen de Descartes.
  */
 
@@ -158,26 +159,46 @@ export class EditorialEditor {
 
   /**
    * Refresca las gemas de ideas previas en la bandeja de materia prima.
+   * Únicamente muestra ideas vírgenes (no consumidas).
    */
   public updateChips(): void {
     if (!this.chipsContainer) return;
     this.chipsContainer.innerHTML = '';
 
-    const nodes = this.graph.getAllNodes();
-    nodes.forEach(node => {
-      if (!node.text.trim()) return;
+    // Si el texto del editor ya contiene alguna de las frases iniciales, marcarla como consumida
+    if (this.bodyElement) {
+      const editorText = this.bodyElement.innerText;
+      this.graph.getAllNodes().forEach(node => {
+        if (!node.consumed && node.text.trim().length > 15 && editorText.includes(node.text.trim())) {
+          node.consumed = true;
+        }
+      });
+    }
 
+    const availableNodes = this.graph.getAvailableRawNodes();
+
+    // Si todas las ideas han sido consumidas, muestra un aviso sereno
+    if (availableNodes.length === 0) {
+      const emptyMsg = document.createElement('div');
+      emptyMsg.className = 'crystal-empty-raw';
+      emptyMsg.innerText = 'Toda la materia prima ha sido cristalizada · Ve a Niebla para concebir nuevas chispas';
+      this.chipsContainer.appendChild(emptyMsg);
+      return;
+    }
+
+    availableNodes.forEach(node => {
       const chip = document.createElement('div');
       chip.className = 'crystal-chip';
       chip.innerText = node.text.length > 50 ? node.text.substring(0, 48) + '...' : node.text;
-      chip.title = 'Haz clic para insertar este pensamiento en tu texto';
+      chip.title = 'Haz clic para insertar en el cursor y consumir esta materia prima';
 
       chip.onclick = () => {
-        if (this.bodyElement) {
-          this.bodyElement.innerText += '\n\n' + node.text;
-          this.bodyElement.dispatchEvent(new Event('input'));
-          this.audio.play(540, 'sine', 0.4, 0.14);
-        }
+        // 1. Inserta en la posición del cursor de la prosa
+        this.insertRestoredText(node.text);
+        // 2. Marca la materia prima como consumida para que desaparezca definitivamente de la bandeja
+        this.graph.markAsConsumed(node.id);
+        // 3. Sonido armónico de cristalización
+        this.audio.play(540, 'sine', 0.4, 0.14);
       };
 
       this.chipsContainer.appendChild(chip);

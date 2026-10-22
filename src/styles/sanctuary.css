@@ -646,3 +646,15 @@ body.hyperfocus-active .discard-gutter {
     transform: translateX(0) scale(1);
   }
 }
+
+
+/* Mensaje sereno cuando toda la materia prima se ha consumido */
+.crystal-empty-raw {
+  font-family: var(--font-prose);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--ink-ghost);
+  opacity: 0.6;
+  letter-spacing: 0.02em;
+  padding: 4px 0;
+}
