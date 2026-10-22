@@ -27,7 +27,8 @@ export class PhaseDock {
    */
   private bindEvents(): void {
     this.pills.forEach(pill => {
-      pill.addEventListener('click', () => {
+      pill.addEventListener('click', (e) => {
+        e.stopPropagation();
         const phase = pill.getAttribute('data-phase') as Phase;
         if (phase) {
           this.stateMachine.transitionTo(phase);

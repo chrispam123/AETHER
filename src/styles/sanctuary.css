@@ -93,7 +93,13 @@ header:hover {
 #portal-view.hidden {
   opacity: 0;
   transform: scale(1.05);
-  pointer-events: none;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  display: none !important;
+}
+
+#portal-view.hidden * {
+  pointer-events: none !important;
 }
 
 .portal-question {

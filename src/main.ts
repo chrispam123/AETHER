@@ -105,7 +105,12 @@ class AetherApp {
   private initPortalCards(): void {
     const portalCards = document.querySelectorAll('.orb-card');
     portalCards.forEach(card => {
-      card.addEventListener('click', () => {
+      card.addEventListener('click', (e) => {
+        // Únicamente se permite la selección desde los orbes si estamos en la pantalla inicial de portal
+        if (this.stateMachine.getPhase() !== 'portal') {
+          e.stopPropagation();
+          return;
+        }
         const phase = card.getAttribute('data-phase') as Phase;
         if (phase) {
           this.stateMachine.transitionTo(phase);
@@ -147,8 +152,12 @@ class AetherApp {
     const brandText = document.getElementById('brand-text');
 
     this.stateMachine.onPhaseChange((phase) => {
-      // 1. Ocultar portal y actualizar dock
-      if (portal) portal.classList.add('hidden');
+      // 1. Ocultar portal completamente para que no intercepte ningún clic
+      if (portal && phase !== 'portal') {
+        portal.classList.add('hidden');
+        portal.style.display = 'none';
+        portal.style.pointerEvents = 'none';
+      }
       this.dock.update(phase);
       this.bridge.sync();
 
