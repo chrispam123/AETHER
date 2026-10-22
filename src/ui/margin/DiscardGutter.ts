@@ -34,7 +34,6 @@ export class DiscardGutter {
       gutter.id = 'discard-gutter';
       gutter.className = 'discard-gutter';
       
-      // Se inserta dentro del contenedor del santuario o en el body
       const sanctuary = document.getElementById('crystal-sanctuary');
       if (sanctuary) {
         sanctuary.appendChild(gutter);
@@ -50,7 +49,7 @@ export class DiscardGutter {
    */
   public addDiscard(text: string, originalY?: number): void {
     const cleanText = text.trim();
-    if (!cleanText || cleanText.length < 4) return;
+    if (!cleanText || cleanText.length < 3) return;
 
     // Evita duplicar exactamente el mismo fragmento consecutivo
     if (this.items.length > 0 && this.items[0].text === cleanText) {
@@ -72,6 +71,8 @@ export class DiscardGutter {
       this.items.pop();
     }
 
+    // Asegura visibilidad del contenedor al recibir un nuevo descarte
+    this.container.style.display = 'flex';
     this.render();
     // Sonido suave de deslizamiento de papel
     this.audio.play(260, 'sine', 0.35, 0.08);
@@ -121,6 +122,7 @@ export class DiscardGutter {
       return;
     }
 
+    this.container.style.display = 'flex';
     this.container.classList.add('has-items');
 
     // Título discreto del canalón
@@ -169,10 +171,14 @@ export class DiscardGutter {
    * Muestra u oculta el margen según la fase activa del editor.
    */
   public setVisible(visible: boolean): void {
-    if (visible && this.items.length > 0) {
+    if (visible) {
       this.container.style.display = 'flex';
-    } else if (!visible) {
+      if (this.items.length > 0) {
+        this.container.classList.add('has-items');
+      }
+    } else {
       this.container.style.display = 'none';
+      this.container.classList.remove('has-items');
     }
   }
 }

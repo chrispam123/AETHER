@@ -93,16 +93,45 @@ export class EditorialEditor {
   private initDeletionInterceptor(): void {
     if (!this.bodyElement) return;
 
-    // 1. Borrado con teclado (Backspace o Supr)
+    // 1. Borrado con teclado de texto seleccionado (Backspace o Supr)
     this.bodyElement.addEventListener('keydown', (e) => {
       if (e.key === 'Backspace' || e.key === 'Delete') {
         this.captureSelectionToGutter();
       }
     });
 
-    // 2. Corte con atajo o menú contextual (Ctrl+X / Cmd+X)
+    // 2. Corte de texto seleccionado (Ctrl+X / Cmd+X)
     this.bodyElement.addEventListener('cut', () => {
       this.captureSelectionToGutter();
+    });
+
+    // 3. Borrado contextual sin selección previa (ej: Ctrl+Backspace para borrar palabras enteras)
+    this.bodyElement.addEventListener('beforeinput', (e: Event) => {
+      const inputEv = e as InputEvent;
+      if (inputEv.inputType && inputEv.inputType.startsWith('delete')) {
+        const selection = window.getSelection();
+        if (selection && !selection.isCollapsed) {
+          this.captureSelectionToGutter();
+          return;
+        }
+
+        // Si la selección estaba colapsada pero se borra una palabra o línea entera
+        if (inputEv.inputType === 'deleteWordBackward' || inputEv.inputType === 'deleteWordForward' || inputEv.inputType === 'deleteHardLineBackward') {
+          try {
+            const targetRanges = (inputEv as unknown as { getTargetRanges?: () => Range[] }).getTargetRanges?.();
+            if (targetRanges && targetRanges.length > 0) {
+              const range = targetRanges[0];
+              const text = range.toString().trim();
+              if (text.length >= 3 && this.gutter) {
+                const rect = range.getBoundingClientRect();
+                this.gutter.addDiscard(text, rect.top);
+              }
+            }
+          } catch {
+            // Fallback silencioso
+          }
+        }
+      }
     });
   }
 
@@ -114,8 +143,8 @@ export class EditorialEditor {
     if (!selection || selection.isCollapsed) return;
 
     const text = selection.toString().trim();
-    // Filtro inteligente: solo capturamos selecciones con sustancia (más de 5 caracteres)
-    if (text.length >= 6 && this.gutter) {
+    // Captura cualquier selección intencional de al menos 3 caracteres
+    if (text.length >= 3 && this.gutter) {
       let clientY: number | undefined;
       try {
         if (selection.rangeCount > 0) {
