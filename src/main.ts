@@ -104,7 +104,7 @@ class AetherApp {
 
     // Pilar 2: El Foco Gravitatorio e Hiperfoco Sensorial
     this.focusManager = new FocusManager({ idleDelayMs: 2500 });
-    this.focusManager.attach(this.editor.getBodyElement());
+    this.focusManager.attach(this.editor.getBodyElement(), this.editor.getScrollContainer());
 
     this.initPhaseOrchestration();
     this.initAudioButton();

@@ -41,8 +41,16 @@ export class FocusManager {
   /**
    * Vincula el gestor de foco a un elemento editable (como el Santuario Editorial).
    */
-  public attach(element: HTMLElement): void {
+  public attach(element: HTMLElement, scrollContainer?: HTMLElement): void {
     this.trackedElement = element;
+
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', () => {
+        if (document.activeElement === this.trackedElement) {
+          this.updatePresencePosition();
+        }
+      }, { passive: true });
+    }
 
     // Escucha eventos de teclado y entrada de texto
     element.addEventListener('keydown', (e) => {

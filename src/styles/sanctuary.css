@@ -267,7 +267,10 @@ header:hover {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding-top: 130px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
   z-index: 4;
   opacity: 0;
   transform: translateY(16px);
@@ -281,10 +284,26 @@ header:hover {
   pointer-events: auto;
 }
 
+/* Scrollbar mineral ultra sutil */
+#crystal-sanctuary::-webkit-scrollbar {
+  width: 5px;
+}
+#crystal-sanctuary::-webkit-scrollbar-track {
+  background: transparent;
+}
+#crystal-sanctuary::-webkit-scrollbar-thumb {
+  background: rgba(232, 229, 222, 0.08);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+#crystal-sanctuary:hover::-webkit-scrollbar-thumb {
+  background: rgba(232, 229, 222, 0.22);
+}
+
 .crystal-editor-container {
   width: 100%;
   max-width: var(--measure-prose);
-  padding: 0 20px;
+  padding: 130px 24px 50vh 24px;
   display: flex;
   flex-direction: column;
 }
@@ -367,7 +386,7 @@ header:hover {
    ============================================================================ */
 body.hyperfocus-active header,
 body.hyperfocus-active #phase-dock,
-body.hyperfocus-active .crystal-drawer,
+body.hyperfocus-active .crystal-raw-shelf,
 body.hyperfocus-active .crystal-metrics,
 body.hyperfocus-active #canvas-hint {
   opacity: 0.08 !important;
@@ -376,7 +395,7 @@ body.hyperfocus-active #canvas-hint {
 }
 
 /* Transición suave al restaurar la periferia en reposo reflexivo */
-header, #phase-dock, .crystal-drawer, .crystal-metrics, #canvas-hint {
+header, #phase-dock, .crystal-raw-shelf, .crystal-metrics, #canvas-hint {
   transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -387,33 +406,89 @@ header, #phase-dock, .crystal-drawer, .crystal-metrics, #canvas-hint {
 }
 
 /* Bandeja de Materia Prima en Modo Cristal */
-.crystal-drawer {
-  margin-top: 48px;
-  background: rgba(22, 24, 30, 0.5);
-  backdrop-filter: blur(20px);
-  border-radius: 20px;
-  padding: 20px 24px;
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+/* Estante Flotante Colapsable de Materia Prima en Modo Cristal */
+.crystal-raw-shelf {
+  position: fixed;
+  bottom: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
-.crystal-drawer-title {
-  font-size: 10px;
+.crystal-raw-shelf.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+.crystal-raw-toggle {
+  background: rgba(20, 22, 28, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px);
+  color: var(--ink-secondary);
+  padding: 8px 18px;
+  border-radius: 30px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.2em;
-  color: var(--crystal-accent);
-  margin-bottom: 14px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-family: var(--font-mono);
+  gap: 9px;
+  cursor: pointer;
+  box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.6);
+  transition: all 0.3s ease;
 }
-
+.crystal-raw-toggle:hover {
+  background: rgba(26, 29, 37, 0.95);
+  color: var(--ink-primary);
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}
+.raw-toggle-arrow {
+  font-size: 9px;
+  transition: transform 0.3s ease;
+  opacity: 0.7;
+}
+.crystal-raw-shelf.expanded .raw-toggle-arrow {
+  transform: rotate(180deg);
+}
+.crystal-raw-drawer {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  margin-bottom: 0;
+  background: rgba(18, 20, 26, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(32px);
+  border-radius: 18px;
+  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.75);
+  max-width: 620px;
+  transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, margin 0.3s ease, padding 0.3s ease;
+  padding: 0 18px;
+}
+.crystal-raw-shelf.expanded .crystal-raw-drawer {
+  max-height: 220px;
+  opacity: 1;
+  margin-bottom: 12px;
+  padding: 16px 18px;
+  overflow-y: auto;
+}
+.crystal-raw-shelf.expanded .crystal-raw-drawer::-webkit-scrollbar {
+  width: 4px;
+}
+.crystal-raw-shelf.expanded .crystal-raw-drawer::-webkit-scrollbar-thumb {
+  background: rgba(232, 229, 222, 0.12);
+  border-radius: 4px;
+}
 .crystal-chips-row {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
 }
-
 .crystal-chip {
   background: rgba(255, 255, 255, 0.035);
   padding: 7px 16px;
@@ -424,11 +499,17 @@ header, #phase-dock, .crystal-drawer, .crystal-metrics, #canvas-hint {
   cursor: pointer;
   transition: all 0.25s ease;
 }
-
 .crystal-chip:hover {
   background: var(--crystal-glow);
   color: var(--ink-primary);
   transform: translateY(-1px);
+}
+.crystal-empty-raw {
+  font-size: 12px;
+  color: var(--ink-ghost);
+  font-style: italic;
+  font-family: var(--font-prose);
+  padding: 6px 10px;
 }
 
 .crystal-metrics {

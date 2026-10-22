@@ -3,9 +3,9 @@
  * CAPA 3: SANTUARIO EDITORIAL MONÁSTICO (EDITORIAL EDITOR)
  * ============================================================================
  * Gestiona el entorno de escritura pura en estado Cristal:
- * - Título y cuerpo de prosa con tipografía calibrada.
+ * - Título y cuerpo de prosa con tipografía monástica y scroll vertical natural.
  * - Métricas de ritmo en tiempo real (palabras y tiempo de lectura).
- * - Bandeja de "Materia Prima" con las ideas destiladas en fases previas.
+ * - Estante Flotante Colapsable de "Materia Prima" con ideas destiladas.
  * - Ciclo de consumo: al usar una idea, se integra en la prosa y desaparece de la bandeja.
  * - Intercepta el borrado intencional de frases hacia el Margen de Descartes.
  */
@@ -20,6 +20,9 @@ export class EditorialEditor {
   private wordCountEl: HTMLSpanElement;
   private readTimeEl: HTMLSpanElement;
   private chipsContainer: HTMLDivElement;
+  private rawShelf: HTMLDivElement | null;
+  private rawToggleBtn: HTMLButtonElement | null;
+  private rawLabel: HTMLSpanElement | null;
   private graph: DocumentGraph;
   private audio: HarmonicSynthesizer;
   private gutter: DiscardGutter | null = null;
@@ -33,13 +36,29 @@ export class EditorialEditor {
     this.wordCountEl = document.getElementById('word-count') as HTMLSpanElement;
     this.readTimeEl = document.getElementById('read-time') as HTMLSpanElement;
     this.chipsContainer = document.getElementById('crystal-chips-container') as HTMLDivElement;
+    this.rawShelf = document.getElementById('crystal-raw-shelf') as HTMLDivElement | null;
+    this.rawToggleBtn = document.getElementById('raw-shelf-toggle') as HTMLButtonElement | null;
+    this.rawLabel = document.getElementById('raw-shelf-label') as HTMLSpanElement | null;
 
     this.initMetrics();
     this.initDeletionInterceptor();
+    this.initRawShelfToggle();
     this.updateChips();
 
     // Actualiza los chips cuando el grafo de ideas cambie
     this.graph.subscribe(() => this.updateChips());
+  }
+
+  /**
+   * Conecta el botón para colapsar o expandir el estante flotante de Materia Prima.
+   */
+  private initRawShelfToggle(): void {
+    if (this.rawToggleBtn && this.rawShelf) {
+      this.rawToggleBtn.addEventListener('click', () => {
+        const isExpanded = this.rawShelf?.classList.toggle('expanded');
+        this.audio.play(isExpanded ? 440 : 360, 'sine', 0.25, 0.08);
+      });
+    }
   }
 
   /**
@@ -58,15 +77,27 @@ export class EditorialEditor {
   }
 
   /**
-   * Muestra u oculta el santuario editorial según la fase activa.
+   * Obtiene la referencia al contenedor con scroll del santuario.
+   */
+  public getScrollContainer(): HTMLDivElement {
+    return this.container;
+  }
+
+  /**
+   * Muestra u oculta el santuario editorial y el estante flotante según la fase activa.
    */
   public setVisible(visible: boolean): void {
     if (visible) {
       this.container.classList.add('active');
+      if (this.rawShelf) this.rawShelf.classList.add('active');
       this.updateChips();
       if (this.gutter) this.gutter.setVisible(true);
     } else {
       this.container.classList.remove('active');
+      if (this.rawShelf) {
+        this.rawShelf.classList.remove('active');
+        this.rawShelf.classList.remove('expanded');
+      }
       if (this.gutter) this.gutter.setVisible(false);
     }
   }
@@ -100,33 +131,23 @@ export class EditorialEditor {
       }
     });
 
-    // 2. Corte de texto seleccionado (Ctrl+X / Cmd+X)
-    this.bodyElement.addEventListener('cut', () => {
-      this.captureSelectionToGutter();
+    // 2. Intercepta borrado o corte por evento de entrada nativo (Ctrl+X o corte con ratón)
+    this.bodyElement.addEventListener('beforeinput', (e: InputEvent) => {
+      if (e.inputType === 'deleteByCut' || e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward') {
+        this.captureSelectionToGutter();
+      }
     });
 
-    // 3. Borrado contextual sin selección previa (ej: Ctrl+Backspace para borrar palabras enteras)
-    this.bodyElement.addEventListener('beforeinput', (e: Event) => {
-      const inputEv = e as InputEvent;
-      if (inputEv.inputType && inputEv.inputType.startsWith('delete')) {
-        const selection = window.getSelection();
-        if (selection && !selection.isCollapsed) {
-          this.captureSelectionToGutter();
-          return;
-        }
-
-        // Si la selección estaba colapsada pero se borra una palabra o línea entera
-        if (inputEv.inputType === 'deleteWordBackward' || inputEv.inputType === 'deleteWordForward' || inputEv.inputType === 'deleteHardLineBackward') {
+    // 3. Captura explícita de atajo Ctrl+X / Cmd+X
+    this.bodyElement.addEventListener('copy', () => {});
+    this.bodyElement.addEventListener('cut', () => {
+      const selection = window.getSelection();
+      if (selection && !selection.isCollapsed) {
+        const text = selection.toString().trim();
+        if (text.length >= 6 && this.gutter) {
           try {
-            const targetRanges = (inputEv as unknown as { getTargetRanges?: () => Range[] }).getTargetRanges?.();
-            if (targetRanges && targetRanges.length > 0) {
-              const range = targetRanges[0];
-              const text = range.toString().trim();
-              if (text.length >= 6 && this.gutter) {
-                const rect = range.getBoundingClientRect();
-                this.gutter.addDiscard(text, rect.top);
-              }
-            }
+            const rect = selection.getRangeAt(0).getBoundingClientRect();
+            this.gutter.addDiscard(text, rect.top);
           } catch {
             // Fallback silencioso
           }
@@ -205,6 +226,13 @@ export class EditorialEditor {
     }
 
     const availableNodes = this.graph.getAvailableRawNodes();
+
+    // Actualiza la etiqueta del botón con el contador de ideas disponibles
+    if (this.rawLabel) {
+      this.rawLabel.innerText = availableNodes.length > 0 
+        ? `Materia Prima (${availableNodes.length})` 
+        : 'Materia Prima (0)';
+    }
 
     // Si todas las ideas han sido consumidas, muestra un aviso sereno
     if (availableNodes.length === 0) {
