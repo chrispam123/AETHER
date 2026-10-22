@@ -3,12 +3,11 @@
  * CAPA 2: CONTROLADOR DE INTERACCIÓN ESPACIAL (INTERACTION CONTROLLER)
  * ============================================================================
  * Implementa la navegación ergonómica de lienzo infinito al estilo Miro / Figma:
- * - Cursor de Mano Abierta (`grab`) en el lienzo vacío para denotar espacio navegable.
- * - Cursor de Mano Cerrada (`grabbing`) durante el arrastre físico.
+ * - Cursor artesanal de Mano Cósmica Abierta en el lienzo vacío para denotar espacio navegable.
+ * - Cursor artesanal de Mano Cósmica Cerrada durante el arrastre físico.
  * - Desplazamiento (Pan 2D) con un simple clic y arrastre sobre el fondo del lienzo.
  * - Zoom focal continuo centrado en el cursor con la rueda del ratón o trackpad.
- * - CREACIÓN DELIBERADA MEDIANTE DOBLE CLIC: elimina la creación accidental y
- *   la ansiedad de clic en el lienzo.
+ * - CREACIÓN DELIBERADA MEDIANTE DOBLE CLIC en el fondo vacío.
  * - Activo exclusivamente en fases espaciales (Niebla y Fluido).
  */
 
@@ -16,6 +15,7 @@ import { Camera } from './Camera';
 import { StateMachine } from '../core/StateMachine';
 import { DocumentGraph } from '../core/DocumentGraph';
 import { HarmonicSynthesizer } from '../audio/HarmonicSynthesizer';
+import { CURSORS } from '../ui/cursors/CursorAssets';
 
 export class InteractionController {
   private camera: Camera;
@@ -52,10 +52,9 @@ export class InteractionController {
   private bindPhaseObserver(): void {
     this.stateMachine.onPhaseChange((phase) => {
       if (phase === 'vapor' || phase === 'liquid') {
-        this.canvas.style.cursor = 'grab';
+        this.updateCursor(CURSORS.COSMIC_OPEN);
       } else {
-        this.canvas.style.cursor = '';
-        document.body.style.cursor = '';
+        this.updateCursor('');
       }
     });
   }
@@ -74,7 +73,7 @@ export class InteractionController {
       if (e.code === 'Space' && !this.isSpacePressed) {
         if (!this.isSpatialPhase()) return;
         this.isSpacePressed = true;
-        this.updateCursor('grab');
+        this.updateCursor(CURSORS.COSMIC_OPEN);
         e.preventDefault();
       }
     });
@@ -83,7 +82,7 @@ export class InteractionController {
       if (e.code === 'Space') {
         this.isSpacePressed = false;
         if (!this.isPanning && this.isSpatialPhase()) {
-          this.updateCursor('grab');
+          this.updateCursor(CURSORS.COSMIC_OPEN);
         }
       }
     });
@@ -119,7 +118,7 @@ export class InteractionController {
       { passive: false }
     );
 
-    // 3. Inicio del arrastre (Pan 2D) con Mano Cerrada
+    // 3. Inicio del arrastre (Pan 2D) con Mano Cósmica Cerrada
     this.canvas.addEventListener('mousedown', (e) => {
       if (!this.isSpatialPhase()) return;
 
@@ -131,7 +130,7 @@ export class InteractionController {
         this.lastPointerX = e.clientX;
         this.lastPointerY = e.clientY;
 
-        this.updateCursor('grabbing');
+        this.updateCursor(CURSORS.COSMIC_CLOSED);
         e.preventDefault();
       }
     });
@@ -150,13 +149,13 @@ export class InteractionController {
       this.camera.pan(deltaX, deltaY);
     });
 
-    // 5. Finalización del arrastre: restaura la mano abierta
+    // 5. Finalización del arrastre: restaura la mano cósmica abierta
     window.addEventListener('mouseup', () => {
       if (!this.isPanning) return;
 
       this.isPanning = false;
       if (this.isSpatialPhase()) {
-        this.updateCursor('grab');
+        this.updateCursor(CURSORS.COSMIC_OPEN);
       } else {
         this.updateCursor('');
       }

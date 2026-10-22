@@ -4,9 +4,10 @@
  * ============================================================================
  * Representa una tarjeta de pensamiento individual proyectada sobre el lienzo infinito:
  * - Edición de texto directa in-situ (`contenteditable`).
+ * - Cursor artesanal táctil de pinza mineral (`TACTILE_PINCH`) en reposo.
+ * - Cursor artesanal táctil de agarre firme (`TACTILE_GRIP`) durante el arrastre.
  * - Arrastre suave compensado por el factor de zoom de la cámara 2D.
  * - Proyección espacial reactiva mediante `camera.worldToScreen` y `scale(zoom)`.
- * - Estética de vidrio esmerilado sin bordes duros.
  * - Preservación de foco y reconciliación reactiva sin destrucción de elementos.
  */
 
@@ -14,6 +15,7 @@ import { ThoughtNode } from '../../core/types';
 import { DocumentGraph } from '../../core/DocumentGraph';
 import { HarmonicSynthesizer } from '../../audio/HarmonicSynthesizer';
 import { Camera } from '../../engine/Camera';
+import { CURSORS } from '../cursors/CursorAssets';
 
 export class ThoughtCardElement {
   public readonly element: HTMLDivElement;
@@ -39,6 +41,7 @@ export class ThoughtCardElement {
     this.element = document.createElement('div');
     this.element.className = `thought-card ${phase}-card`;
     this.element.id = `card-${node.id}`;
+    this.element.style.cursor = CURSORS.TACTILE_PINCH;
 
     this.renderContent();
     this.updateProjection(this.camera);
@@ -105,7 +108,7 @@ export class ThoughtCardElement {
   }
 
   /**
-   * Habilita el arrastre de la tarjeta en el espacio bidimensional infinito.
+   * Habilita el arrastre de la tarjeta en el espacio bidimensional infinito con cursor artesanal táctil.
    */
   private attachDragBehavior(): void {
     const textEl = this.element.querySelector('.thought-card-text') as HTMLDivElement;
@@ -133,6 +136,9 @@ export class ThoughtCardElement {
 
       isDragging = true;
       this.element.classList.add('dragging');
+      this.element.style.cursor = CURSORS.TACTILE_GRIP;
+      document.body.style.cursor = CURSORS.TACTILE_GRIP;
+
       startScreenX = e.clientX;
       startScreenY = e.clientY;
       origWorldX = this.node.position.x;
@@ -157,6 +163,9 @@ export class ThoughtCardElement {
         if (isDragging) {
           isDragging = false;
           this.element.classList.remove('dragging');
+          this.element.style.cursor = CURSORS.TACTILE_PINCH;
+          document.body.style.cursor = CURSORS.COSMIC_OPEN;
+
           this.graph.updateNodePosition(this.node.id, { ...this.node.position });
           this.audio.play(220, 'sine', 0.2, 0.05);
         }
