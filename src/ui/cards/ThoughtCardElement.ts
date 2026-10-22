@@ -6,6 +6,7 @@
  * - Edición de texto directa in-situ (`contenteditable`).
  * - Arrastre suave con física de inercia y actualización de coordenadas en el grafo.
  * - Estética de vidrio esmerilado sin bordes duros.
+ * - Preservación de foco y reconciliación reactiva sin destrucción de elementos.
  */
 
 import { ThoughtNode } from '../../core/types';
@@ -48,6 +49,32 @@ export class ThoughtCardElement {
   }
 
   /**
+   * Actualiza la fase de la tarjeta (Niebla <-> Fluido) sin destruir el nodo DOM.
+   */
+  public updatePhase(newPhase: string): void {
+    if (this.phase !== newPhase) {
+      this.element.classList.remove(`${this.phase}-card`);
+      this.phase = newPhase;
+      this.element.classList.add(`${newPhase}-card`);
+
+      const iconSpan = this.element.querySelector('.thought-card-tag span:first-child');
+      if (iconSpan) {
+        iconSpan.textContent = newPhase === 'vapor' ? '☁️' : '💧';
+      }
+    }
+  }
+
+  /**
+   * Actualiza el texto si cambió externamente y el usuario no está tecleando activamente en él.
+   */
+  public updateTextIfExternal(newText: string): void {
+    const textEl = this.element.querySelector('.thought-card-text') as HTMLDivElement;
+    if (textEl && document.activeElement !== textEl && textEl.innerText !== newText) {
+      textEl.innerText = newText;
+    }
+  }
+
+  /**
    * Renderiza el contenido interno (icono de fase, tag semántico y texto editable).
    */
   private renderContent(): void {
@@ -64,6 +91,7 @@ export class ThoughtCardElement {
     const textEl = this.element.querySelector('.thought-card-text') as HTMLDivElement;
     if (textEl) {
       textEl.addEventListener('input', () => {
+        // Actualiza el texto en el grafo de datos
         this.graph.updateNodeText(this.node.id, textEl.innerText);
       });
     }

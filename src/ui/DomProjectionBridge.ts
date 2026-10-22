@@ -4,7 +4,8 @@
  * ============================================================================
  * El corazón de la arquitectura híbrida:
  * Sincroniza las coordenadas matemáticas del mundo (Canvas) con los elementos HTML del DOM.
- * Gestiona el ciclo de vida de las tarjetas vivas sin reconstrucciones innecesarias.
+ * Gestiona el ciclo de vida de las tarjetas vivas mediante reconciliación por ID,
+ * evitando la destrucción destructiva del DOM para que el foco no se pierda al escribir.
  */
 
 import { DocumentGraph } from '../core/DocumentGraph';
@@ -38,12 +39,12 @@ export class DomProjectionBridge {
   }
 
   /**
-   * Sincroniza la colección de tarjetas en pantalla con el estado actual del grafo.
+   * Sincroniza las tarjetas en pantalla con el grafo sin destruir elementos existentes.
    */
   public sync(): void {
     const phase = this.stateMachine.getPhase();
 
-    // En portal o cristal, las tarjetas espaciales se ocultan
+    // En portal o cristal, las tarjetas espaciales se ocultan limpiamente
     if (phase === 'portal' || phase === 'crystal') {
       this.container.innerHTML = '';
       this.cardInstances.clear();
@@ -51,13 +52,31 @@ export class DomProjectionBridge {
     }
 
     const currentNodes = this.graph.getAllNodes();
-    this.container.innerHTML = '';
-    this.cardInstances.clear();
+    const currentIds = new Set(currentNodes.map(n => n.id));
 
+    // 1. Elimina únicamente las tarjetas que fueron borradas del grafo
+    for (const [id, card] of this.cardInstances.entries()) {
+      if (!currentIds.has(id)) {
+        card.element.remove();
+        this.cardInstances.delete(id);
+      }
+    }
+
+    // 2. Reconcilia o crea las tarjetas existentes sin tocar el DOM enfocado
     currentNodes.forEach(node => {
-      const card = new ThoughtCardElement(node, phase, this.graph, this.audio);
-      this.cardInstances.set(node.id, card);
-      this.container.appendChild(card.element);
+      const existingCard = this.cardInstances.get(node.id);
+
+      if (existingCard) {
+        // La tarjeta ya existe: actualizamos su fase y posición sin recrear el DOM
+        existingCard.updatePhase(phase);
+        existingCard.updatePosition(node.position.x, node.position.y);
+        existingCard.updateTextIfExternal(node.text);
+      } else {
+        // Tarjeta nueva: se instancia y se añade al contenedor
+        const newCard = new ThoughtCardElement(node, phase, this.graph, this.audio);
+        this.cardInstances.set(node.id, newCard);
+        this.container.appendChild(newCard.element);
+      }
     });
   }
 
