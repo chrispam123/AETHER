@@ -45,15 +45,22 @@ export class FocusManager {
     this.trackedElement = element;
 
     // Escucha eventos de teclado y entrada de texto
-    element.addEventListener('keydown', () => this.handleActivity());
+    element.addEventListener('keydown', (e) => {
+      this.handleActivity();
+      // En pulsaciones de Enter o borrado, sincroniza en el siguiente frame tras la mutación del DOM
+      if (e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete') {
+        requestAnimationFrame(() => this.updatePresencePosition());
+      }
+    });
+
     element.addEventListener('input', () => {
       this.handleActivity();
-      this.updatePresencePosition();
+      requestAnimationFrame(() => this.updatePresencePosition());
     });
 
     // Escucha movimientos del cursor y clics del ratón
     element.addEventListener('click', () => {
-      this.updatePresencePosition();
+      requestAnimationFrame(() => this.updatePresencePosition());
     });
 
     element.addEventListener('keyup', () => {
@@ -123,23 +130,76 @@ export class FocusManager {
 
   /**
    * Calcula la posición exacta del cursor de texto en pantalla y mueve el halo de luz.
+   * Maneja saltos de línea (Enter), líneas vacías y finales de bloque sin retardo.
    */
   public updatePresencePosition(): void {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
 
     const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
 
-    // Si el cursor está visible con coordenadas válidas
-    if (rect.top !== 0 || rect.left !== 0) {
+    let x = 0;
+    let y = 0;
+    let height = 22;
+    let found = false;
+
+    // 1. Primer intento: getClientRects (más preciso en saltos de línea con texto previo)
+    const rects = range.getClientRects();
+    if (rects.length > 0) {
+      const r = rects[rects.length - 1];
+      if (r.height > 0 && (r.top !== 0 || r.left !== 0)) {
+        x = r.left;
+        y = r.top;
+        height = r.height;
+        found = true;
+      }
+    }
+
+    // 2. Segundo intento: getBoundingClientRect estándar
+    if (!found) {
+      const r = range.getBoundingClientRect();
+      if (r.height > 0 && (r.top !== 0 || r.left !== 0)) {
+        x = r.left;
+        y = r.top;
+        height = r.height;
+        found = true;
+      }
+    }
+
+    // 3. Fallback para saltos de línea (Enter en línea vacía):
+    // El navegador no crea un rect visible hasta que hay un carácter.
+    // Insertamos un marcador invisible de ancho cero (\u200B) para obtener las coordenadas exactas de la nueva línea.
+    if (!found || (x === 0 && y === 0)) {
+      try {
+        const marker = document.createElement('span');
+        marker.appendChild(document.createTextNode('\u200B'));
+        marker.style.display = 'inline-block';
+        marker.style.width = '0px';
+        marker.style.height = '1em';
+        marker.style.lineHeight = 'normal';
+
+        const clone = range.cloneRange();
+        clone.insertNode(marker);
+        const markerRect = marker.getBoundingClientRect();
+        marker.parentNode?.removeChild(marker);
+
+        if (markerRect.top !== 0 || markerRect.left !== 0) {
+          x = markerRect.left;
+          y = markerRect.top;
+          height = markerRect.height || 22;
+          found = true;
+        }
+      } catch {
+        // Fallback silencioso si el rango no permite mutación temporal
+      }
+    }
+
+    if (found) {
       this.presenceHalo.style.display = 'block';
-      // Alineación óptica limpia: se posiciona en rect.left exacto sin desplazamientos negativos
-      // que invadan el glifo de la letra anterior o siguiente
-      const opticalX = Math.round(rect.left);
-      const opticalY = Math.round(rect.top + 2);
+      const opticalX = Math.round(x);
+      const opticalY = Math.round(y + 2);
       this.presenceHalo.style.transform = `translate3d(${opticalX}px, ${opticalY}px, 0)`;
-      this.presenceHalo.style.height = `${Math.max(rect.height - 4, 18)}px`;
+      this.presenceHalo.style.height = `${Math.max(height - 4, 18)}px`;
     }
   }
 
