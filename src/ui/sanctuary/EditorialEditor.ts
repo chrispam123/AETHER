@@ -122,7 +122,7 @@ export class EditorialEditor {
             if (targetRanges && targetRanges.length > 0) {
               const range = targetRanges[0];
               const text = range.toString().trim();
-              if (text.length >= 3 && this.gutter) {
+              if (text.length >= 6 && this.gutter) {
                 const rect = range.getBoundingClientRect();
                 this.gutter.addDiscard(text, rect.top);
               }
@@ -143,8 +143,8 @@ export class EditorialEditor {
     if (!selection || selection.isCollapsed) return;
 
     const text = selection.toString().trim();
-    // Captura cualquier selección intencional de al menos 3 caracteres
-    if (text.length >= 3 && this.gutter) {
+    // Umbral de 6+ caracteres: filtra artículos o erratas menores y preserva ideas reales
+    if (text.length >= 6 && this.gutter) {
       let clientY: number | undefined;
       try {
         if (selection.rangeCount > 0) {

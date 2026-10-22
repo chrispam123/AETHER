@@ -49,7 +49,8 @@ export class DiscardGutter {
    */
   public addDiscard(text: string, originalY?: number): void {
     const cleanText = text.trim();
-    if (!cleanText || cleanText.length < 3) return;
+    // Umbral de 6+ caracteres para filtrar artículos o erratas menores
+    if (!cleanText || cleanText.length < 6) return;
 
     // Evita duplicar exactamente el mismo fragmento consecutivo
     if (this.items.length > 0 && this.items[0].text === cleanText) {
