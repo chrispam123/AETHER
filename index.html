@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aether — El Primer Editor de Texto</title>
+  
+  <!-- Tipografía Editorial Humanista + Monospace Arquitectónica -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500&family=Newsreader:ital,opsz,wght@0,6..72,200..700;1,6..72,200..700&display=swap" rel="stylesheet">
+
+  <!-- Hojas de estilo cargadas directamente en el Head (Cero FOUC / Cero texto en bruto) -->
+  <link rel="stylesheet" href="/src/styles/tokens.css">
+  <link rel="stylesheet" href="/src/styles/canvas.css">
+  <link rel="stylesheet" href="/src/styles/sanctuary.css">
+
+  <!-- CSS Crítico: Fondo basalto instantáneo antes de cargar JS -->
+  <style>
+    html, body {
+      background-color: #111215;
+      color: #e8e5de;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Capa 2: Efectos Ópticos y Textura -->
+  <div id="noise-overlay"></div>
+  <div id="vignette-overlay"></div>
+
+  <!-- Capa 1: Canvas Físico e Infinito (120 FPS) -->
+  <canvas id="canvas-layer"></canvas>
+
+  <!-- Capa 3: Tarjetas Vivas de Pensamiento (DOM) -->
+  <div id="cards-container"></div>
+
+  <!-- Capa 3: Portal de Llegada (La Pregunta Ontológica) -->
+  <div id="portal-view">
+    <h1 class="portal-question">¿En qué estado de la materia está tu mente hoy?</h1>
+    <div class="orbs-row">
+      
+      <!-- Orbe Niebla -->
+      <div class="orb-card vapor" data-phase="vapor">
+        <div class="orb-sphere-anchor" id="anchor-vapor"></div>
+        <div class="orb-title">Niebla</div>
+        <div class="orb-subtitle">Vapor difuso<br>Chispas, caos y notas libres</div>
+      </div>
+
+      <!-- Orbe Fluido -->
+      <div class="orb-card liquid" data-phase="liquid">
+        <div class="orb-sphere-anchor" id="anchor-liquid"></div>
+        <div class="orb-title">Fluido</div>
+        <div class="orb-subtitle">Corriente viva<br>Estructura, puentes y flujo</div>
+      </div>
+
+      <!-- Orbe Cristal -->
+      <div class="orb-card crystal" data-phase="crystal">
+        <div class="orb-sphere-anchor" id="anchor-crystal"></div>
+        <div class="orb-title">Cristal</div>
+        <div class="orb-subtitle">Materia sólida<br>Prosa pulida y foco monástico</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Capa 3: Interfaz Superior y Controles -->
+  <div id="ui-layer">
+    <header>
+      <div class="brand">
+        <div class="brand-dot" id="brand-dot"></div>
+        <span id="brand-text">AETHER · 2026</span>
+      </div>
+      <button class="audio-toggle" id="audio-btn">
+        <span id="audio-icon">♪</span>
+        <span id="audio-label">Resonancia acústica: Desactivada</span>
+      </button>
+    </header>
+
+    <div id="canvas-hint">Haz clic en cualquier punto del espacio para soltar una idea</div>
+
+    <!-- Capa 3: Santuario Monástico Editorial (Modo Cristal) -->
+    <div id="crystal-sanctuary">
+      <div class="crystal-editor-container">
+        <input type="text" class="crystal-title" placeholder="La tesis que nace hoy..." value="Sobre la naturaleza del pensamiento fluido">
+        <div class="crystal-body" contenteditable="true" spellcheck="false">Escribir no es registrar palabras que ya estaban completas en la mente; escribir es el proceso mediante el cual el caos se condensa en materia legible.
+
+Cuando retiramos la tiranía del cursor mecánico y permitimos que la idea respire primero como vapor, luego como corriente viva y finalmente como piedra pulida, la relación entre el creador y su lenguaje vuelve a ser sagrada.</div>
+        
+        <!-- Bandeja de Materia Prima -->
+        <div class="crystal-drawer">
+          <div class="crystal-drawer-title">
+            <span>✨</span> Materia Prima (Haz clic para insertar en el texto):
+          </div>
+          <div class="crystal-chips-row" id="crystal-chips-container"></div>
+        </div>
+
+        <div class="crystal-metrics">
+          <span id="word-count">61 palabras</span>
+          <span>·</span>
+          <span id="read-time">Lectura: 18 seg</span>
+          <span>·</span>
+          <span>Frecuencia: 120Hz Calibrada</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Capa 3: Modulador de Fase Flotante (Dock) -->
+    <div id="phase-dock">
+      <button class="phase-pill vapor" data-phase="vapor">
+        <span>☁️</span> Niebla
+      </button>
+      <div class="phase-sep"></div>
+      <button class="phase-pill liquid" data-phase="liquid">
+        <span>💧</span> Fluido
+      </button>
+      <div class="phase-sep"></div>
+      <button class="phase-pill crystal" data-phase="crystal">
+        <span>💎</span> Cristal
+      </button>
+    </div>
+  </div>
+
+  <!-- Entrada TypeScript de la Aplicación -->
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

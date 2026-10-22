@@ -1,0 +1,50 @@
+/**
+ * ============================================================================
+ * SISTEMA DE TOKENS DE DISEÑO: AETHER (PALETA MINERAL Y TIPOGRAFÍA)
+ * ============================================================================
+ * Este archivo centraliza todas las variables visuales del sistema:
+ * - Colores minerales para el sustrato (elimina la halación en OLED).
+ * - Tintas humanistas (marfil / lino cálido en lugar de blanco puro).
+ * - Acentos cromáticos para los tres estados de la materia cognitiva.
+ * - Fuentes tipográficas: editorial (Newsreader) y monoespaciada (Geist Mono).
+ */
+
+:root {
+  /* --- SUSTconfigURACIÓN MINERAL (FONDOS) --- */
+  /* Basalto / Carbón Pizarra Profundo con calidez óptica */
+  --bg-base: #111215;
+  --bg-subtle: #16181d;
+  --bg-surface: rgba(26, 28, 35, 0.65);
+  
+  /* --- TINTAS TIPOGRÁFICAS (TEXTO) --- */
+  /* Lino / Marfil cálido: descanso para la retina */
+  --ink-primary: #e8e5de;
+  /* Ceniza caliza: metadatos y textos secundarios */
+  --ink-secondary: #9b9a95;
+  /* Grafito atenuado: placeholders y elementos en reposo */
+  --ink-ghost: #545558;
+
+  /* --- TRILOGÍA DE LA MATERIA COGNITIVA (ACENTOS) --- */
+  /* ☁️ Niebla / Vapor: Lavanda Ópalo etéreo y desaturado */
+  --vapor-accent: #b8a9c9;
+  --vapor-glow: rgba(184, 169, 201, 0.18);
+  
+  /* 💧 Fluido / Líquido: Salvia / Celadón mineral */
+  --liquid-accent: #7ea895;
+  --liquid-glow: rgba(126, 168, 149, 0.18);
+  
+  /* 💎 Cristal / Sólido: Ámbar vela / Oro viejo */
+  --crystal-accent: #d9ba85;
+  --crystal-glow: rgba(217, 186, 133, 0.18);
+
+  /* --- TIPOGRAFÍAS DE ALTA FIDELIDAD --- */
+  /* Prosa y pensamiento reflexivo: Serif humanista con ligaduras activas */
+  --font-prose: 'Newsreader', Georgia, serif;
+  /* Interfaz, métricas y metadatos: Monospace arquitectónica */
+  --font-mono: 'Geist Mono', monospace, -apple-system, sans-serif;
+
+  /* --- MEDIDAS Y ERGONOMÍA --- */
+  /* Ancho áureo ergonómico para lectura continua (60-70 caracteres por línea) */
+  --measure-prose: 680px;
+  --line-height-prose: 1.88;
+}

@@ -1,0 +1,463 @@
+/**
+ * ============================================================================
+ * ESTILOS DE LA CAPA UI: PORTAL, TARJETAS, SANTUARIO Y DOCK DE FASE
+ * ============================================================================
+ * Implementa la interfaz sin bordes duros (No-Border UI):
+ * - Refracción mediante desenfoque de vidrio profundo (heavy backdrop-filter).
+ * - Transiciones orgánicas entre fases sin parpadeos.
+ * - Santuario editorial monástico en modo Cristal.
+ */
+
+/* Capa General de UI */
+#ui-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 4;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Encabezado y Marca */
+header {
+  padding: 32px 42px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  opacity: 0.7;
+  transition: opacity 0.4s ease;
+  pointer-events: auto;
+}
+header:hover {
+  opacity: 1;
+}
+
+.brand {
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  font-weight: 400;
+  color: var(--ink-secondary);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ink-ghost);
+  transition: background 0.6s ease, box-shadow 0.6s ease;
+}
+
+.audio-toggle {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--ink-secondary);
+  padding: 7px 16px;
+  border-radius: 30px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  font-family: var(--font-mono);
+}
+.audio-toggle:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink-primary);
+}
+
+/* --- PORTAL DE LLEGADA (PREGUNTA ONTOLÓGICA) --- */
+#portal-view {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 5;
+  pointer-events: none;
+  transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1), transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#portal-view.hidden {
+  opacity: 0;
+  transform: scale(1.05);
+  pointer-events: none;
+}
+
+.portal-question {
+  font-family: var(--font-prose);
+  font-size: clamp(34px, 4.6vw, 54px);
+  font-weight: 300;
+  font-style: italic;
+  color: var(--ink-primary);
+  text-align: center;
+  margin-bottom: 56px;
+  letter-spacing: -0.015em;
+  opacity: 0;
+  animation: gentleIn 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards 0.2s;
+}
+
+.orbs-row {
+  display: flex;
+  gap: 40px;
+  pointer-events: auto;
+  opacity: 0;
+  animation: gentleIn 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards 0.4s;
+}
+
+.orb-card {
+  width: 190px;
+  height: 230px;
+  background: var(--bg-surface);
+  backdrop-filter: blur(28px);
+  border-radius: 22px;
+  padding: 24px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 16px 36px -15px rgba(0, 0, 0, 0.5);
+}
+
+.orb-card:hover {
+  transform: translateY(-6px);
+  background: rgba(32, 35, 44, 0.75);
+}
+.orb-card.vapor:hover { box-shadow: 0 20px 45px -12px var(--vapor-glow); }
+.orb-card.liquid:hover { box-shadow: 0 20px 45px -12px var(--liquid-glow); }
+.orb-card.crystal:hover { box-shadow: 0 20px 45px -12px var(--crystal-glow); }
+
+.orb-sphere-anchor {
+  position: absolute;
+  top: 42px;
+  width: 70px;
+  height: 70px;
+}
+
+.orb-title {
+  font-family: var(--font-prose);
+  font-size: 26px;
+  font-weight: 400;
+  color: var(--ink-primary);
+  margin-bottom: 6px;
+}
+
+.orb-subtitle {
+  font-size: 11px;
+  color: var(--ink-secondary);
+  letter-spacing: 0.04em;
+  text-align: center;
+  line-height: 1.45;
+  font-family: var(--font-mono);
+}
+
+/* --- CONTENEDOR DE TARJETAS FLOTANTES (NIEBLA Y FLUIDO) --- */
+#cards-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.thought-card {
+  position: absolute;
+  pointer-events: auto;
+  background: rgba(22, 24, 31, 0.82);
+  backdrop-filter: blur(32px) saturate(140%);
+  border-radius: 18px;
+  padding: 18px 22px;
+  min-width: 240px;
+  max-width: 330px;
+  color: var(--ink-primary);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.65);
+  cursor: grab;
+  transition: box-shadow 0.3s ease, transform 0.15s ease-out;
+  transform: translate(-50%, -50%);
+}
+
+.thought-card:hover {
+  box-shadow: 0 24px 50px -15px rgba(0, 0, 0, 0.85);
+}
+
+.thought-card.vapor-card {
+  box-shadow: 0 16px 36px -12px var(--vapor-glow);
+}
+.thought-card.vapor-card:hover {
+  box-shadow: 0 22px 48px -10px var(--vapor-glow);
+}
+
+.thought-card.liquid-card {
+  box-shadow: 0 16px 36px -12px var(--liquid-glow);
+}
+.thought-card.liquid-card:hover {
+  box-shadow: 0 22px 48px -10px var(--liquid-glow);
+}
+
+.thought-card.dragging {
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(1.03);
+  z-index: 100 !important;
+}
+
+.thought-card-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  opacity: 0.8;
+  font-family: var(--font-mono);
+}
+.thought-card.vapor-card .thought-card-tag { color: var(--vapor-accent); }
+.thought-card.liquid-card .thought-card-tag { color: var(--liquid-accent); }
+
+.thought-card-text {
+  font-family: var(--font-prose);
+  font-size: 19px;
+  font-weight: 300;
+  line-height: 1.55;
+  outline: none;
+  user-select: text;
+  cursor: text;
+  min-height: 26px;
+  color: var(--ink-primary);
+}
+
+.thought-card-text:empty::before {
+  content: "Escribe tu idea aquí...";
+  color: var(--ink-ghost);
+  font-style: italic;
+}
+
+/* --- SANTUARIO EDITORIAL (MODO CRISTAL) --- */
+#crystal-sanctuary {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 130px;
+  z-index: 4;
+  opacity: 0;
+  transform: translateY(16px);
+  pointer-events: none;
+  transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#crystal-sanctuary.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.crystal-editor-container {
+  width: 100%;
+  max-width: var(--measure-prose);
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.crystal-title {
+  font-family: var(--font-prose);
+  font-size: 44px;
+  font-weight: 300;
+  outline: none;
+  border: none;
+  background: transparent;
+  color: var(--ink-primary);
+  margin-bottom: 32px;
+  line-height: 1.22;
+  letter-spacing: -0.015em;
+}
+
+.crystal-title::placeholder {
+  color: var(--ink-ghost);
+  font-style: italic;
+}
+
+.crystal-body {
+  font-family: var(--font-prose);
+  font-size: 21px;
+  font-weight: 400;
+  line-height: var(--line-height-prose);
+  color: var(--ink-primary);
+  outline: none;
+  border: none;
+  background: transparent;
+  min-height: 380px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+  caret-color: var(--crystal-accent);
+}
+
+.crystal-body:empty::before {
+  content: "Comienza a teclear. Las palabras caen con peso y silencio...";
+  color: var(--ink-ghost);
+  font-style: italic;
+}
+
+/* Bandeja de Materia Prima en Modo Cristal */
+.crystal-drawer {
+  margin-top: 48px;
+  background: rgba(22, 24, 30, 0.5);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 20px 24px;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+.crystal-drawer-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--crystal-accent);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+}
+
+.crystal-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.crystal-chip {
+  background: rgba(255, 255, 255, 0.035);
+  padding: 7px 16px;
+  border-radius: 30px;
+  font-size: 14px;
+  font-family: var(--font-prose);
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.crystal-chip:hover {
+  background: var(--crystal-glow);
+  color: var(--ink-primary);
+  transform: translateY(-1px);
+}
+
+.crystal-metrics {
+  display: flex;
+  gap: 20px;
+  margin-top: 32px;
+  padding-top: 18px;
+  font-size: 11px;
+  color: var(--ink-secondary);
+  letter-spacing: 0.08em;
+  font-family: var(--font-mono);
+  opacity: 0.7;
+}
+
+/* --- MODULADOR DE FASE (DOCK FLOTANTE INFERIOR) --- */
+#phase-dock {
+  position: absolute;
+  bottom: 34px;
+  left: 50%;
+  transform: translateX(-50%) translateY(70px);
+  z-index: 10;
+  background: rgba(20, 22, 28, 0.78);
+  backdrop-filter: blur(36px);
+  padding: 6px 8px;
+  border-radius: 40px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  pointer-events: auto;
+  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.6);
+}
+
+#phase-dock.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.phase-pill {
+  background: transparent;
+  border: none;
+  color: var(--ink-secondary);
+  padding: 8px 18px;
+  border-radius: 30px;
+  font-size: 11px;
+  font-weight: 400;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+.phase-pill:hover {
+  color: var(--ink-primary);
+}
+
+.phase-pill.active.vapor { color: var(--vapor-accent); background: var(--vapor-glow); }
+.phase-pill.active.liquid { color: var(--liquid-accent); background: var(--liquid-glow); }
+.phase-pill.active.crystal { color: var(--crystal-accent); background: var(--crystal-glow); }
+
+.phase-sep {
+  width: 1px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Instrucción contextual flotante */
+#canvas-hint {
+  position: absolute;
+  top: 34px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+  color: var(--ink-secondary);
+  background: rgba(20, 22, 28, 0.75);
+  backdrop-filter: blur(20px);
+  padding: 7px 20px;
+  border-radius: 30px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.4s ease;
+  z-index: 5;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+#canvas-hint.visible { opacity: 1; }
+
+@keyframes gentleIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}

@@ -1,0 +1,63 @@
+/**
+ * ============================================================================
+ * ESTILOS DE LA CAPA GRÁFICA Y EFECTOS ATMOSFÉRICOS
+ * ============================================================================
+ * Controla:
+ * - El lienzo <canvas> espacial que renderiza la física a 120 FPS.
+ * - La viñeta de atención radial para evitar distracciones en la periferia.
+ * - El grano fotónico analógico para otorgar textura tangible al sustrato.
+ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-base);
+  color: var(--ink-primary);
+  font-family: var(--font-mono);
+  font-feature-settings: "liga" 1, "dlig" 1;
+}
+
+/* Capa 1: Canvas Gráfico 2D */
+#canvas-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Capa 2: Grano fotónico cinematográfico (textura analógica microscópica) */
+#noise-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.028;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Capa 2: Viñeta de atención radial (guía la luz hacia el centro óptico) */
+#vignette-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 45%, transparent 40%, rgba(10, 11, 14, 0.6) 100%);
+}

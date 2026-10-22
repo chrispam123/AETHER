@@ -1,0 +1,193 @@
+/**
+ * ============================================================================
+ * AETHER: PUNTO DE ENTRADA PRINCIPAL (APPLICATION BOOTSTRAP)
+ * ============================================================================
+ * Inicializa y orquesta todas las capas del sistema:
+ * - Capa 1 (Core): Grafo de pensamientos y máquina de estados.
+ * - Capa 2 (Engine): Cámara matemática y motor Canvas a 120 FPS.
+ * - Capa 3 (UI): Puente de proyección DOM, santuario editorial y dock.
+ * - Sistema Sensorial: Síntesis de audio armónico.
+ */
+
+import './styles/tokens.css';
+import './styles/canvas.css';
+import './styles/sanctuary.css';
+
+import { DocumentGraph } from './core/DocumentGraph';
+import { StateMachine } from './core/StateMachine';
+import { Camera } from './engine/Camera';
+import { CanvasRenderer } from './engine/CanvasRenderer';
+import { HarmonicSynthesizer } from './audio/HarmonicSynthesizer';
+import { DomProjectionBridge } from './ui/DomProjectionBridge';
+import { EditorialEditor } from './ui/sanctuary/EditorialEditor';
+import { PhaseDock } from './ui/dock/PhaseDock';
+import { Phase } from './core/types';
+
+class AetherApp {
+  private graph: DocumentGraph;
+  private stateMachine: StateMachine;
+  private camera: Camera;
+  private renderer: CanvasRenderer;
+  private audio: HarmonicSynthesizer;
+  private bridge: DomProjectionBridge;
+  private editor: EditorialEditor;
+  private dock: PhaseDock;
+
+  constructor() {
+    // 1. Inicialización de Capa 1: Modelo puro de datos
+    const initialWidth = window.innerWidth;
+    const initialHeight = window.innerHeight;
+
+    this.graph = new DocumentGraph([
+      {
+        id: '1',
+        tag: 'Intuición Nodal',
+        text: 'El lenguaje no es un inventario estático; es la prótesis viva de la imaginación humana.',
+        position: { x: initialWidth * 0.32, y: initialHeight * 0.36 },
+        timestamp: Date.now()
+      },
+      {
+        id: '2',
+        tag: 'Tensión Dialéctica',
+        text: 'La máquina de escribir nos obligó a pensar en una sola dimensión lineal.',
+        position: { x: initialWidth * 0.65, y: initialHeight * 0.42 },
+        timestamp: Date.now()
+      },
+      {
+        id: '3',
+        tag: 'Termodinámica',
+        text: 'Si el pensamiento pasa de vapor a líquido y a cristal, el software debe obedecer esa física.',
+        position: { x: initialWidth * 0.46, y: initialHeight * 0.66 },
+        timestamp: Date.now()
+      }
+    ]);
+
+    this.stateMachine = new StateMachine('portal');
+
+    // 2. Inicialización de Capa 2: Motor Gráfico Canvas
+    const canvasElement = document.getElementById('canvas-layer') as HTMLCanvasElement;
+    this.camera = new Camera();
+    this.renderer = new CanvasRenderer(canvasElement, this.camera, this.stateMachine, this.graph);
+
+    // 3. Inicialización de Sistema Sensorial Acústico
+    this.audio = new HarmonicSynthesizer();
+
+    // 4. Inicialización de Capa 3: Overlay DOM y componentes
+    const cardsContainer = document.getElementById('cards-container') as HTMLDivElement;
+    this.bridge = new DomProjectionBridge(
+      cardsContainer,
+      canvasElement,
+      this.graph,
+      this.stateMachine,
+      this.audio
+    );
+
+    this.editor = new EditorialEditor(this.graph, this.audio);
+    this.dock = new PhaseDock(this.stateMachine);
+
+    this.initPhaseOrchestration();
+    this.initAudioButton();
+    this.initPortalCards();
+
+    // Arranca el bucle a 120 FPS
+    this.renderer.start();
+  }
+
+  /**
+   * Conecta los clics de los 3 orbes del portal de bienvenida.
+   */
+  private initPortalCards(): void {
+    const portalCards = document.querySelectorAll('.orb-card');
+    portalCards.forEach(card => {
+      card.addEventListener('click', () => {
+        const phase = card.getAttribute('data-phase') as Phase;
+        if (phase) {
+          this.stateMachine.transitionTo(phase);
+        }
+      });
+    });
+  }
+
+  /**
+   * Conecta el botón de activación de audio sintético.
+   */
+  private initAudioButton(): void {
+    const audioBtn = document.getElementById('audio-btn');
+    const audioLabel = document.getElementById('audio-label');
+
+    if (audioBtn && audioLabel) {
+      audioBtn.addEventListener('click', () => {
+        const isEnabled = this.audio.toggle();
+        if (isEnabled) {
+          audioLabel.innerText = 'Resonancia acústica: Activa';
+          audioBtn.style.color = 'var(--ink-primary)';
+          audioBtn.style.borderColor = 'rgba(255,255,255,0.2)';
+        } else {
+          audioLabel.innerText = 'Resonancia acústica: Desactivada';
+          audioBtn.style.color = 'var(--ink-secondary)';
+          audioBtn.style.borderColor = 'rgba(255,255,255,0.05)';
+        }
+      });
+    }
+  }
+
+  /**
+   * Orquesta las transiciones entre fases (atmósfera, pistas y visibilidad).
+   */
+  private initPhaseOrchestration(): void {
+    const portal = document.getElementById('portal-view');
+    const hint = document.getElementById('canvas-hint');
+    const brandDot = document.getElementById('brand-dot');
+    const brandText = document.getElementById('brand-text');
+
+    this.stateMachine.onPhaseChange((phase) => {
+      // 1. Ocultar portal y actualizar dock
+      if (portal) portal.classList.add('hidden');
+      this.dock.update(phase);
+      this.bridge.sync();
+
+      // 2. Actualizar santuario en modo Cristal
+      this.editor.setVisible(phase === 'crystal');
+
+      // 3. Modulación de atmósfera según la fase
+      if (phase === 'vapor') {
+        if (hint) {
+          hint.classList.add('visible');
+          hint.innerText = '☁️ ESTADO NIEBLA · CLIC PARA CONDENSAR UNA IDEA';
+        }
+        if (brandDot) {
+          brandDot.style.background = 'var(--vapor-accent)';
+          brandDot.style.boxShadow = '0 0 10px var(--vapor-accent)';
+        }
+        if (brandText) brandText.innerText = 'AETHER · FASE NIEBLA';
+        this.audio.play(320, 'sine', 0.8, 0.12);
+      } else if (phase === 'liquid') {
+        if (hint) {
+          hint.classList.add('visible');
+          hint.innerText = '💧 ESTADO FLUIDO · CORRIENTES Y PUENTES DE TENSIÓN';
+        }
+        if (brandDot) {
+          brandDot.style.background = 'var(--liquid-accent)';
+          brandDot.style.boxShadow = '0 0 10px var(--liquid-accent)';
+        }
+        if (brandText) brandText.innerText = 'AETHER · FASE FLUIDO';
+        this.audio.play(432, 'triangle', 1.0, 0.15);
+      } else if (phase === 'crystal') {
+        if (hint) hint.classList.remove('visible');
+        if (brandDot) {
+          brandDot.style.background = 'var(--crystal-accent)';
+          brandDot.style.boxShadow = '0 0 10px var(--crystal-accent)';
+        }
+        if (brandText) brandText.innerText = 'AETHER · FASE CRISTAL';
+        this.audio.play(528, 'sine', 1.4, 0.18);
+      }
+    });
+  }
+}
+
+// Inicialización inmediata de la aplicación evitando retrasos de carga
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', () => new AetherApp());
+} else {
+  new AetherApp();
+}
