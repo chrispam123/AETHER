@@ -2,13 +2,13 @@
  * ============================================================================
  * CAPA 2: CONTROLADOR DE INTERACCIÓN ESPACIAL (INTERACTION CONTROLLER)
  * ============================================================================
- * Implementa la navegación de lienzo infinito al estilo Figma / Miro:
- * - Zoom focal continuo con rueda de ratón o gesto de pinza centrado en el cursor.
- * - Desplazamiento infinito (Pan 2D) con:
- *   1. Arrastre directo en el fondo vacío del lienzo.
- *   2. Barra espaciadora + arrastre con botón izquierdo.
- *   3. Botón central del ratón (rueda pulsada).
- * - Distinción precisa entre clic para crear ideas vs. arrastre para panear (umbral de 4px).
+ * Implementa la navegación ergonómica de lienzo infinito al estilo Miro / Figma:
+ * - Cursor de Mano Abierta (`grab`) en el lienzo vacío para denotar espacio navegable.
+ * - Cursor de Mano Cerrada (`grabbing`) durante el arrastre físico.
+ * - Desplazamiento (Pan 2D) con un simple clic y arrastre sobre el fondo del lienzo.
+ * - Zoom focal continuo centrado en el cursor con la rueda del ratón o trackpad.
+ * - CREACIÓN DELIBERADA MEDIANTE DOBLE CLIC: elimina la creación accidental y
+ *   la ansiedad de clic en el lienzo.
  * - Activo exclusivamente en fases espaciales (Niebla y Fluido).
  */
 
@@ -26,11 +26,8 @@ export class InteractionController {
 
   private isPanning: boolean = false;
   private isSpacePressed: boolean = false;
-  private startPointerX: number = 0;
-  private startPointerY: number = 0;
   private lastPointerX: number = 0;
   private lastPointerY: number = 0;
-
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -46,15 +43,29 @@ export class InteractionController {
     this.audio = audio;
 
     this.bindEvents();
+    this.bindPhaseObserver();
+  }
+
+  /**
+   * Actualiza el cursor visual según la fase activa del editor.
+   */
+  private bindPhaseObserver(): void {
+    this.stateMachine.onPhaseChange((phase) => {
+      if (phase === 'vapor' || phase === 'liquid') {
+        this.canvas.style.cursor = 'grab';
+      } else {
+        this.canvas.style.cursor = '';
+        document.body.style.cursor = '';
+      }
+    });
   }
 
   /**
    * Conecta los escuchadores de teclado y puntero para la navegación infinita.
    */
   private bindEvents(): void {
-    // 1. Detección de la tecla Espacio para paneo
+    // 1. Detección de la tecla Espacio para paneo explícito
     window.addEventListener('keydown', (e) => {
-      // Si el usuario está tecleando en un input o contenteditable, no interceptar
       const activeEl = document.activeElement;
       if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.getAttribute('contenteditable') === 'true')) {
         return;
@@ -63,7 +74,7 @@ export class InteractionController {
       if (e.code === 'Space' && !this.isSpacePressed) {
         if (!this.isSpatialPhase()) return;
         this.isSpacePressed = true;
-        document.body.style.cursor = 'grab';
+        this.updateCursor('grab');
         e.preventDefault();
       }
     });
@@ -71,8 +82,8 @@ export class InteractionController {
     window.addEventListener('keyup', (e) => {
       if (e.code === 'Space') {
         this.isSpacePressed = false;
-        if (!this.isPanning) {
-          document.body.style.cursor = '';
+        if (!this.isPanning && this.isSpatialPhase()) {
+          this.updateCursor('grab');
         }
       }
     });
@@ -108,7 +119,7 @@ export class InteractionController {
       { passive: false }
     );
 
-    // 3. Inicio del arrastre (Pan o Clic en fondo)
+    // 3. Inicio del arrastre (Pan 2D) con Mano Cerrada
     this.canvas.addEventListener('mousedown', (e) => {
       if (!this.isSpatialPhase()) return;
 
@@ -117,61 +128,60 @@ export class InteractionController {
 
       if (isMiddleButton || (isLeftButton && (this.isSpacePressed || e.target === this.canvas))) {
         this.isPanning = true;
-        this.startPointerX = e.clientX;
-        this.startPointerY = e.clientY;
         this.lastPointerX = e.clientX;
         this.lastPointerY = e.clientY;
 
-
-        document.body.style.cursor = 'grabbing';
+        this.updateCursor('grabbing');
         e.preventDefault();
       }
     });
 
-    // 4. Movimiento durante el arrastre
+    // 4. Movimiento durante el arrastre a 120 FPS
     window.addEventListener('mousemove', (e) => {
       if (!this.isPanning) return;
 
       const deltaX = e.clientX - this.lastPointerX;
       const deltaY = e.clientY - this.lastPointerY;
 
-
       this.lastPointerX = e.clientX;
       this.lastPointerY = e.clientY;
 
-      // Desplaza la cámara en el espacio
+      // Desplaza la cámara en el espacio cósmico
       this.camera.pan(deltaX, deltaY);
     });
 
-    // 5. Finalización del arrastre o Clic en fondo para crear idea
-    window.addEventListener('mouseup', (e) => {
+    // 5. Finalización del arrastre: restaura la mano abierta
+    window.addEventListener('mouseup', () => {
       if (!this.isPanning) return;
 
       this.isPanning = false;
-      document.body.style.cursor = this.isSpacePressed ? 'grab' : '';
-
-      // Si el desplazamiento total fue menor a 5 píxeles y fue botón izquierdo sin barra espaciadora:
-      // se interpreta como un clic deliberado en el lienzo para soltar una chispa
-      const totalDisplacement = Math.hypot(e.clientX - this.startPointerX, e.clientY - this.startPointerY);
-      if (totalDisplacement < 5 && e.button === 0 && !this.isSpacePressed) {
-        this.handleCanvasClick(e.clientX, e.clientY);
+      if (this.isSpatialPhase()) {
+        this.updateCursor('grab');
+      } else {
+        this.updateCursor('');
       }
+    });
+
+    // 6. CREACIÓN INTENCIONAL MEDIANTE DOBLE CLIC EN EL FONDO VACÍO
+    this.canvas.addEventListener('dblclick', (e) => {
+      if (!this.isSpatialPhase()) return;
+
+      // Conversión matemática de píxeles de pantalla a coordenadas del mundo infinito
+      const worldPoint = this.camera.screenToWorld({ x: e.clientX, y: e.clientY });
+
+      const phase = this.stateMachine.getPhase();
+      const tag = phase === 'vapor' ? 'Chispa libre' : 'Corriente nodal';
+      this.graph.addNode('', worldPoint, tag);
+      this.audio.play(432, 'sine', 0.4, 0.12);
     });
   }
 
   /**
-   * Crea una nueva idea en las coordenadas universales exactas del mundo cósmico.
+   * Actualiza el cursor visual de la ventana y el canvas de manera coherente.
    */
-  private handleCanvasClick(screenX: number, screenY: number): void {
-    const phase = this.stateMachine.getPhase();
-    if (phase !== 'vapor' && phase !== 'liquid') return;
-
-    // Conversión matemática de píxeles de pantalla a coordenadas del mundo infinito
-    const worldPoint = this.camera.screenToWorld({ x: screenX, y: screenY });
-
-    const tag = phase === 'vapor' ? 'Chispa libre' : 'Corriente nodal';
-    this.graph.addNode('', worldPoint, tag);
-    this.audio.play(432, 'sine', 0.4, 0.12);
+  private updateCursor(cursor: string): void {
+    this.canvas.style.cursor = cursor;
+    document.body.style.cursor = cursor;
   }
 
   /**

@@ -195,7 +195,7 @@ class AetherApp {
       if (phase === 'vapor') {
         if (hint) {
           hint.classList.add('visible');
-          hint.innerText = '☁️ NIEBLA INFINITA · RUEDA: ZOOM · ARRASTRAR: NAVEGAR · CLIC: CREAR';
+          hint.innerText = '☁️ NIEBLA INFINITA · ARRASTRAR PARA MOVER · RUEDA: ZOOM · DOBLE CLIC: CREAR IDEA';
         }
         if (brandDot) {
           brandDot.style.background = 'var(--vapor-accent)';
@@ -206,7 +206,7 @@ class AetherApp {
       } else if (phase === 'liquid') {
         if (hint) {
           hint.classList.add('visible');
-          hint.innerText = '💧 FLUIDO INFINITO · RUEDA: ZOOM · ARRASTRAR: NAVEGAR · PUENTES VIVOS';
+          hint.innerText = '💧 FLUIDO INFINITO · ARRASTRAR PARA MOVER · RUEDA: ZOOM · DOBLE CLIC: CREAR IDEA';
         }
         if (brandDot) {
           brandDot.style.background = 'var(--liquid-accent)';

@@ -116,12 +116,20 @@ export class ThoughtCardElement {
     let origWorldX = 0;
     let origWorldY = 0;
 
+    // Evitar que el doble clic en la tarjeta cree una idea en el lienzo de fondo
+    this.element.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+    });
+
     this.element.addEventListener('mousedown', (e) => {
-      // Si el usuario hace clic dentro del texto para editar, no arrastrar
+      // Evitar que el mousedown en la tarjeta active el paneo del lienzo
+      e.stopPropagation();
+
+      // Si el usuario hace clic dentro del texto para editar, permitir selección y no arrastrar
       if (e.target === textEl) return;
 
-      // Si no es el botón izquierdo o si se está paneando el fondo, ignorar arrastre de tarjeta
-      if (e.button !== 0 || document.body.style.cursor.includes('grab')) return;
+      // Si no es el botón izquierdo principal, ignorar
+      if (e.button !== 0) return;
 
       isDragging = true;
       this.element.classList.add('dragging');
