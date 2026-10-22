@@ -323,32 +323,34 @@ header:hover {
   position: fixed;
   top: 0;
   left: 0;
-  width: 3px;
-  height: 24px;
-  border-radius: 4px;
-  background: var(--crystal-accent);
-  box-shadow: 0 0 12px 2px var(--crystal-glow), 0 0 4px var(--crystal-accent);
+  width: 2px;
+  height: 22px;
+  border-radius: 2px;
+  /* Tono lino mineral sutil y desaturado (champán cálido en vez de amarillo chillón) */
+  background: rgba(226, 215, 195, 0.72);
+  box-shadow: 0 0 6px 1px rgba(226, 215, 195, 0.16);
   pointer-events: none;
   z-index: 100;
-  opacity: 0.85;
-  transition: transform 0.06s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, height 0.1s ease;
-  animation: breathHalo 2.6s ease-in-out infinite;
+  opacity: 0.75;
+  transition: transform 0.05s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, height 0.1s ease;
+  animation: breathHalo 2.8s ease-in-out infinite;
 }
 
 .presence-pulse.active-typing {
-  opacity: 1;
-  box-shadow: 0 0 18px 4px var(--crystal-glow), 0 0 6px var(--crystal-accent);
+  opacity: 0.9;
+  background: rgba(232, 222, 204, 0.85);
+  box-shadow: 0 0 8px 1px rgba(226, 215, 195, 0.22);
   animation: none;
 }
 
 @keyframes breathHalo {
   0%, 100% {
-    opacity: 0.45;
-    box-shadow: 0 0 8px 1px var(--crystal-glow);
+    opacity: 0.35;
+    box-shadow: 0 0 3px rgba(226, 215, 195, 0.1);
   }
   50% {
-    opacity: 0.95;
-    box-shadow: 0 0 16px 3px var(--crystal-glow), 0 0 5px var(--crystal-accent);
+    opacity: 0.78;
+    box-shadow: 0 0 7px 1px rgba(226, 215, 195, 0.2);
   }
 }
 

@@ -134,7 +134,11 @@ export class FocusManager {
     // Si el cursor está visible con coordenadas válidas
     if (rect.top !== 0 || rect.left !== 0) {
       this.presenceHalo.style.display = 'block';
-      this.presenceHalo.style.transform = `translate3d(${rect.left - 4}px, ${rect.top + 2}px, 0)`;
+      // Alineación óptica limpia: se posiciona en rect.left exacto sin desplazamientos negativos
+      // que invadan el glifo de la letra anterior o siguiente
+      const opticalX = Math.round(rect.left);
+      const opticalY = Math.round(rect.top + 2);
+      this.presenceHalo.style.transform = `translate3d(${opticalX}px, ${opticalY}px, 0)`;
       this.presenceHalo.style.height = `${Math.max(rect.height - 4, 18)}px`;
     }
   }
