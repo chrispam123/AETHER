@@ -18,6 +18,7 @@ import { DocumentGraph } from './core/DocumentGraph';
 import { StateMachine } from './core/StateMachine';
 import { Camera } from './engine/Camera';
 import { CanvasRenderer } from './engine/CanvasRenderer';
+import { InteractionController } from './engine/InteractionController';
 import { HarmonicSynthesizer } from './audio/HarmonicSynthesizer';
 import { DomProjectionBridge } from './ui/DomProjectionBridge';
 import { EditorialEditor } from './ui/sanctuary/EditorialEditor';
@@ -30,6 +31,7 @@ class AetherApp {
   private graph: DocumentGraph;
   private stateMachine: StateMachine;
   private camera: Camera;
+  private interactionController: InteractionController;
   private renderer: CanvasRenderer;
   private audio: HarmonicSynthesizer;
   private bridge: DomProjectionBridge;
@@ -73,15 +75,21 @@ class AetherApp {
     const canvasElement = document.getElementById('canvas-layer') as HTMLCanvasElement;
     this.camera = new Camera();
     this.renderer = new CanvasRenderer(canvasElement, this.camera, this.stateMachine, this.graph);
-
-    // 3. Inicialización de Sistema Sensorial Acústico
     this.audio = new HarmonicSynthesizer();
+    this.interactionController = new InteractionController(
+      canvasElement,
+      this.camera,
+      this.stateMachine,
+      this.graph,
+      this.audio
+    );
 
     // 4. Inicialización de Capa 3: Overlay DOM y componentes
     const cardsContainer = document.getElementById('cards-container') as HTMLDivElement;
     this.bridge = new DomProjectionBridge(
       cardsContainer,
-      canvasElement,
+
+      this.camera,
       this.graph,
       this.stateMachine,
       this.audio
@@ -104,6 +112,10 @@ class AetherApp {
 
     // Arranca el bucle a 120 FPS
     this.renderer.start();
+  }
+
+  public getInteractionController(): InteractionController {
+    return this.interactionController;
   }
 
   /**
@@ -183,7 +195,7 @@ class AetherApp {
       if (phase === 'vapor') {
         if (hint) {
           hint.classList.add('visible');
-          hint.innerText = '☁️ ESTADO NIEBLA · CLIC PARA CONDENSAR UNA IDEA';
+          hint.innerText = '☁️ NIEBLA INFINITA · RUEDA: ZOOM · ARRASTRAR: NAVEGAR · CLIC: CREAR';
         }
         if (brandDot) {
           brandDot.style.background = 'var(--vapor-accent)';
@@ -194,7 +206,7 @@ class AetherApp {
       } else if (phase === 'liquid') {
         if (hint) {
           hint.classList.add('visible');
-          hint.innerText = '💧 ESTADO FLUIDO · CORRIENTES Y PUENTES DE TENSIÓN';
+          hint.innerText = '💧 FLUIDO INFINITO · RUEDA: ZOOM · ARRASTRAR: NAVEGAR · PUENTES VIVOS';
         }
         if (brandDot) {
           brandDot.style.background = 'var(--liquid-accent)';

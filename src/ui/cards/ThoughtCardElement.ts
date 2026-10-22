@@ -2,9 +2,10 @@
  * ============================================================================
  * CAPA 3: ELEMENTO DOM DE TARJETA VIVA (THOUGHT CARD ELEMENT)
  * ============================================================================
- * Representa una tarjeta de pensamiento individual proyectada sobre el lienzo:
+ * Representa una tarjeta de pensamiento individual proyectada sobre el lienzo infinito:
  * - Edición de texto directa in-situ (`contenteditable`).
- * - Arrastre suave con física de inercia y actualización de coordenadas en el grafo.
+ * - Arrastre suave compensado por el factor de zoom de la cámara 2D.
+ * - Proyección espacial reactiva mediante `camera.worldToScreen` y `scale(zoom)`.
  * - Estética de vidrio esmerilado sin bordes duros.
  * - Preservación de foco y reconciliación reactiva sin destrucción de elementos.
  */
@@ -12,40 +13,46 @@
 import { ThoughtNode } from '../../core/types';
 import { DocumentGraph } from '../../core/DocumentGraph';
 import { HarmonicSynthesizer } from '../../audio/HarmonicSynthesizer';
+import { Camera } from '../../engine/Camera';
 
 export class ThoughtCardElement {
   public readonly element: HTMLDivElement;
   private node: ThoughtNode;
   private graph: DocumentGraph;
   private audio: HarmonicSynthesizer;
+  private camera: Camera;
   private phase: string;
 
   constructor(
     node: ThoughtNode,
     phase: string,
     graph: DocumentGraph,
-    audio: HarmonicSynthesizer
+    audio: HarmonicSynthesizer,
+    camera: Camera
   ) {
     this.node = node;
     this.phase = phase;
     this.graph = graph;
     this.audio = audio;
+    this.camera = camera;
 
     this.element = document.createElement('div');
     this.element.className = `thought-card ${phase}-card`;
     this.element.id = `card-${node.id}`;
-    this.updatePosition(node.position.x, node.position.y);
 
     this.renderContent();
+    this.updateProjection(this.camera);
     this.attachDragBehavior();
   }
 
   /**
-   * Actualiza las coordenadas visuales de la tarjeta en pantalla.
+   * Proyecta la posición del mundo infinito a la pantalla con escala de zoom.
    */
-  public updatePosition(x: number, y: number): void {
-    this.element.style.left = `${x}px`;
-    this.element.style.top = `${y}px`;
+  public updateProjection(camera: Camera): void {
+    const screen = camera.worldToScreen(this.node.position);
+    this.element.style.left = `${screen.x}px`;
+    this.element.style.top = `${screen.y}px`;
+    this.element.style.transform = `translate(-50%, -50%) scale(${camera.zoom})`;
   }
 
   /**
@@ -98,36 +105,44 @@ export class ThoughtCardElement {
   }
 
   /**
-   * Habilita el arrastre de la tarjeta en el espacio bidimensional.
+   * Habilita el arrastre de la tarjeta en el espacio bidimensional infinito.
    */
   private attachDragBehavior(): void {
     const textEl = this.element.querySelector('.thought-card-text') as HTMLDivElement;
 
     let isDragging = false;
-    let startX = 0;
-    let startY = 0;
-    let origX = 0;
-    let origY = 0;
+    let startScreenX = 0;
+    let startScreenY = 0;
+    let origWorldX = 0;
+    let origWorldY = 0;
 
     this.element.addEventListener('mousedown', (e) => {
       // Si el usuario hace clic dentro del texto para editar, no arrastrar
       if (e.target === textEl) return;
 
+      // Si no es el botón izquierdo o si se está paneando el fondo, ignorar arrastre de tarjeta
+      if (e.button !== 0 || document.body.style.cursor.includes('grab')) return;
+
       isDragging = true;
       this.element.classList.add('dragging');
-      startX = e.clientX;
-      startY = e.clientY;
-      origX = this.node.position.x;
-      origY = this.node.position.y;
+      startScreenX = e.clientX;
+      startScreenY = e.clientY;
+      origWorldX = this.node.position.x;
+      origWorldY = this.node.position.y;
       this.audio.play(280, 'sine', 0.2, 0.05);
 
       const onMouseMove = (ev: MouseEvent) => {
         if (!isDragging) return;
-        const newX = origX + (ev.clientX - startX);
-        const newY = origY + (ev.clientY - startY);
+        // El delta de pantalla se compensa dividiendo por el zoom de la cámara
+        const deltaWorldX = (ev.clientX - startScreenX) / this.camera.zoom;
+        const deltaWorldY = (ev.clientY - startScreenY) / this.camera.zoom;
+
+        const newX = origWorldX + deltaWorldX;
+        const newY = origWorldY + deltaWorldY;
+
         this.node.position.x = newX;
         this.node.position.y = newY;
-        this.updatePosition(newX, newY);
+        this.updateProjection(this.camera);
       };
 
       const onMouseUp = () => {

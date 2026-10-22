@@ -195,7 +195,9 @@ header:hover {
   color: var(--ink-primary);
   box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.65);
   cursor: grab;
-  transition: box-shadow 0.3s ease, transform 0.15s ease-out;
+  transition: box-shadow 0.3s ease;
+  transform-origin: center center;
+  will-change: transform, left, top;
   transform: translate(-50%, -50%);
 }
 

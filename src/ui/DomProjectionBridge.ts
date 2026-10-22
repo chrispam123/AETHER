@@ -3,19 +3,20 @@
  * CAPA 3: PUENTE DE PROYECCIÓN DOM (DOM PROJECTION BRIDGE)
  * ============================================================================
  * El corazón de la arquitectura híbrida:
- * Sincroniza las coordenadas matemáticas del mundo (Canvas) con los elementos HTML del DOM.
- * Gestiona el ciclo de vida de las tarjetas vivas mediante reconciliación por ID,
- * evitando la destrucción destructiva del DOM para que el foco no se pierda al escribir.
+ * Sincroniza las coordenadas matemáticas del mundo cósmico (Canvas) con los elementos HTML del DOM.
+ * Gestiona el ciclo de vida de las tarjetas vivas mediante reconciliación reactiva por ID.
+ * Proyecta la posición y escala de las tarjetas según el movimiento y zoom continuo de la cámara.
  */
 
 import { DocumentGraph } from '../core/DocumentGraph';
 import { StateMachine } from '../core/StateMachine';
 import { HarmonicSynthesizer } from '../audio/HarmonicSynthesizer';
+import { Camera } from '../engine/Camera';
 import { ThoughtCardElement } from './cards/ThoughtCardElement';
 
 export class DomProjectionBridge {
   private container: HTMLDivElement;
-  private canvas: HTMLCanvasElement;
+  private camera: Camera;
   private graph: DocumentGraph;
   private stateMachine: StateMachine;
   private audio: HarmonicSynthesizer;
@@ -23,19 +24,34 @@ export class DomProjectionBridge {
 
   constructor(
     container: HTMLDivElement,
-    canvas: HTMLCanvasElement,
+    camera: Camera,
     graph: DocumentGraph,
     stateMachine: StateMachine,
     audio: HarmonicSynthesizer
   ) {
     this.container = container;
-    this.canvas = canvas;
+    this.camera = camera;
     this.graph = graph;
     this.stateMachine = stateMachine;
     this.audio = audio;
 
-    this.bindCanvasClick();
+    // Reactividad a cambios en el grafo de datos
     this.graph.subscribe(() => this.sync());
+
+    // Reactividad a movimientos y zoom focal de la cámara 2D (120 FPS)
+    this.camera.onChange(() => this.updateAllProjections());
+  }
+
+  /**
+   * Actualiza la proyección en pantalla de todas las tarjetas activas.
+   */
+  public updateAllProjections(): void {
+    const phase = this.stateMachine.getPhase();
+    if (phase !== 'vapor' && phase !== 'liquid') return;
+
+    for (const card of this.cardInstances.values()) {
+      card.updateProjection(this.camera);
+    }
   }
 
   /**
@@ -69,38 +85,20 @@ export class DomProjectionBridge {
       if (existingCard) {
         // La tarjeta ya existe: actualizamos su fase y posición sin recrear el DOM
         existingCard.updatePhase(phase);
-        existingCard.updatePosition(node.position.x, node.position.y);
+        existingCard.updateProjection(this.camera);
         existingCard.updateTextIfExternal(node.text);
       } else {
         // Tarjeta nueva: se instancia y se añade al contenedor
-        const newCard = new ThoughtCardElement(node, phase, this.graph, this.audio);
+        const isNewAndEmpty = node.text === '';
+        const newCard = new ThoughtCardElement(node, phase, this.graph, this.audio, this.camera);
         this.cardInstances.set(node.id, newCard);
         this.container.appendChild(newCard.element);
+        newCard.updateProjection(this.camera);
+
+        if (isNewAndEmpty) {
+          setTimeout(() => newCard.focus(), 25);
+        }
       }
-    });
-  }
-
-  /**
-   * Permite hacer clic en cualquier punto vacío del lienzo para condensar una idea in-situ.
-   */
-  private bindCanvasClick(): void {
-    this.canvas.addEventListener('click', (e) => {
-      const phase = this.stateMachine.getPhase();
-      if (phase !== 'vapor' && phase !== 'liquid') return;
-
-      const rect = this.canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-
-      const tag = phase === 'vapor' ? 'Chispa libre' : 'Corriente nodal';
-      const newNode = this.graph.addNode('', { x, y }, tag);
-      this.audio.play(432, 'sine', 0.4, 0.12);
-
-      // Enfoca inmediatamente la nueva tarjeta creada
-      setTimeout(() => {
-        const card = this.cardInstances.get(newNode.id);
-        if (card) card.focus();
-      }, 40);
     });
   }
 }

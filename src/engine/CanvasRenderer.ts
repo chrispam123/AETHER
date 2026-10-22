@@ -107,9 +107,16 @@ export class CanvasRenderer {
       this.orbs.render(this.ctx, this.time);
     }
 
-    // 3. Dibuja los puentes de tensión si estamos en estado Fluido
+    // 3. Dibuja los puentes de tensión si estamos en estado Fluido (proyectados con la cámara)
     if (phase === 'liquid') {
+      this.ctx.save();
+      this.ctx.translate(this.width / 2, this.height / 2);
+      this.ctx.scale(this.camera.zoom, this.camera.zoom);
+      this.ctx.translate(-this.camera.x, -this.camera.y);
+
       this.bridges.render(this.ctx, this.graph.getAllNodes(), this.time);
+
+      this.ctx.restore();
     }
   }
 
