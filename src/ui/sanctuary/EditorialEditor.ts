@@ -6,10 +6,12 @@
  * - Título y cuerpo de prosa con tipografía calibrada.
  * - Métricas de ritmo en tiempo real (palabras y tiempo de lectura).
  * - Bandeja de "Materia Prima" con las ideas destiladas en fases previas.
+ * - Intercepta el borrado intencional de frases hacia el Margen de Descartes.
  */
 
 import { DocumentGraph } from '../../core/DocumentGraph';
 import { HarmonicSynthesizer } from '../../audio/HarmonicSynthesizer';
+import { DiscardGutter } from '../margin/DiscardGutter';
 
 export class EditorialEditor {
   private container: HTMLDivElement;
@@ -19,6 +21,7 @@ export class EditorialEditor {
   private chipsContainer: HTMLDivElement;
   private graph: DocumentGraph;
   private audio: HarmonicSynthesizer;
+  private gutter: DiscardGutter | null = null;
 
   constructor(graph: DocumentGraph, audio: HarmonicSynthesizer) {
     this.graph = graph;
@@ -31,10 +34,19 @@ export class EditorialEditor {
     this.chipsContainer = document.getElementById('crystal-chips-container') as HTMLDivElement;
 
     this.initMetrics();
+    this.initDeletionInterceptor();
     this.updateChips();
 
     // Actualiza los chips cuando el grafo de ideas cambie
     this.graph.subscribe(() => this.updateChips());
+  }
+
+  /**
+   * Conecta el canalón del margen de descartes con el editor.
+   */
+  public setDiscardGutter(gutter: DiscardGutter): void {
+    this.gutter = gutter;
+    this.gutter.onRestore((text) => this.insertRestoredText(text));
   }
 
   /**
@@ -51,8 +63,10 @@ export class EditorialEditor {
     if (visible) {
       this.container.classList.add('active');
       this.updateChips();
+      if (this.gutter) this.gutter.setVisible(true);
     } else {
       this.container.classList.remove('active');
+      if (this.gutter) this.gutter.setVisible(false);
     }
   }
 
@@ -70,6 +84,76 @@ export class EditorialEditor {
       const seconds = Math.ceil((words / 200) * 60);
       if (this.readTimeEl) this.readTimeEl.innerText = `Lectura: ${seconds} seg`;
     });
+  }
+
+  /**
+   * Intercepta el borrado o corte intencional de texto para preservarlo en el Margen de Descartes.
+   */
+  private initDeletionInterceptor(): void {
+    if (!this.bodyElement) return;
+
+    // 1. Borrado con teclado (Backspace o Supr)
+    this.bodyElement.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        this.captureSelectionToGutter();
+      }
+    });
+
+    // 2. Corte con atajo o menú contextual (Ctrl+X / Cmd+X)
+    this.bodyElement.addEventListener('cut', () => {
+      this.captureSelectionToGutter();
+    });
+  }
+
+  /**
+   * Captura la selección activa antes de que el navegador la destruya.
+   */
+  private captureSelectionToGutter(): void {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) return;
+
+    const text = selection.toString().trim();
+    // Filtro inteligente: solo capturamos selecciones con sustancia (más de 5 caracteres)
+    if (text.length >= 6 && this.gutter) {
+      let clientY: number | undefined;
+      try {
+        if (selection.rangeCount > 0) {
+          clientY = selection.getRangeAt(0).getBoundingClientRect().top;
+        }
+      } catch {
+        // Fallback silencioso
+      }
+
+      this.gutter.addDiscard(text, clientY);
+    }
+  }
+
+  /**
+   * Reinserta una viruta descartada en la posición del cursor de texto.
+   */
+  public insertRestoredText(text: string): void {
+    if (!this.bodyElement) return;
+    this.bodyElement.focus();
+
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0 && this.bodyElement.contains(selection.anchorNode)) {
+      // Inserción nativa con preservación de historial deshacer/rehacer
+      const success = document.execCommand('insertText', false, text);
+      if (!success) {
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        const textNode = document.createTextNode(text);
+        range.insertNode(textNode);
+        range.setStartAfter(textNode);
+        range.setEndAfter(textNode);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    } else {
+      this.bodyElement.innerText += '\n\n' + text;
+    }
+
+    this.bodyElement.dispatchEvent(new Event('input'));
   }
 
   /**

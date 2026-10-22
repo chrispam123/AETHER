@@ -524,3 +524,125 @@ header, #phase-dock, .crystal-drawer, .crystal-metrics, #canvas-hint {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+
+/* ============================================================================
+   PILAR 2: MARGEN DE DESCARTES Y MEMORIA MUSCULAR (DISCARD GUTTER)
+   ============================================================================ */
+.discard-gutter {
+  position: absolute;
+  top: 140px;
+  left: max(24px, calc(50% - 340px - 250px));
+  width: 220px;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 10;
+  pointer-events: auto;
+  scrollbar-width: none;
+  opacity: 0;
+  transform: translateX(-12px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.discard-gutter::-webkit-scrollbar {
+  display: none;
+}
+
+.discard-gutter.has-items {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.discard-gutter-header {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--ink-secondary);
+  opacity: 0.65;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.discard-chip {
+  background: rgba(22, 24, 30, 0.65);
+  backdrop-filter: blur(20px);
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideIntoGutter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.discard-chip:hover {
+  background: rgba(30, 32, 40, 0.85);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.6);
+  transform: translateX(3px);
+}
+
+.discard-chip-text {
+  font-family: var(--font-prose);
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.45;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  flex: 1;
+  transition: color 0.2s ease;
+  word-break: break-word;
+}
+
+.discard-chip:hover .discard-chip-text {
+  color: var(--ink-primary);
+}
+
+.discard-chip-dismiss {
+  background: transparent;
+  border: none;
+  color: var(--ink-ghost);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  padding: 0 2px;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.discard-chip:hover .discard-chip-dismiss {
+  opacity: 0.6;
+}
+
+.discard-chip-dismiss:hover {
+  opacity: 1 !important;
+  color: var(--ink-primary);
+}
+
+/* Atenuación del margen de descartes en hiperfoco */
+body.hyperfocus-active .discard-gutter {
+  opacity: 0.08 !important;
+  pointer-events: none;
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideIntoGutter {
+  from {
+    opacity: 0;
+    transform: translateX(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}

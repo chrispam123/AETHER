@@ -57,6 +57,17 @@ export interface ConnectionBridge {
 }
 
 /**
+ * Elemento o viruta de texto rescatada en el Margen de Descartes.
+ * Almacena el fragmento descartado para permitir su recuperación inmediata.
+ */
+export interface DiscardItem {
+  id: string;
+  text: string;
+  timestamp: number;
+  originalY?: number;
+}
+
+/**
  * Estado global del documento continuo.
  */
 export interface DocumentState {

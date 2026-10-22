@@ -6,6 +6,7 @@
  * - Capa 1 (Core): Grafo de pensamientos y máquina de estados.
  * - Capa 2 (Engine): Cámara matemática y motor Canvas a 120 FPS.
  * - Capa 3 (UI): Puente de proyección DOM, santuario editorial y dock.
+ * - Pilar 2: Foco Gravitatorio e Hiperfoco + Margen de Descartes.
  * - Sistema Sensorial: Síntesis de audio armónico.
  */
 
@@ -22,6 +23,7 @@ import { DomProjectionBridge } from './ui/DomProjectionBridge';
 import { EditorialEditor } from './ui/sanctuary/EditorialEditor';
 import { PhaseDock } from './ui/dock/PhaseDock';
 import { FocusManager } from './ui/focus/FocusManager';
+import { DiscardGutter } from './ui/margin/DiscardGutter';
 import { Phase } from './core/types';
 
 class AetherApp {
@@ -34,6 +36,7 @@ class AetherApp {
   private editor: EditorialEditor;
   private dock: PhaseDock;
   private focusManager: FocusManager;
+  private gutter: DiscardGutter;
 
   constructor() {
     // 1. Inicialización de Capa 1: Modelo puro de datos
@@ -86,6 +89,10 @@ class AetherApp {
 
     this.editor = new EditorialEditor(this.graph, this.audio);
     this.dock = new PhaseDock(this.stateMachine);
+
+    // Pilar 2: El Margen de Descartes (Inercia y Masa del Texto)
+    this.gutter = new DiscardGutter(this.audio);
+    this.editor.setDiscardGutter(this.gutter);
 
     // Pilar 2: El Foco Gravitatorio e Hiperfoco Sensorial
     this.focusManager = new FocusManager({ idleDelayMs: 2500 });
@@ -161,8 +168,10 @@ class AetherApp {
       this.dock.update(phase);
       this.bridge.sync();
 
-      // 2. Actualizar santuario en modo Cristal
+      // 2. Actualizar santuario y margen de descartes en modo Cristal
       this.editor.setVisible(phase === 'crystal');
+      this.gutter.setVisible(phase === 'crystal');
+
       if (phase === 'crystal') {
         this.focusManager.showPresenceHalo();
         setTimeout(() => this.focusManager.updatePresencePosition(), 50);
