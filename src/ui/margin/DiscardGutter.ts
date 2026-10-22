@@ -34,12 +34,7 @@ export class DiscardGutter {
       gutter.id = 'discard-gutter';
       gutter.className = 'discard-gutter';
       
-      const sanctuary = document.getElementById('crystal-sanctuary');
-      if (sanctuary) {
-        sanctuary.appendChild(gutter);
-      } else {
-        document.body.appendChild(gutter);
-      }
+      document.body.appendChild(gutter);
     }
     return gutter;
   }

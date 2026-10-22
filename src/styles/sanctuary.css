@@ -613,7 +613,7 @@ header, #phase-dock, .crystal-raw-shelf, .crystal-metrics, #canvas-hint {
    PILAR 2: MARGEN DE DESCARTES Y MEMORIA MUSCULAR (DISCARD GUTTER)
    ============================================================================ */
 .discard-gutter {
-  position: absolute;
+  position: fixed;
   top: 140px;
   left: max(24px, calc(50% - 340px - 250px));
   width: 220px;
