@@ -19,6 +19,7 @@ import { DiscardGutter } from '../margin/DiscardGutter';
 import { SemanticZoomController } from '../../engine/SemanticZoomController';
 import { SemanticLevel } from '../../core/types';
 import { SemanticZoomView } from './SemanticZoomView';
+import { TextHud } from './TextHud';
 
 export class EditorialEditor {
   private container: HTMLDivElement;
@@ -39,6 +40,7 @@ export class EditorialEditor {
   private manualTheses: Map<number, string> = new Map();
   private toastTimer: number | null = null;
   private cachedRawText: string = '';
+  private textHud: TextHud | null = null;
 
   private graph: DocumentGraph;
   private audio: HarmonicSynthesizer;
@@ -73,6 +75,7 @@ export class EditorialEditor {
 
     if (this.bodyElement) {
       this.cachedRawText = this.bodyElement.innerText;
+      this.textHud = new TextHud(this.bodyElement, this.audio);
     }
 
     this.initMetrics();
@@ -261,6 +264,7 @@ export class EditorialEditor {
   public applySemanticZoom(level: SemanticLevel): void {
     const rawText = this.getRawText();
     const blocks = this.semanticView.parseParagraphs(rawText, this.manualTheses);
+    if (level !== 'prose') { this.textHud?.hideImmediately(); }
 
     if (level === 'prose') {
       // 100%: Prosa continua completa
@@ -355,6 +359,7 @@ export class EditorialEditor {
         this.rawShelf.classList.remove('expanded');
       }
       if (this.gutter) this.gutter.setVisible(false);
+      this.textHud?.hideImmediately();
     }
   }
 

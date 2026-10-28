@@ -1044,3 +1044,126 @@ body.hyperfocus-active .discard-gutter {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+
+/* ============================================================================
+   CAPA 3: HUD DE TEXTO FLOTANTE ("EL ALIENTO")
+   ============================================================================ */
+.text-hud-float {
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(18, 20, 26, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  padding: 3px 5px;
+  border-radius: 28px;
+  box-shadow: 0 14px 40px -10px rgba(0, 0, 0, 0.75), 0 0 20px rgba(217, 186, 133, 0.06);
+  opacity: 0;
+  transform: translateY(4px) scale(0.97);
+  pointer-events: none;
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.text-hud-float.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.hud-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.hud-separator {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0 3px;
+}
+
+.hud-btn {
+  background: transparent;
+  border: none;
+  color: var(--ink-secondary);
+  padding: 5px 9px;
+  border-radius: 18px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.hud-btn:hover {
+  color: var(--ink-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.hud-btn.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f2eee6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.hud-btn-bold strong {
+  font-family: var(--font-prose);
+  font-size: 13px;
+}
+
+.hud-btn-italic em {
+  font-family: var(--font-prose);
+  font-size: 13px;
+}
+
+.hud-btn-scale {
+  font-size: 11px;
+  padding: 5px 8px;
+}
+
+.hud-btn-temp {
+  font-size: 10px;
+  padding: 4px 8px;
+  letter-spacing: 0.06em;
+}
+
+.hud-temp-icon {
+  font-size: 10px;
+  color: var(--crystal-accent);
+  opacity: 0.85;
+}
+
+.hud-btn-temp.active .hud-temp-icon {
+  color: #fff;
+  text-shadow: 0 0 8px var(--crystal-accent);
+}
+
+/* Modulación de Escala de Voz en el Texto */
+.prose-voice-small {
+  font-size: 0.84em;
+  opacity: 0.78;
+  color: var(--ink-secondary);
+  letter-spacing: 0.01em;
+}
+
+.prose-voice-normal {
+  font-size: 1em;
+  opacity: 1;
+}
+
+.prose-voice-large {
+  font-size: 1.22em;
+  font-weight: 500;
+  color: #f8f6f0;
+  line-height: 1.48;
+}

@@ -37,9 +37,17 @@
   --crystal-accent: #d9ba85;
   --crystal-glow: rgba(217, 186, 133, 0.18);
 
-  /* --- TIPOGRAFÍAS DE ALTA FIDELIDAD --- */
-  /* Prosa y pensamiento reflexivo: Serif humanista con ligaduras activas */
-  --font-prose: 'Newsreader', Georgia, serif;
+  /* --- TIPOGRAFÍAS DE ALTA FIDELIDAD Y TEMPERAMENTOS --- */
+  /* Temperamento 1: Piedra Clásica (Serif editorial con ligaduras) */
+  --font-temperament-piedra: 'Newsreader', Georgia, serif;
+  /* Temperamento 2: Cristal Técnico (Geométrica suiza moderna) */
+  --font-temperament-cristal: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Temperamento 3: Pergamino Humanista (Cálida y orgánica) */
+  --font-temperament-pergamino: 'Lora', 'Palatino Linotype', Palatino, serif;
+
+  /* Tipografía activa de prosa (conmutable dinámicamente) */
+  --font-prose: var(--font-temperament-piedra);
+
   /* Interfaz, métricas y metadatos: Monospace arquitectónica */
   --font-mono: 'Geist Mono', monospace, -apple-system, sans-serif;
 
@@ -47,4 +55,17 @@
   /* Ancho áureo ergonómico para lectura continua (60-70 caracteres por línea) */
   --measure-prose: 680px;
   --line-height-prose: 1.88;
+}
+
+/* Conmutación instantánea de atmósfera sin recargas */
+body[data-temperament="piedra"] {
+  --font-prose: var(--font-temperament-piedra);
+}
+
+body[data-temperament="cristal"] {
+  --font-prose: var(--font-temperament-cristal);
+}
+
+body[data-temperament="pergamino"] {
+  --font-prose: var(--font-temperament-pergamino);
 }
