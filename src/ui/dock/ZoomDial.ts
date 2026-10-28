@@ -1,11 +1,14 @@
 /**
  * ============================================================================
- * CAPA 3: DIAL DE ZOOM SEMÁNTICO (ZOOM DIAL COMPONENT)
+ * CAPA 3: INDICADOR DE ZOOM SEMÁNTICO (SEMANTIC ZOOM INDICATOR DIAL)
  * ============================================================================
- * Indicador táctil y visual del nivel de abstracción activo en Modo Cristal:
- * - Opciones: [ Prosa (100%) | Tesis (50%) | Estructura (20%) ]
- * - Permite conmutar con un solo clic o reflejar el cambio de Ctrl+Rueda / atajos.
- * - Estética de vidrio esmerilado mineral sin bordes agresivos.
+ * Tacómetro visual y sensorial del nivel de abstracción activo en Modo Cristal:
+ * - Niveles: [ Prosa (100%) | Tesis (50%) | Estructura (20%) ]
+ * - Es un INDICADOR DE ESTADO PURO (no interactivo por clic): refleja el cambio
+ *   gobernado exclusivamente por la dimensión física del gesto (Ctrl + Scroll / Ctrl + 1/2/3).
+ * - Si el usuario intenta hacer clic, muestra un micro-aviso translúcido suave:
+ *   "Usa Ctrl + Scroll para modular la escala".
+ * - Estética mineral de cuarzo con pulso de confirmación armónico.
  */
 
 import { SemanticZoomController } from '../../engine/SemanticZoomController';
@@ -16,8 +19,10 @@ export class ZoomDial {
   private element: HTMLDivElement;
   private controller: SemanticZoomController;
   private stateMachine: StateMachine;
-  private buttons: Map<SemanticLevel, HTMLButtonElement> = new Map();
+  private buttons: Map<SemanticLevel, HTMLDivElement> = new Map();
   private pulseTimer: number | null = null;
+  private tooltipElement: HTMLDivElement | null = null;
+  private tooltipTimer: number | null = null;
 
   constructor(controller: SemanticZoomController, stateMachine: StateMachine) {
     this.controller = controller;
@@ -37,7 +42,7 @@ export class ZoomDial {
   }
 
   /**
-   * Crea el contenedor del dial con los tres botones de densidad conceptual.
+   * Crea el tacómetro de escala con los tres segmentos conceptuales y su tooltip pedagógico.
    */
   private createDialElement(): HTMLDivElement {
     const dial = document.createElement('div');
@@ -52,26 +57,45 @@ export class ZoomDial {
     ];
 
     levels.forEach(({ id, label, shortcut }) => {
-      const btn = document.createElement('button');
-      btn.className = `zoom-dial-btn ${id}`;
-      btn.dataset.level = id;
-      btn.title = `Nivel ${label} (Ctrl+${shortcut} o Ctrl+Rueda)`;
+      const segment = document.createElement('div');
+      segment.className = `zoom-dial-segment ${id}`;
+      segment.dataset.level = id;
 
-      btn.innerHTML = `
+      segment.innerHTML = `
         <span class="zoom-dial-dot"></span>
         <span class="zoom-dial-text">${label}</span>
         <span class="zoom-dial-key">${shortcut}</span>
       `;
 
-      btn.addEventListener('click', () => {
-        this.controller.setLevel(id);
-      });
+      this.buttons.set(id, segment);
+      dial.appendChild(segment);
+    });
 
-      this.buttons.set(id, btn);
-      dial.appendChild(btn);
+    // Tooltip tenue y suave que enseña la interacción gestual pura
+    this.tooltipElement = document.createElement('div');
+    this.tooltipElement.className = 'zoom-dial-hint-tooltip';
+    this.tooltipElement.innerText = 'Usa Ctrl + Scroll para modular la escala';
+    dial.appendChild(this.tooltipElement);
+
+    // Al pulsar sobre el dial, orienta al autor sutilmente sin cambiar de modo
+    dial.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.showScrollHint();
     });
 
     return dial;
+  }
+
+  /**
+   * Muestra el micro-aviso pedagógico suave durante 1.2 segundos y se disuelve.
+   */
+  private showScrollHint(): void {
+    if (!this.tooltipElement) return;
+    this.tooltipElement.classList.add('visible');
+    if (this.tooltipTimer) window.clearTimeout(this.tooltipTimer);
+    this.tooltipTimer = window.setTimeout(() => {
+      this.tooltipElement?.classList.remove('visible');
+    }, 1200);
   }
 
   /**
@@ -85,7 +109,7 @@ export class ZoomDial {
   }
 
   /**
-   * Conecta el observador de cambio de fase ontológica.
+   * Genera un pulso visual nítido para confirmar el cambio de escala antes de relajarse.
    */
   private pulse(): void {
     this.element.classList.add('active-pulse');
@@ -108,14 +132,14 @@ export class ZoomDial {
   }
 
   /**
-   * Actualiza el botón activo visualmente con el pulso mineral.
+   * Actualiza el segmento activo visualmente con el pulso mineral.
    */
   private updateActiveButton(activeLevel: SemanticLevel): void {
-    this.buttons.forEach((btn, level) => {
+    this.buttons.forEach((segment, level) => {
       if (level === activeLevel) {
-        btn.classList.add('active');
+        segment.classList.add('active');
       } else {
-        btn.classList.remove('active');
+        segment.classList.remove('active');
       }
     });
   }
