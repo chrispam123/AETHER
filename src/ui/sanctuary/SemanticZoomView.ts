@@ -51,8 +51,10 @@ export class SemanticZoomView {
    * Parsea el texto del cuerpo en bloques de párrafos y oraciones.
    */
   public parseParagraphs(text: string, manualTheses: Map<number, string>): ParagraphBlock[] {
+    // En contenteditable, cada pulsación de Enter genera un salto de línea (\n).
+    // Dividimos por cualquier salto (\r?\n+) para capturar todos los párrafos escritos.
     const rawParagraphs = text
-      .split(/\n\s*\n/)
+      .split(/\r?\n+/)
       .map(p => p.trim())
       .filter(p => p.length > 0);
 
@@ -75,7 +77,7 @@ export class SemanticZoomView {
       const manual = manualTheses.get(index);
       const thesis = manual || (sentences.length > 0 ? sentences[0] : pText);
       const isManual = Boolean(manual);
-      const roleLabel = roles[index] || `0${index + 1} · Bloque Argumental`;
+      const roleLabel = roles[index] || `${(index + 1).toString().padStart(2, '0')} · Bloque Argumental`;
 
       return {
         index,

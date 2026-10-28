@@ -106,7 +106,8 @@ export class EditorialEditor {
       }
 
       const text = this.bodyElement.innerText;
-      const paragraphs = text.split(/\n\s*\n/).map(p => p.trim()).filter(p => p.length > 0);
+      // En contenteditable, cada salto de línea se representa por \r?\n+
+      const paragraphs = text.split(/\r?\n+/).map(p => p.trim()).filter(p => p.length > 0);
       if (paragraphs.length === 0) return;
 
       // 2. Si hay texto seleccionado por el usuario, usarlo directamente
@@ -116,8 +117,7 @@ export class EditorialEditor {
       let targetSentence = '';
       let targetPIndex = 0;
 
-      if (selectedText.length >= 8) {
-        // Encontrar en qué párrafo se encuentra la selección
+      if (selectedText.length >= 6) {
         targetSentence = selectedText;
         for (let i = 0; i < paragraphs.length; i++) {
           if (paragraphs[i].includes(selectedText)) {
@@ -125,42 +125,52 @@ export class EditorialEditor {
             break;
           }
         }
-      } else if (range && range.startContainer) {
-        // Buscar la oración circundante al punto del clic
-        const clickedText = range.startContainer.textContent || '';
-        const offset = range.startOffset;
-
-        // Encuentra el párrafo correspondiente
-        for (let i = 0; i < paragraphs.length; i++) {
-          if (paragraphs[i].includes(clickedText.trim())) {
-            targetPIndex = i;
-            break;
+      } else {
+        // Localizar el offset de carácter global del clic para determinar el párrafo exacto
+        let clickedCharIndex = -1;
+        if (range) {
+          try {
+            const preRange = document.createRange();
+            preRange.selectNodeContents(this.bodyElement);
+            preRange.setEnd(range.startContainer, range.startOffset);
+            clickedCharIndex = preRange.toString().length;
+          } catch {
+            clickedCharIndex = -1;
           }
         }
 
-        // Divide el párrafo en oraciones y halla cuál contiene el fragmento
-        const sentences = paragraphs[targetPIndex]
-          ? paragraphs[targetPIndex].split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length > 0)
-          : [];
-
-        if (sentences.length > 0) {
-          // Si el clic cayó sobre el texto, tomamos la oración más cercana al cursor
+        if (clickedCharIndex >= 0) {
           let accum = 0;
-          let matched = sentences[0];
-          for (const s of sentences) {
-            accum += s.length + 1;
-            if (offset <= accum) {
-              matched = s;
+          for (let i = 0; i < paragraphs.length; i++) {
+            const pLen = paragraphs[i].length;
+            if (clickedCharIndex >= accum && clickedCharIndex <= accum + pLen + 4) {
+              targetPIndex = i;
+              const offsetInP = Math.max(0, clickedCharIndex - accum);
+              const sentences = paragraphs[i]
+                .split(/(?<=[.!?])\s+/)
+                .map(s => s.trim())
+                .filter(s => s.length > 0);
+
+              let sAccum = 0;
+              targetSentence = sentences[0] || paragraphs[i];
+              for (const s of sentences) {
+                sAccum += s.length + 1;
+                if (offsetInP <= sAccum) {
+                  targetSentence = s;
+                  break;
+                }
+              }
               break;
             }
+            accum += pLen + 1;
           }
-          targetSentence = matched;
         }
-      }
 
-      // Fallback si no se pudo determinar con precisión
-      if (!targetSentence && paragraphs[0]) {
-        targetSentence = paragraphs[0];
+        // Fallback robusto
+        if (!targetSentence) {
+          targetPIndex = Math.min(targetPIndex, paragraphs.length - 1);
+          targetSentence = paragraphs[targetPIndex] || paragraphs[0];
+        }
       }
 
       // 3. Alternar la frase como Tesis elegida
