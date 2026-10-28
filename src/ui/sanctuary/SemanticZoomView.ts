@@ -51,10 +51,10 @@ export class SemanticZoomView {
    * Parsea el texto del cuerpo en bloques de párrafos y oraciones.
    */
   public parseParagraphs(text: string, manualTheses: Map<number, string>): ParagraphBlock[] {
-    // En contenteditable, cada pulsación de Enter genera un salto de línea (\n).
-    // Dividimos por cualquier salto (\r?\n+) para capturar todos los párrafos escritos.
+    // Los párrafos se delimitan por líneas en blanco (doble salto de línea / doble Enter).
+    // Dentro de un mismo párrafo pueden existir saltos simples (\n) sin romper la unidad del bloque.
     const rawParagraphs = text
-      .split(/\r?\n+/)
+      .split(/\r?\n\s*\r?\n+/)
       .map(p => p.trim())
       .filter(p => p.length > 0);
 
@@ -68,9 +68,9 @@ export class SemanticZoomView {
     ];
 
     return rawParagraphs.map((pText, index) => {
-      // Divide en oraciones respetando puntos, signos de interrogación y exclamación
+      // Divide en oraciones respetando puntos (.!?), o saltos de línea internos simples (\n)
       const sentences = pText
-        .split(/(?<=[.!?])\s+/)
+        .split(/(?<=[.!?])\s+|\r?\n+/)
         .map(s => s.trim())
         .filter(s => s.length > 0);
 

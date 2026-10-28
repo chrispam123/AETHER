@@ -106,8 +106,8 @@ export class EditorialEditor {
       }
 
       const text = this.bodyElement.innerText;
-      // En contenteditable, cada salto de línea se representa por \r?\n+
-      const paragraphs = text.split(/\r?\n+/).map(p => p.trim()).filter(p => p.length > 0);
+      // Los párrafos se delimitan por líneas en blanco (doble salto de línea / doble Enter)
+      const paragraphs = text.split(/\r?\n\s*\r?\n+/).map(p => p.trim()).filter(p => p.length > 0);
       if (paragraphs.length === 0) return;
 
       // 2. Si hay texto seleccionado por el usuario, usarlo directamente
@@ -147,7 +147,7 @@ export class EditorialEditor {
               targetPIndex = i;
               const offsetInP = Math.max(0, clickedCharIndex - accum);
               const sentences = paragraphs[i]
-                .split(/(?<=[.!?])\s+/)
+                .split(/(?<=[.!?])\s+|\r?\n+/)
                 .map(s => s.trim())
                 .filter(s => s.length > 0);
 
