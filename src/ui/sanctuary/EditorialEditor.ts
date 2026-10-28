@@ -117,7 +117,7 @@ export class EditorialEditor {
       let targetSentence = '';
       let targetPIndex = 0;
 
-      if (selectedText.length >= 6) {
+      if (selectedText.length >= 3) {
         targetSentence = selectedText;
         for (let i = 0; i < paragraphs.length; i++) {
           if (paragraphs[i].includes(selectedText)) {
@@ -140,29 +140,55 @@ export class EditorialEditor {
         }
 
         if (clickedCharIndex >= 0) {
-          let accum = 0;
+          let searchOffset = 0;
           for (let i = 0; i < paragraphs.length; i++) {
-            const pLen = paragraphs[i].length;
-            if (clickedCharIndex >= accum && clickedCharIndex <= accum + pLen + 4) {
+            const pText = paragraphs[i];
+            const pStart = text.indexOf(pText, searchOffset);
+            const pEnd = pStart !== -1 ? pStart + pText.length : searchOffset + pText.length;
+            if (pStart !== -1) searchOffset = pEnd;
+
+            // Verificamos si el clic ocurrió dentro de este párrafo
+            if (clickedCharIndex >= pStart && clickedCharIndex <= pEnd + 2) {
               targetPIndex = i;
-              const offsetInP = Math.max(0, clickedCharIndex - accum);
-              const sentences = paragraphs[i]
+              const offsetInP = Math.max(0, clickedCharIndex - (pStart !== -1 ? pStart : 0));
+              const sentences = pText
                 .split(/(?<=[.!?])\s+|\r?\n+/)
                 .map(s => s.trim())
                 .filter(s => s.length > 0);
 
-              let sAccum = 0;
-              targetSentence = sentences[0] || paragraphs[i];
+              let sSearchOffset = 0;
+              targetSentence = sentences[0] || pText;
               for (const s of sentences) {
-                sAccum += s.length + 1;
-                if (offsetInP <= sAccum) {
+                const sStart = pText.indexOf(s, sSearchOffset);
+                const sEnd = sStart !== -1 ? sStart + s.length : sSearchOffset + s.length;
+                if (sStart !== -1) sSearchOffset = sEnd;
+
+                if (offsetInP >= sStart && offsetInP <= sEnd + 2) {
                   targetSentence = s;
                   break;
                 }
               }
               break;
             }
-            accum += pLen + 1;
+          }
+        }
+
+        // Respaldo por contenedor de texto directo si el rango está disponible
+        if (!targetSentence && range?.startContainer?.textContent) {
+          const containerText = range.startContainer.textContent.trim();
+          for (let i = 0; i < paragraphs.length; i++) {
+            if (paragraphs[i].includes(containerText)) {
+              targetPIndex = i;
+              const sentences = paragraphs[i]
+                .split(/(?<=[.!?])\s+|\r?\n+/)
+                .map(s => s.trim())
+                .filter(s => s.length > 0);
+              const found = sentences.find(s => s.includes(containerText) || containerText.includes(s));
+              if (found) {
+                targetSentence = found;
+                break;
+              }
+            }
           }
         }
 
