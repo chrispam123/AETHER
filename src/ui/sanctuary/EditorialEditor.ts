@@ -38,6 +38,7 @@ export class EditorialEditor {
   private zoomController: SemanticZoomController | null = null;
   private manualTheses: Map<number, string> = new Map();
   private toastTimer: number | null = null;
+  private cachedRawText: string = '';
 
   private graph: DocumentGraph;
   private audio: HarmonicSynthesizer;
@@ -70,6 +71,10 @@ export class EditorialEditor {
     // Salto al hacer clic en un bloque de tesis hacia el modo prosa enfocado
     this.semanticView.onJumpToParagraph((pIndex) => this.jumpToParagraph(pIndex));
 
+    if (this.bodyElement) {
+      this.cachedRawText = this.bodyElement.innerText;
+    }
+
     this.initMetrics();
     this.initDeletionInterceptor();
     this.initRawShelfToggle();
@@ -91,6 +96,20 @@ export class EditorialEditor {
   }
 
   /**
+   * Obtiene el texto en prosa del autor garantizando que nunca se degrade
+   * al alternar entre vistas cuando el elemento DOM está temporalmente oculto (display: none).
+   */
+  public getRawText(): string {
+    if (this.bodyElement && this.bodyElement.style.display !== 'none') {
+      const current = this.bodyElement.innerText;
+      if (current.trim().length > 0) {
+        this.cachedRawText = current;
+      }
+    }
+    return this.cachedRawText || this.bodyElement?.innerText || '';
+  }
+
+  /**
    * Conecta la selección deliberada de Frase Tesis mediante CLIC DERECHO.
    */
   private initRightClickThesisSelection(): void {
@@ -105,7 +124,7 @@ export class EditorialEditor {
         range = document.caretRangeFromPoint(e.clientX, e.clientY);
       }
 
-      const text = this.bodyElement.innerText;
+      const text = this.getRawText();
       // Los párrafos se delimitan por líneas en blanco (doble salto de línea / doble Enter)
       const paragraphs = text.split(/\r?\n\s*\r?\n+/).map(p => p.trim()).filter(p => p.length > 0);
       if (paragraphs.length === 0) return;
@@ -240,7 +259,7 @@ export class EditorialEditor {
    * Aplica la transformación de densidad conceptual según el nivel de zoom.
    */
   public applySemanticZoom(level: SemanticLevel): void {
-    const rawText = this.bodyElement.innerText;
+    const rawText = this.getRawText();
     const blocks = this.semanticView.parseParagraphs(rawText, this.manualTheses);
 
     if (level === 'prose') {
@@ -346,7 +365,8 @@ export class EditorialEditor {
     if (!this.bodyElement) return;
 
     this.bodyElement.addEventListener('input', () => {
-      const text = this.bodyElement.innerText.trim();
+      this.cachedRawText = this.bodyElement.innerText;
+      const text = this.cachedRawText.trim();
       const words = text ? text.split(/\s+/).length : 0;
       if (this.wordCountEl) this.wordCountEl.innerText = `${words} palabras`;
 
@@ -454,7 +474,7 @@ export class EditorialEditor {
 
     // Si el texto del editor ya contiene alguna de las frases iniciales, marcarla como consumida
     if (this.bodyElement) {
-      const editorText = this.bodyElement.innerText;
+      const editorText = this.getRawText();
       this.graph.getAllNodes().forEach(node => {
         if (!node.consumed && node.text.trim().length > 15 && editorText.includes(node.text.trim())) {
           node.consumed = true;
