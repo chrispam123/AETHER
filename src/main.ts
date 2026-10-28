@@ -166,11 +166,11 @@ class AetherApp {
       audioBtn.addEventListener('click', () => {
         const isEnabled = this.audio.toggle();
         if (isEnabled) {
-          audioLabel.innerText = 'Resonancia acústica: Activa';
+          audioLabel.innerText = 'Acústica On';
           audioBtn.style.color = 'var(--ink-primary)';
           audioBtn.style.borderColor = 'rgba(255,255,255,0.2)';
         } else {
-          audioLabel.innerText = 'Resonancia acústica: Desactivada';
+          audioLabel.innerText = 'Acústica';
           audioBtn.style.color = 'var(--ink-secondary)';
           audioBtn.style.borderColor = 'rgba(255,255,255,0.05)';
         }
@@ -233,14 +233,13 @@ class AetherApp {
         this.audio.play(432, 'triangle', 1.0, 0.15);
       } else if (phase === 'crystal') {
         if (hint) {
-          hint.classList.add('visible');
-          hint.innerText = '💎 MODO CRISTAL · CTRL+RUEDA: ZOOM SEMÁNTICO · CLIC DERECHO: ELEGIR TESIS';
+          hint.classList.remove('visible');
         }
         if (brandDot) {
           brandDot.style.background = 'var(--crystal-accent)';
           brandDot.style.boxShadow = '0 0 10px var(--crystal-accent)';
         }
-        if (brandText) brandText.innerText = 'AETHER · FASE CRISTAL';
+        if (brandText) brandText.innerText = 'AETHER';
         this.audio.play(528, 'sine', 1.4, 0.18);
       }
     });

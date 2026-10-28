@@ -17,13 +17,19 @@ export class ZoomDial {
   private controller: SemanticZoomController;
   private stateMachine: StateMachine;
   private buttons: Map<SemanticLevel, HTMLButtonElement> = new Map();
+  private pulseTimer: number | null = null;
 
   constructor(controller: SemanticZoomController, stateMachine: StateMachine) {
     this.controller = controller;
     this.stateMachine = stateMachine;
 
     this.element = this.createDialElement();
-    document.body.appendChild(this.element);
+    const header = document.getElementById('app-header') || document.querySelector('header');
+    if (header) {
+      header.appendChild(this.element);
+    } else {
+      document.body.appendChild(this.element);
+    }
 
     this.bindEvents();
     this.bindPhaseObserver();
@@ -74,12 +80,21 @@ export class ZoomDial {
   private bindEvents(): void {
     this.controller.onChange((state) => {
       this.updateActiveButton(state.level);
+      this.pulse();
     });
   }
 
   /**
    * Conecta el observador de cambio de fase ontológica.
    */
+  private pulse(): void {
+    this.element.classList.add('active-pulse');
+    if (this.pulseTimer) window.clearTimeout(this.pulseTimer);
+    this.pulseTimer = window.setTimeout(() => {
+      this.element.classList.remove('active-pulse');
+    }, 1800);
+  }
+
   private bindPhaseObserver(): void {
     this.stateMachine.onPhaseChange((phase) => {
       if (phase === 'crystal') {
