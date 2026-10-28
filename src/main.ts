@@ -25,6 +25,8 @@ import { EditorialEditor } from './ui/sanctuary/EditorialEditor';
 import { PhaseDock } from './ui/dock/PhaseDock';
 import { FocusManager } from './ui/focus/FocusManager';
 import { DiscardGutter } from './ui/margin/DiscardGutter';
+import { SemanticZoomController } from './engine/SemanticZoomController';
+import { ZoomDial } from './ui/dock/ZoomDial';
 import { Phase } from './core/types';
 
 class AetherApp {
@@ -39,6 +41,8 @@ class AetherApp {
   private dock: PhaseDock;
   private focusManager: FocusManager;
   private gutter: DiscardGutter;
+  private zoomController: SemanticZoomController;
+  private zoomDial: ZoomDial;
 
   constructor() {
     // 1. Inicialización de Capa 1: Modelo puro de datos
@@ -106,12 +110,25 @@ class AetherApp {
     this.focusManager = new FocusManager({ idleDelayMs: 2500 });
     this.focusManager.attach(this.editor.getBodyElement(), this.editor.getScrollContainer());
 
+    // Pilar 3: Zoom Semántico (Bret Victor) y Dial de Abstracción
+    this.zoomController = new SemanticZoomController(this.stateMachine, this.audio);
+    this.zoomDial = new ZoomDial(this.zoomController, this.stateMachine);
+    this.editor.setSemanticZoomController(this.zoomController);
+
     this.initPhaseOrchestration();
     this.initAudioButton();
     this.initPortalCards();
 
     // Arranca el bucle a 120 FPS
     this.renderer.start();
+  }
+
+  public getZoomDial(): ZoomDial {
+    return this.zoomDial;
+  }
+
+  public getSemanticZoomController(): SemanticZoomController {
+    return this.zoomController;
   }
 
   public getInteractionController(): InteractionController {
@@ -215,7 +232,10 @@ class AetherApp {
         if (brandText) brandText.innerText = 'AETHER · FASE FLUIDO';
         this.audio.play(432, 'triangle', 1.0, 0.15);
       } else if (phase === 'crystal') {
-        if (hint) hint.classList.remove('visible');
+        if (hint) {
+          hint.classList.add('visible');
+          hint.innerText = '💎 MODO CRISTAL · CTRL+RUEDA: ZOOM SEMÁNTICO · CLIC DERECHO: ELEGIR TESIS';
+        }
         if (brandDot) {
           brandDot.style.background = 'var(--crystal-accent)';
           brandDot.style.boxShadow = '0 0 10px var(--crystal-accent)';

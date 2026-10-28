@@ -4,15 +4,21 @@
  * ============================================================================
  * Gestiona el entorno de escritura pura en estado Cristal:
  * - Título y cuerpo de prosa con tipografía monástica y scroll vertical natural.
- * - Métricas de ritmo en tiempo real (palabras y tiempo de lectura).
+ * - Pilar 3 (Zoom Semántico de Bret Victor):
+ *   * Nivel 100% ('prose'): Edición de prosa completa.
+ *   * Nivel 50% ('thesis'): Frases nucleares con acordeón plegado.
+ *   * Nivel 20% ('map'): Cartografía de bloques argumentales.
+ * - Elección de la Tesis Nuclear por el autor mediante CLIC DERECHO sobre cualquier frase.
  * - Estante Flotante Colapsable de "Materia Prima" con ideas destiladas.
- * - Ciclo de consumo: al usar una idea, se integra en la prosa y desaparece de la bandeja.
- * - Intercepta el borrado intencional de frases hacia el Margen de Descartes.
+ * - Margen de Descartes permanente e interceptación de borrado/corte.
  */
 
 import { DocumentGraph } from '../../core/DocumentGraph';
 import { HarmonicSynthesizer } from '../../audio/HarmonicSynthesizer';
 import { DiscardGutter } from '../margin/DiscardGutter';
+import { SemanticZoomController } from '../../engine/SemanticZoomController';
+import { SemanticLevel } from '../../core/types';
+import { SemanticZoomView } from './SemanticZoomView';
 
 export class EditorialEditor {
   private container: HTMLDivElement;
@@ -23,6 +29,16 @@ export class EditorialEditor {
   private rawShelf: HTMLDivElement | null;
   private rawToggleBtn: HTMLButtonElement | null;
   private rawLabel: HTMLSpanElement | null;
+
+  // Elementos del Zoom Semántico
+  private thesisContainer: HTMLDivElement;
+  private mapContainer: HTMLDivElement;
+  private thesisToast: HTMLDivElement | null;
+  private semanticView: SemanticZoomView;
+  private zoomController: SemanticZoomController | null = null;
+  private manualTheses: Map<number, string> = new Map();
+  private toastTimer: number | null = null;
+
   private graph: DocumentGraph;
   private audio: HarmonicSynthesizer;
   private gutter: DiscardGutter | null = null;
@@ -40,13 +56,196 @@ export class EditorialEditor {
     this.rawToggleBtn = document.getElementById('raw-shelf-toggle') as HTMLButtonElement | null;
     this.rawLabel = document.getElementById('raw-shelf-label') as HTMLSpanElement | null;
 
+    // Inicialización de contenedores para el Zoom Semántico
+    this.thesisContainer = document.getElementById('crystal-thesis-view') as HTMLDivElement;
+    this.mapContainer = document.getElementById('crystal-map-view') as HTMLDivElement;
+    this.thesisToast = document.getElementById('crystal-thesis-toast') as HTMLDivElement | null;
+
+    this.semanticView = new SemanticZoomView(
+      this.thesisContainer,
+      this.mapContainer,
+      this.audio
+    );
+
+    // Salto al hacer clic en un bloque de tesis hacia el modo prosa enfocado
+    this.semanticView.onJumpToParagraph((pIndex) => this.jumpToParagraph(pIndex));
+
     this.initMetrics();
     this.initDeletionInterceptor();
     this.initRawShelfToggle();
+    this.initRightClickThesisSelection();
     this.updateChips();
 
     // Actualiza los chips cuando el grafo de ideas cambie
     this.graph.subscribe(() => this.updateChips());
+  }
+
+  /**
+   * Conecta el controlador de Zoom Semántico con la vista editorial.
+   */
+  public setSemanticZoomController(controller: SemanticZoomController): void {
+    this.zoomController = controller;
+    this.zoomController.onChange((state) => {
+      this.applySemanticZoom(state.level);
+    });
+  }
+
+  /**
+   * Conecta la selección deliberada de Frase Tesis mediante CLIC DERECHO.
+   */
+  private initRightClickThesisSelection(): void {
+    if (!this.bodyElement) return;
+
+    this.bodyElement.addEventListener('contextmenu', (e: MouseEvent) => {
+      e.preventDefault();
+
+      // 1. Obtener la posición del texto bajo el puntero
+      let range: Range | null = null;
+      if (document.caretRangeFromPoint) {
+        range = document.caretRangeFromPoint(e.clientX, e.clientY);
+      }
+
+      const text = this.bodyElement.innerText;
+      const paragraphs = text.split(/\n\s*\n/).map(p => p.trim()).filter(p => p.length > 0);
+      if (paragraphs.length === 0) return;
+
+      // 2. Si hay texto seleccionado por el usuario, usarlo directamente
+      const selection = window.getSelection();
+      const selectedText = selection && !selection.isCollapsed ? selection.toString().trim() : '';
+
+      let targetSentence = '';
+      let targetPIndex = 0;
+
+      if (selectedText.length >= 8) {
+        // Encontrar en qué párrafo se encuentra la selección
+        targetSentence = selectedText;
+        for (let i = 0; i < paragraphs.length; i++) {
+          if (paragraphs[i].includes(selectedText)) {
+            targetPIndex = i;
+            break;
+          }
+        }
+      } else if (range && range.startContainer) {
+        // Buscar la oración circundante al punto del clic
+        const clickedText = range.startContainer.textContent || '';
+        const offset = range.startOffset;
+
+        // Encuentra el párrafo correspondiente
+        for (let i = 0; i < paragraphs.length; i++) {
+          if (paragraphs[i].includes(clickedText.trim())) {
+            targetPIndex = i;
+            break;
+          }
+        }
+
+        // Divide el párrafo en oraciones y halla cuál contiene el fragmento
+        const sentences = paragraphs[targetPIndex]
+          ? paragraphs[targetPIndex].split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length > 0)
+          : [];
+
+        if (sentences.length > 0) {
+          // Si el clic cayó sobre el texto, tomamos la oración más cercana al cursor
+          let accum = 0;
+          let matched = sentences[0];
+          for (const s of sentences) {
+            accum += s.length + 1;
+            if (offset <= accum) {
+              matched = s;
+              break;
+            }
+          }
+          targetSentence = matched;
+        }
+      }
+
+      // Fallback si no se pudo determinar con precisión
+      if (!targetSentence && paragraphs[0]) {
+        targetSentence = paragraphs[0];
+      }
+
+      // 3. Alternar la frase como Tesis elegida
+      const currentManual = this.manualTheses.get(targetPIndex);
+      if (currentManual === targetSentence) {
+        // Si ya era la tesis, se desmarca y vuelve a la primera por defecto
+        this.manualTheses.delete(targetPIndex);
+        this.showToast('↩️ Tesis restaurada a la primera frase por defecto');
+        this.audio.play(380, 'sine', 0.25, 0.08);
+      } else {
+        // Se establece como la nueva tesis nuclear
+        this.manualTheses.set(targetPIndex, targetSentence);
+        this.showToast('✨ Frase elegida como Tesis del párrafo');
+        this.audio.play(580, 'sine', 0.45, 0.16);
+      }
+
+      // Si nos encontramos en modo Tesis o Mapa, refrescamos la vista de inmediato
+      const activeLevel = this.zoomController?.getLevel() || 'prose';
+      if (activeLevel !== 'prose') {
+        this.applySemanticZoom(activeLevel);
+      }
+    });
+  }
+
+  /**
+   * Muestra un aviso mineral flotante en pantalla.
+   */
+  private showToast(message: string): void {
+    if (!this.thesisToast) return;
+
+    this.thesisToast.innerText = message;
+    this.thesisToast.classList.add('visible');
+
+    if (this.toastTimer) window.clearTimeout(this.toastTimer);
+    this.toastTimer = window.setTimeout(() => {
+      this.thesisToast?.classList.remove('visible');
+    }, 2200);
+  }
+
+  /**
+   * Aplica la transformación de densidad conceptual según el nivel de zoom.
+   */
+  public applySemanticZoom(level: SemanticLevel): void {
+    const rawText = this.bodyElement.innerText;
+    const blocks = this.semanticView.parseParagraphs(rawText, this.manualTheses);
+
+    if (level === 'prose') {
+      // 100%: Prosa continua completa
+      this.bodyElement.style.display = 'block';
+      this.thesisContainer.style.display = 'none';
+      this.mapContainer.style.display = 'none';
+      if (this.wordCountEl) this.wordCountEl.parentElement!.style.display = 'flex';
+    } else if (level === 'thesis') {
+      // 50%: Frases tesis destacadas y relleno secundario plegado
+      this.bodyElement.style.display = 'none';
+      this.thesisContainer.style.display = 'flex';
+      this.mapContainer.style.display = 'none';
+      this.semanticView.renderThesisView(blocks);
+      if (this.wordCountEl) this.wordCountEl.parentElement!.style.display = 'none';
+    } else if (level === 'map') {
+      // 20%: Cartografía modular de bloques argumentales
+      this.bodyElement.style.display = 'none';
+      this.thesisContainer.style.display = 'none';
+      this.mapContainer.style.display = 'flex';
+      this.semanticView.renderMapView(blocks);
+      if (this.wordCountEl) this.wordCountEl.parentElement!.style.display = 'none';
+    }
+  }
+
+  /**
+   * Salta al modo Prosa enfocado en un párrafo específico.
+   */
+  private jumpToParagraph(pIndex: number): void {
+    // 1. Cambia el zoom de regreso al 100% (Prosa)
+    if (this.zoomController) {
+      this.zoomController.setLevel('prose');
+    }
+
+    // 2. Coloca el foco en el editor de texto
+    setTimeout(() => {
+      this.bodyElement.focus();
+      // Desplaza suavemente hacia el párrafo
+      const scrollY = Math.max(0, pIndex * 180);
+      this.container.scrollTo({ top: scrollY, behavior: 'smooth' });
+    }, 50);
   }
 
   /**
@@ -92,6 +291,8 @@ export class EditorialEditor {
       if (this.rawShelf) this.rawShelf.classList.add('active');
       this.updateChips();
       if (this.gutter) this.gutter.setVisible(true);
+      // Al entrar a Cristal, asegura que arrancamos en modo Prosa
+      this.applySemanticZoom(this.zoomController?.getLevel() || 'prose');
     } else {
       this.container.classList.remove('active');
       if (this.rawShelf) {

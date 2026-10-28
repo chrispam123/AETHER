@@ -80,3 +80,17 @@ export interface DocumentState {
   editorialBody: string;
   isAudioEnabled: boolean;
 }
+
+
+/**
+ * Niveles de abstracción del Zoom Semántico (Bret Victor):
+ * - prose: 100% Micro (prosa completa, redacción).
+ * - thesis: 50% Meso (esqueleto, frases tesis visibles).
+ * - map: 20% Macro (cartografía de bloques argumentales).
+ */
+export type SemanticLevel = 'prose' | 'thesis' | 'map';
+
+export interface SemanticZoomState {
+  level: SemanticLevel;
+  factor: number;
+}

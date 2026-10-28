@@ -741,3 +741,265 @@ body.hyperfocus-active .discard-gutter {
   letter-spacing: 0.02em;
   padding: 4px 0;
 }
+
+
+/* ============================================================================
+   PILAR 3: ZOOM SEMÁNTICO (BRET VICTOR) · ESTILOS DE TESIS, MAPA Y DIAL
+   ============================================================================ */
+
+/* 1. DIAL DE ABSTRACCIÓN CONCEPTUAL (PROSA / TESIS / MAPA) */
+.semantic-zoom-dial {
+  position: fixed;
+  top: 32px;
+  right: 280px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  background: rgba(20, 22, 28, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(24px);
+  border-radius: 30px;
+  padding: 3px 5px;
+  gap: 4px;
+  box-shadow: 0 10px 25px -8px rgba(0, 0, 0, 0.5);
+  transition: opacity 0.4s ease;
+}
+
+.zoom-dial-btn {
+  background: transparent;
+  border: none;
+  color: var(--ink-secondary);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.25s ease;
+}
+
+.zoom-dial-btn:hover {
+  color: var(--ink-primary);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.zoom-dial-btn.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--ink-primary);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.zoom-dial-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ink-ghost);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.zoom-dial-btn.active .zoom-dial-dot {
+  background: var(--crystal-accent);
+  box-shadow: 0 0 6px var(--crystal-accent);
+}
+
+.zoom-dial-key {
+  font-size: 9px;
+  opacity: 0.45;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* 2. NIVEL 50% (MODO TESIS · ESQUELETO EDITORIAL) */
+.crystal-thesis-view {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  width: 100%;
+  padding-bottom: 50vh;
+  animation: fadeInSoft 0.4s ease forwards;
+}
+
+.thesis-card {
+  position: relative;
+  padding: 18px 22px;
+  border-radius: 18px;
+  background: rgba(22, 24, 30, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(24px);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+.thesis-card:hover {
+  background: rgba(26, 29, 37, 0.8);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 36px -8px rgba(0, 0, 0, 0.65);
+}
+
+.thesis-sentence {
+  font-family: var(--font-prose);
+  font-size: 23px;
+  font-weight: 400;
+  color: #f2eee6;
+  line-height: 1.44;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.thesis-marker {
+  font-size: 13px;
+  color: var(--crystal-accent);
+  flex-shrink: 0;
+}
+
+.thesis-sentence.manual-chosen .thesis-marker {
+  color: #e2d7c3;
+  text-shadow: 0 0 10px rgba(226, 215, 195, 0.6);
+}
+
+.thesis-secondary-text {
+  margin-top: 10px;
+  font-family: var(--font-prose);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink-secondary);
+  opacity: 0.18;
+  max-height: 26px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: opacity 0.4s ease, max-height 0.4s ease;
+}
+
+.thesis-card:hover .thesis-secondary-text {
+  opacity: 0.72;
+  max-height: 140px;
+  white-space: normal;
+}
+
+/* 3. NIVEL 20% (MODO CARTOGRAFÍA · FLUJO MODULAR) */
+.crystal-map-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding-bottom: 50vh;
+  animation: fadeInSoft 0.4s ease forwards;
+}
+
+.argument-flow-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 580px;
+}
+
+.argument-node-card {
+  width: 100%;
+  background: rgba(22, 24, 30, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(28px);
+  border-radius: 20px;
+  padding: 22px 26px;
+  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.argument-node-card:hover {
+  transform: scale(1.02);
+  border-color: rgba(226, 215, 195, 0.3);
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.85);
+}
+
+.argument-node-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--crystal-accent);
+  margin-bottom: 10px;
+}
+
+.argument-node-body {
+  font-family: var(--font-prose);
+  font-size: 20px;
+  color: var(--ink-primary);
+  line-height: 1.45;
+  margin-bottom: 14px;
+}
+
+.argument-node-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-ghost);
+}
+
+.jump-prompt {
+  color: var(--crystal-accent);
+  opacity: 0.85;
+}
+
+.argument-flow-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 38px;
+  color: var(--crystal-accent);
+  opacity: 0.55;
+}
+
+.connector-line {
+  width: 2px;
+  height: 24px;
+  background: linear-gradient(to bottom, var(--crystal-accent), transparent);
+}
+
+.connector-arrow {
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* 4. AVISO TOAST FLOTANTE AL ELEGIR TESIS */
+.crystal-thesis-toast {
+  position: fixed;
+  bottom: 156px;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: rgba(24, 27, 34, 0.94);
+  border: 1px solid rgba(226, 215, 195, 0.25);
+  backdrop-filter: blur(24px);
+  color: var(--ink-primary);
+  padding: 10px 24px;
+  border-radius: 30px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  box-shadow: 0 14px 36px -8px rgba(0, 0, 0, 0.7);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 100;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.crystal-thesis-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+@keyframes fadeInSoft {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
