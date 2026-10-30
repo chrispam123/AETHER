@@ -60,7 +60,7 @@ header,
 /* Estilo del botón y cápsula selectora de atmósfera en el Header */
 .atmosphere-control {
   position: relative;
-  display: flex;
+  display: none;
   align-items: center;
 }
 

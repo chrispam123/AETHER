@@ -47,6 +47,7 @@ export class AtmosphereSelector {
     this.container = document.createElement('div');
     this.container.className = 'atmosphere-control';
     this.container.id = 'atmosphere-control';
+    this.container.style.display = 'none'; // Estrictamente oculto por defecto
 
     // 1. Botón disparador esbelto
     this.btn = document.createElement('button');
@@ -75,6 +76,10 @@ export class AtmosphereSelector {
     this.bindEvents();
     this.bindPhaseObserver();
     this.applyAtmosphere(this.currentAtmosphere, false);
+
+    // Asegura visibilidad solo si la fase inicial es cristal
+    const currentPhase = this.stateMachine.getPhase();
+    this.container.style.display = currentPhase === 'crystal' ? 'flex' : 'none';
   }
 
   /**
