@@ -3,17 +3,17 @@
  * CAPA 3: SELECTOR DE ATMÓSFERA EDITORIAL (ATMOSPHERE SELECTOR)
  * ============================================================================
  * Modula la atmósfera visual, tipográfica y cromática del Santuario Cristal:
- * - 1. Atmósfera (Basalto & Ámbar vela · Newsreader)
- * - 2. Aura (Obsidiana & Cian glacial · Inter)
- * - 3. Flujo (Café carbón & Cobre cálido · Lora)
- * - Se ubica en el Header superior, junto a la Resonancia Acústica.
+ * - 1. ATMÓSFERA (Basalto & Ámbar vela · Newsreader)
+ * - 2. AURA (Obsidiana & Cian glacial · Inter)
+ * - 3. HALO (Café carbón & Cobre cálido · Lora)
+ * - Se ubica en la esquina superior izquierda debajo del logo AETHER.
  * - Desaparece suavemente durante el hiperfoco de escritura para no invadir.
  */
 
 import { HarmonicSynthesizer } from '../../audio/HarmonicSynthesizer';
 import { StateMachine } from '../../core/StateMachine';
 
-export type AtmosphereMode = 'atmosfera' | 'aura' | 'flujo';
+export type AtmosphereMode = 'atmosfera' | 'aura' | 'halo';
 
 interface AtmosphereConfig {
   id: AtmosphereMode;
@@ -35,9 +35,9 @@ export class AtmosphereSelector {
   private isOpen: boolean = false;
 
   private readonly atmospheres: AtmosphereConfig[] = [
-    { id: 'atmosfera', label: 'Atmósfera', dotColor: '#d9ba85', toneFreq: 330 },
-    { id: 'aura', label: 'Aura', dotColor: '#6fe0eb', toneFreq: 528 },
-    { id: 'flujo', label: 'Flujo', dotColor: '#e59c77', toneFreq: 415 }
+    { id: 'atmosfera', label: 'ATMÓSFERA', dotColor: '#d9ba85', toneFreq: 330 },
+    { id: 'aura', label: 'AURA', dotColor: '#6fe0eb', toneFreq: 528 },
+    { id: 'halo', label: 'HALO', dotColor: '#e59c77', toneFreq: 415 }
   ];
 
   constructor(audio: HarmonicSynthesizer, stateMachine: StateMachine) {
@@ -48,7 +48,7 @@ export class AtmosphereSelector {
     this.container.className = 'atmosphere-control';
     this.container.id = 'atmosphere-control';
 
-    // 1. Botón disparador en el Header
+    // 1. Botón disparador esbelto
     this.btn = document.createElement('button');
     this.btn.className = 'atmosphere-btn';
     this.btn.title = 'Modula la atmósfera y personalidad del santuario';
@@ -58,7 +58,7 @@ export class AtmosphereSelector {
 
     this.labelSpan = document.createElement('span');
     this.labelSpan.className = 'atmosphere-label';
-    this.labelSpan.innerText = 'Atmósfera';
+    this.labelSpan.innerText = 'ATMÓSFERA';
 
     this.btn.appendChild(this.indicatorDot);
     this.btn.appendChild(this.labelSpan);
@@ -78,14 +78,14 @@ export class AtmosphereSelector {
   }
 
   /**
-   * Obtiene el elemento contenedor para insertarlo en el Header.
+   * Obtiene el elemento contenedor para insertarlo en el DOM.
    */
   public getElement(): HTMLDivElement {
     return this.container;
   }
 
   /**
-   * Pinta las 3 opciones del menú desplegable.
+   * Pinta las 3 opciones del menú desplegable con sus nombres en mayúsculas.
    */
   private renderDropdownItems(): void {
     this.dropdown.innerHTML = '';

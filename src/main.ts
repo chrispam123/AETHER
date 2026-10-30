@@ -118,11 +118,25 @@ class AetherApp {
     this.zoomDial = new ZoomDial(this.zoomController, this.stateMachine);
     this.editor.setSemanticZoomController(this.zoomController);
 
-    // Sistema de Atmósferas Editoriales (Atmósfera, Aura, Flujo)
+    // Sistema de Atmósferas Editoriales (ATMÓSFERA, AURA, HALO)
     this.atmosphereSelector = new AtmosphereSelector(this.audio, this.stateMachine);
-    const rightControls = document.getElementById('header-right-controls');
-    if (rightControls) {
-      rightControls.insertBefore(this.atmosphereSelector.getElement(), rightControls.firstChild);
+    const brandContainer = document.querySelector('.brand');
+    if (brandContainer && brandContainer.parentElement) {
+      // Contenedor vertical en la esquina izquierda para AETHER y su atmósfera debajo
+      let brandCol = document.getElementById('brand-column');
+      if (!brandCol) {
+        brandCol = document.createElement('div');
+        brandCol.id = 'brand-column';
+        brandCol.className = 'brand-column';
+        brandCol.style.display = 'flex';
+        brandCol.style.flexDirection = 'column';
+        brandCol.style.gap = '8px';
+        brandCol.style.alignItems = 'flex-start';
+
+        brandContainer.parentElement.insertBefore(brandCol, brandContainer);
+        brandCol.appendChild(brandContainer);
+      }
+      brandCol.appendChild(this.atmosphereSelector.getElement());
     }
 
     this.initPhaseOrchestration();

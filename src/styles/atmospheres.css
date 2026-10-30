@@ -4,7 +4,7 @@
    Define 3 tonalidades ontológicas completas:
    1. [data-atmosphere="atmosfera"]: Basalto carbón, marfil cálido y ámbar vela.
    2. [data-atmosphere="aura"]: Obsidiana profunda, blanco tiza y cian glacial.
-   3. [data-atmosphere="flujo"]: Humo sepia, hueso tenue y cobre pulido.
+   3. [data-atmosphere="halo"]: Humo sepia, hueso tenue y cobre pulido.
    ============================================================================ */
 
 /* 1. ATMÓSFERA · BASALTO Y ÁMBAR (POR DEFECTO) */
@@ -30,7 +30,7 @@ body[data-atmosphere="aura"] {
 }
 
 /* 3. FLUJO · CAFÉ CARBÓN Y COBRE CÁLIDO */
-body[data-atmosphere="flujo"] {
+body[data-atmosphere="halo"] {
   --font-prose: 'Lora', 'Palatino Linotype', Palatino, serif;
   --bg-sanctuary: #141211;
   --ink-primary: #f3ede2;
@@ -98,8 +98,8 @@ header,
 /* Menú flotante etéreo de selección de Atmósfera */
 .atmosphere-dropdown {
   position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
+  top: calc(100% + 8px);
+  left: 0;
   display: none;
   flex-direction: column;
   gap: 4px;
