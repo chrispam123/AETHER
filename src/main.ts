@@ -13,6 +13,8 @@
 import './styles/tokens.css';
 import './styles/canvas.css';
 import './styles/sanctuary.css';
+import './styles/atmospheres.css';
+import { AtmosphereSelector } from './ui/dock/AtmosphereSelector';
 
 import { DocumentGraph } from './core/DocumentGraph';
 import { StateMachine } from './core/StateMachine';
@@ -43,6 +45,7 @@ class AetherApp {
   private gutter: DiscardGutter;
   private zoomController: SemanticZoomController;
   private zoomDial: ZoomDial;
+  private atmosphereSelector: AtmosphereSelector;
 
   constructor() {
     // 1. Inicialización de Capa 1: Modelo puro de datos
@@ -114,6 +117,13 @@ class AetherApp {
     this.zoomController = new SemanticZoomController(this.stateMachine, this.audio);
     this.zoomDial = new ZoomDial(this.zoomController, this.stateMachine);
     this.editor.setSemanticZoomController(this.zoomController);
+
+    // Sistema de Atmósferas Editoriales (Atmósfera, Aura, Flujo)
+    this.atmosphereSelector = new AtmosphereSelector(this.audio, this.stateMachine);
+    const rightControls = document.getElementById('header-right-controls');
+    if (rightControls) {
+      rightControls.insertBefore(this.atmosphereSelector.getElement(), rightControls.firstChild);
+    }
 
     this.initPhaseOrchestration();
     this.initAudioButton();

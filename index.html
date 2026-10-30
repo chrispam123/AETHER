@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="/src/styles/tokens.css">
   <link rel="stylesheet" href="/src/styles/canvas.css">
   <link rel="stylesheet" href="/src/styles/sanctuary.css">
+  <link rel="stylesheet" href="/src/styles/atmospheres.css">
 
   <!-- CSS Crítico: Fondo basalto instantáneo antes de cargar JS -->
   <style>
@@ -76,10 +77,12 @@
         <div class="brand-dot" id="brand-dot"></div>
         <span id="brand-text">AETHER</span>
       </div>
-      <button class="audio-toggle" id="audio-btn" title="Resonancia acústica armónica">
-        <span id="audio-icon">♪</span>
-        <span id="audio-label">Acústica</span>
-      </button>
+      <div class="header-right-controls" id="header-right-controls" style="display: flex; align-items: center; gap: 10px;">
+        <button class="audio-toggle" id="audio-btn" title="Resonancia acústica armónica">
+          <span id="audio-icon">♪</span>
+          <span id="audio-label">Acústica</span>
+        </button>
+      </div>
     </header>
 
     <div id="canvas-hint">Haz clic en cualquier punto del espacio para soltar una idea</div>

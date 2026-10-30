@@ -1,21 +1,19 @@
 /**
  * ============================================================================
- * CAPA 3: HUD DE TEXTO FLOTANTE ("EL ALIENTO" · FORMATO Y TEMPERAMENTO)
+ * CAPA 3: HUD DE TEXTO FLOTANTE ("EL ALIENTO" · FORMATO LOCAL)
  * ============================================================================
  * Menú etéreo que se materializa tenuemente al seleccionar texto:
- * - Aparición orgánica con MouseUp Delay (~180ms).
+ * - Aparición orgánica con MouseUp Delay (~160ms).
  * - Desaparición instantánea (0ms) ante cualquier tecla (keydown/input) o clic derecho.
- * - Controles de Masa y Voz:
- *   • Negrita (B · Gravedad/Masa ontológica)
- *   • Cursiva (I · Voz interna/Reflexión íntima)
- *   • Escala de Voz: [ Íntimo (16px) | Prosa (20px) | Sentencia (24px) ]
- *   • Temperamento Tipográfico del Santuario: [ Piedra | Cristal | Pergamino ]
+ * - Controles de Masa y Voz LOCALES (operan estrictamente sobre la selección):
+ *   • Negrita (B · Gravedad / Masa de la palabra)
+ *   • Cursiva (I · Voz interna / Susurro)
+ *   • Escala de Voz: [ Íntimo (T⁻ 16px) | Prosa (T 20px) | Sentencia (T⁺ 24px) ]
  * - Estética mineral de cuarzo translúcido con resonancia acústica sintética.
  */
 
 import { HarmonicSynthesizer } from '../../audio/HarmonicSynthesizer';
 
-export type TextTemperament = 'piedra' | 'cristal' | 'pergamino';
 export type TextScale = 'small' | 'normal' | 'large';
 
 export class TextHud {
@@ -28,9 +26,6 @@ export class TextHud {
   private btnBold!: HTMLButtonElement;
   private btnItalic!: HTMLButtonElement;
   private scaleButtons: Map<TextScale, HTMLButtonElement> = new Map();
-  private temperamentButtons: Map<TextTemperament, HTMLButtonElement> = new Map();
-
-  private activeTemperament: TextTemperament = 'piedra';
 
   constructor(editorElement: HTMLElement, audio: HarmonicSynthesizer) {
     this.editorElement = editorElement;
@@ -40,11 +35,10 @@ export class TextHud {
     document.body.appendChild(this.container);
 
     this.bindEvents();
-    this.applyTemperament(this.activeTemperament);
   }
 
   /**
-   * Crea el elemento DOM del HUD con diseño esbelto en cuarzo translúcido.
+   * Crea el elemento DOM del HUD con diseño esbelto y estrictamente local.
    */
   private createHudElement(): HTMLDivElement {
     const hud = document.createElement('div');
@@ -105,34 +99,6 @@ export class TextHud {
       scaleGroup.appendChild(btn);
     });
     hud.appendChild(scaleGroup);
-
-    // Separador sutil
-    hud.appendChild(this.createSeparator());
-
-    // 3. Grupo de Temperamento Tipográfico del Santuario
-    const tempGroup = document.createElement('div');
-    tempGroup.className = 'hud-group hud-temperament-group';
-
-    const temperaments: Array<{ id: TextTemperament; icon: string; label: string; desc: string }> = [
-      { id: 'piedra', icon: '✦', label: 'Piedra', desc: 'Serif Editorial Clásica (Newsreader)' },
-      { id: 'cristal', icon: '◆', label: 'Cristal', desc: 'Geométrica Analítica (Inter)' },
-      { id: 'pergamino', icon: '❧', label: 'Pergamino', desc: 'Humanista Transicional (Lora)' }
-    ];
-
-    temperaments.forEach(({ id, icon, label, desc }) => {
-      const btn = document.createElement('button');
-      btn.className = `hud-btn hud-btn-temp ${id === this.activeTemperament ? 'active' : ''}`;
-      btn.innerHTML = `<span class="hud-temp-icon">${icon}</span><span class="hud-temp-label">${label}</span>`;
-      btn.title = `Atmósfera: ${desc}`;
-      btn.dataset.temp = id;
-      btn.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        this.applyTemperament(id);
-      });
-      this.temperamentButtons.set(id, btn);
-      tempGroup.appendChild(btn);
-    });
-    hud.appendChild(tempGroup);
 
     return hud;
   }
@@ -241,18 +207,16 @@ export class TextHud {
   private showAtPosition(rect: DOMRect): void {
     this.container.style.display = 'flex';
 
-    // Dimensiones del HUD
-    const hudWidth = this.container.offsetWidth || 340;
+    // Dimensiones del HUD compacto
+    const hudWidth = this.container.offsetWidth || 180;
     const hudHeight = this.container.offsetHeight || 38;
 
     // Centrado horizontal sobre la selección
     let left = rect.left + rect.width / 2 - hudWidth / 2;
-    // Límite de márgenes de pantalla
     left = Math.max(16, Math.min(window.innerWidth - hudWidth - 16, left));
 
     // Flotando 10px por encima de la selección
     let top = rect.top - hudHeight - 10;
-    // Si se sale por arriba de la pantalla, mostrar por debajo
     if (top < 70) {
       top = rect.bottom + 12;
     }
@@ -260,7 +224,6 @@ export class TextHud {
     this.container.style.left = `${left}px`;
     this.container.style.top = `${top}px`;
 
-    // Pequeño timeout para animación CSS fluida
     requestAnimationFrame(() => {
       this.container.classList.add('visible');
       this.isVisible = true;
@@ -361,29 +324,5 @@ export class TextHud {
 
     // Disparar input para persistencia en memoria viva
     this.editorElement.dispatchEvent(new Event('input', { bubbles: true }));
-  }
-
-  /**
-   * Conmuta la atmósfera tipográfica global del santuario.
-   */
-  public applyTemperament(temp: TextTemperament): void {
-    this.activeTemperament = temp;
-    document.body.setAttribute('data-temperament', temp);
-
-    this.temperamentButtons.forEach((btn, t) => {
-      if (t === temp) {
-        btn.classList.add('active');
-      } else {
-        btn.classList.remove('active');
-      }
-    });
-
-    // Frecuencias cromáticas según el temperamento
-    const f = temp === 'piedra' ? 320 : temp === 'cristal' ? 528 : 410;
-    this.audio.play(f, 'sine', 0.35, 0.1);
-  }
-
-  public getActiveTemperament(): TextTemperament {
-    return this.activeTemperament;
   }
 }
