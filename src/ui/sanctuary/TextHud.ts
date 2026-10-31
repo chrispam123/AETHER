@@ -324,37 +324,75 @@ export class TextHud {
 
     const range = selection.getRangeAt(0);
 
-    // Si la selección ya está dentro de un span de voz previo, limpiamos la clase en vez de anidar
-    let parentVoiceSpan = range.commonAncestorContainer as HTMLElement;
-    if (parentVoiceSpan.nodeType === Node.TEXT_NODE) {
-      parentVoiceSpan = parentVoiceSpan.parentElement as HTMLElement;
+    // 1. Extraemos el texto y desarmamos cualquier span de voz interno previo
+    const frag = range.cloneContents();
+    const tempDiv = document.createElement('div');
+    tempDiv.appendChild(frag);
+
+    // Si había spans de voz anidados dentro del fragmento, los desarmamos
+    tempDiv.querySelectorAll('.prose-voice-small, .prose-voice-normal, .prose-voice-large').forEach((el) => {
+      const parent = el.parentNode;
+      while (el.firstChild) {
+        parent?.insertBefore(el.firstChild, el);
+      }
+      parent?.removeChild(el);
+    });
+
+    const cleanFragment = document.createDocumentFragment();
+    while (tempDiv.firstChild) {
+      cleanFragment.appendChild(tempDiv.firstChild);
     }
 
-    if (parentVoiceSpan && parentVoiceSpan.classList.contains('prose-voice-small') ||
-        parentVoiceSpan && parentVoiceSpan.classList.contains('prose-voice-normal') ||
-        parentVoiceSpan && parentVoiceSpan.classList.contains('prose-voice-large')) {
-      parentVoiceSpan.classList.remove('prose-voice-small', 'prose-voice-normal', 'prose-voice-large');
+    // 2. Comprobamos si el ancestro directo es un span de voz
+    let ancestor = range.commonAncestorContainer as HTMLElement;
+    if (ancestor.nodeType === Node.TEXT_NODE) {
+      ancestor = ancestor.parentElement as HTMLElement;
+    }
+    const isInsideVoiceSpan = Boolean(
+      ancestor &&
+      (ancestor.classList.contains('prose-voice-small') ||
+       ancestor.classList.contains('prose-voice-normal') ||
+       ancestor.classList.contains('prose-voice-large'))
+    );
+
+    let replacementNode: Node;
+
+    if (isInsideVoiceSpan && ancestor) {
+      // Si el contenedor padre ya es un span de voz, simplemente cambiamos su clase
+      ancestor.classList.remove('prose-voice-small', 'prose-voice-normal', 'prose-voice-large');
       if (scale !== 'normal') {
-        parentVoiceSpan.classList.add(`prose-voice-${scale}`);
+        ancestor.classList.add(`prose-voice-${scale}`);
       } else {
-        // En normal, desenrollamos el span si no aporta estilos adicionales
-        const parent = parentVoiceSpan.parentNode;
-        while (parentVoiceSpan.firstChild) {
-          parent?.insertBefore(parentVoiceSpan.firstChild, parentVoiceSpan);
+        // En normal, quitamos el contenedor y dejamos el texto plano
+        const p = ancestor.parentNode;
+        while (ancestor.firstChild) {
+          p?.insertBefore(ancestor.firstChild, ancestor);
         }
-        parent?.removeChild(parentVoiceSpan);
+        p?.removeChild(ancestor);
       }
+      replacementNode = ancestor;
     } else {
-      const selectedContent = range.extractContents();
+      range.deleteContents();
       if (scale === 'normal') {
-        // Si es normal, simplemente reinsertamos el texto plano sin envolver en spans
-        range.insertNode(selectedContent);
+        range.insertNode(cleanFragment);
+        replacementNode = cleanFragment;
       } else {
         const span = document.createElement('span');
         span.className = `prose-voice-${scale}`;
-        span.appendChild(selectedContent);
+        span.appendChild(cleanFragment);
         range.insertNode(span);
+        replacementNode = span;
       }
+    }
+
+    // 3. Volvemos a seleccionar el nodo reemplazado para que el usuario pueda seguir pulsando T⁻, T, T⁺
+    try {
+      const newRange = document.createRange();
+      newRange.selectNodeContents(replacementNode);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+    } catch {
+      // Fallback
     }
 
     const freq = scale === 'small' ? 380 : scale === 'normal' ? 440 : 580;
