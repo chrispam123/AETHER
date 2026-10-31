@@ -48,6 +48,7 @@ class AetherApp {
   private zoomController: SemanticZoomController;
   private zoomDial: ZoomDial;
   private atmosphereSelector: AtmosphereSelector;
+  private cameraStates: Partial<Record<Phase, { x: number; y: number; zoom: number }>> = {};
 
   constructor() {
     // 1. Inicialización de Capa 1: Modelo puro de datos
@@ -59,23 +60,32 @@ class AetherApp {
         {
           id: '1',
           tag: 'Premisa Inicial',
-          text: 'El lenguaje no es un inventario estático; es la prótesis viva de la imaginación humana.',
+          text: 'Escribir no es registrar palabras que ya estaban completas en la mente; escribir es el proceso mediante el cual el caos se condensa en materia legible.',
           position: { x: initialWidth * 0.32, y: initialHeight * 0.36 },
-          timestamp: Date.now() - 3000
+          vaporPosition: { x: initialWidth * 0.32, y: initialHeight * 0.36 },
+          liquidPosition: { x: initialWidth * 0.32, y: initialHeight * 0.36 },
+          timestamp: Date.now() - 3000,
+          inDocument: true
         },
         {
           id: '2',
           tag: 'Tensión Dialéctica',
-          text: 'La máquina de escribir nos obligó a pensar en una sola dimensión lineal.',
+          text: 'Cuando retiramos la tiranía del cursor mecánico y permitimos que la idea respire primero como vapor, luego como corriente viva y finalmente como piedra pulida, la relación entre el creador y su lenguaje vuelve a ser sagrada.',
           position: { x: initialWidth * 0.65, y: initialHeight * 0.42 },
-          timestamp: Date.now() - 2000
+          vaporPosition: { x: initialWidth * 0.65, y: initialHeight * 0.42 },
+          liquidPosition: { x: initialWidth * 0.65, y: initialHeight * 0.42 },
+          timestamp: Date.now() - 2000,
+          inDocument: true
         },
         {
           id: '3',
           tag: 'Síntesis Final',
           text: 'Si el pensamiento pasa de vapor a líquido y a cristal, el software debe obedecer esa física.',
           position: { x: initialWidth * 0.46, y: initialHeight * 0.66 },
-          timestamp: Date.now() - 1000
+          vaporPosition: { x: initialWidth * 0.46, y: initialHeight * 0.66 },
+          liquidPosition: { x: initialWidth * 0.46, y: initialHeight * 0.66 },
+          timestamp: Date.now() - 1000,
+          inDocument: true
         }
       ],
       [
@@ -246,13 +256,56 @@ class AetherApp {
     const brandDot = document.getElementById('brand-dot');
     const brandText = document.getElementById('brand-text');
 
+    let previousPhase = this.stateMachine.getPhase();
+
     this.stateMachine.onPhaseChange((phase) => {
+      // Guardar el encuadre de la cámara (pan y zoom) de la fase anterior
+      if (previousPhase === 'vapor' || previousPhase === 'liquid') {
+        this.cameraStates[previousPhase] = {
+          x: this.camera.x,
+          y: this.camera.y,
+          zoom: this.camera.zoom
+        };
+      }
+
+      // 0. TERMODINÁMICA BIDIRECCIONAL (Derretir y Solidificar)
+      if (previousPhase === 'crystal' && phase !== 'crystal') {
+        // Derretir el Cristal hacia el grafo de ideas (Fluido o Niebla)
+        this.editor.syncBlocksWithGraph();
+      } else if (previousPhase !== 'crystal' && phase === 'crystal') {
+        // Solidificar la Corriente del Río hacia la Prosa de Cristal SOLO si la topología cambió en Fluido
+        if (this.graph.hasRiverTopologyChanged()) {
+          const ordered = this.graph.getOrderedFlowNodes();
+          this.editor.applyFlowOrder(ordered);
+          this.graph.resetRiverTopologyChanged();
+        }
+      }
+      previousPhase = phase;
+
       // 1. Ocultar portal completamente para que no intercepte ningún clic
       if (portal && phase !== 'portal') {
         portal.classList.add('hidden');
         portal.style.display = 'none';
         portal.style.pointerEvents = 'none';
       }
+
+      // Independencia espacial: restaura la cámara y las posiciones propias de la fase (Niebla vs Fluido)
+      if (phase === 'vapor' || phase === 'liquid') {
+        const savedCam = this.cameraStates[phase];
+        if (savedCam) {
+          this.camera.x = savedCam.x;
+          this.camera.y = savedCam.y;
+          this.camera.zoom = savedCam.zoom;
+          this.camera.notifyChange();
+        }
+        this.graph.syncPositionsForPhase(phase);
+      }
+
+      // Despeje de orillas: Si entramos a Fluido, reubica cualquier chispa libre que coincida con el río
+      if (phase === 'liquid') {
+        this.graph.disperseCollidingSparks();
+      }
+
       this.dock.update(phase);
       this.bridge.sync();
 
@@ -274,6 +327,15 @@ class AetherApp {
       }
 
       if (phase === 'vapor') {
+        const freeSparks = this.graph.getAllNodes().filter((n) => !n.inDocument);
+        if (hint) {
+          if (freeSparks.length === 0) {
+            hint.innerText = 'Niebla limpia · Haz doble clic en el éter para concebir una chispa libre';
+            hint.classList.add('visible');
+          } else {
+            hint.classList.remove('visible');
+          }
+        }
         if (brandDot) {
           brandDot.style.display = 'block';
           brandDot.style.background = 'var(--vapor-accent)';

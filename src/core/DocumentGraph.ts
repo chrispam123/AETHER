@@ -23,6 +23,7 @@ export class DocumentGraph {
   private nodes: Map<string, ThoughtNode> = new Map();
   private bridges: Map<string, ConnectionBridge> = new Map();
   private listeners: Set<GraphChangeListener> = new Set();
+  private riverTopologyChanged: boolean = false;
 
   constructor(initialNodes?: ThoughtNode[], initialBridges?: ConnectionBridge[]) {
     if (initialNodes) {
@@ -52,7 +53,7 @@ export class DocumentGraph {
    */
   public getAvailableRawNodes(): ThoughtNode[] {
     return Array.from(this.nodes.values()).filter(
-      (node) => !node.consumed && node.text.trim().length > 0
+      (node) => !node.consumed && !node.inDocument && node.text.trim().length > 0
     );
   }
 
@@ -66,15 +67,23 @@ export class DocumentGraph {
   /**
    * Añade una nueva idea al éter en la coordenada especificada.
    */
-  public addNode(text: string, position: Vector2D, tag: string = 'Intuición'): ThoughtNode {
+  public addNode(
+    text: string,
+    position: Vector2D,
+    tag: string = 'Intuición',
+    inDocument: boolean = false
+  ): ThoughtNode {
     const newNode: ThoughtNode = {
       id: Date.now().toString() + Math.random().toString(36).substring(2, 6),
       tag,
       text,
       position: { ...position },
+      vaporPosition: { ...position },
+      liquidPosition: { ...position },
       velocity: { x: 0, y: 0 },
       timestamp: Date.now(),
-      consumed: false
+      consumed: false,
+      inDocument
     };
 
     this.nodes.set(newNode.id, newNode);
@@ -105,6 +114,14 @@ export class DocumentGraph {
     };
 
     this.bridges.set(bridge.id, bridge);
+    this.riverTopologyChanged = true;
+
+    // Al enlazar dos ideas en la corriente del río, pasan a formar parte del documento vivo
+    const sourceNode = this.nodes.get(sourceId);
+    const targetNode = this.nodes.get(targetId);
+    if (sourceNode) sourceNode.inDocument = true;
+    if (targetNode) targetNode.inDocument = true;
+
     this.notify();
     return bridge;
   }
@@ -114,6 +131,7 @@ export class DocumentGraph {
    */
   public removeBridge(id: string): void {
     if (this.bridges.delete(id)) {
+      this.riverTopologyChanged = true;
       this.notify();
     }
   }
@@ -125,6 +143,7 @@ export class DocumentGraph {
     const existingKey = `${sourceId}->${targetId}`;
     if (this.bridges.has(existingKey)) {
       this.bridges.delete(existingKey);
+      this.riverTopologyChanged = true;
       this.notify();
       return false; // Desconectado
     }
@@ -137,6 +156,20 @@ export class DocumentGraph {
 
     this.addBridge(sourceId, targetId);
     return true; // Conectado
+  }
+
+  /**
+   * Indica si la topología del río (puentes) fue modificada deliberadamente en Fluido.
+   */
+  public hasRiverTopologyChanged(): boolean {
+    return this.riverTopologyChanged;
+  }
+
+  /**
+   * Reinicia la bandera de topología tras solidificar hacia Cristal.
+   */
+  public resetRiverTopologyChanged(): void {
+    this.riverTopologyChanged = false;
   }
 
   /**
@@ -196,7 +229,8 @@ export class DocumentGraph {
     );
 
     if (this.bridges.size === 0) {
-      return all;
+      // Si no hay puentes, solo los nodos que explícitamente forman parte del documento
+      return all.filter((n) => n.inDocument);
     }
 
     // Calcula grado de entrada (cuántas conexiones llegan a cada nodo)
@@ -249,9 +283,10 @@ export class DocumentGraph {
       }
     });
 
-    // 3. Añadir finalmente las ideas libres / aisladas
+    // 3. Solo añadir ideas que ya pertenecían al documento si quedaron temporalmente sin conectar
+    // Las chispas libres de Niebla (!n.inDocument sin puentes) NUNCA se agregan automáticamente al río
     all.forEach((n) => {
-      if (!visited.has(n.id)) {
+      if (n.inDocument && !visited.has(n.id)) {
         ordered.push(n);
       }
     });
@@ -282,14 +317,40 @@ export class DocumentGraph {
   }
 
   /**
-   * Actualiza la posición de una idea en el espacio infinito.
+   * Actualiza la posición de una idea en el espacio infinito según la fase activa.
    */
-  public updateNodePosition(id: string, position: Vector2D): void {
+  public updateNodePosition(id: string, position: Vector2D, phase?: string): void {
     const node = this.nodes.get(id);
     if (node) {
       node.position = { ...position };
+      if (phase === 'vapor') {
+        node.vaporPosition = { ...position };
+      } else if (phase === 'liquid') {
+        node.liquidPosition = { ...position };
+      }
       this.notify();
     }
+  }
+
+  /**
+   * Sincroniza la posición activa de todos los nodos al entrar en una fase determinada,
+   * garantizando independencia espacial absoluta entre el lienzo de Niebla y el de Fluido.
+   */
+  public syncPositionsForPhase(phase: 'vapor' | 'liquid'): void {
+    for (const node of this.nodes.values()) {
+      if (phase === 'vapor') {
+        if (!node.vaporPosition) {
+          node.vaporPosition = { ...node.position };
+        }
+        node.position = { ...node.vaporPosition };
+      } else if (phase === 'liquid') {
+        if (!node.liquidPosition) {
+          node.liquidPosition = { ...node.position };
+        }
+        node.position = { ...node.liquidPosition };
+      }
+    }
+    this.notify();
   }
 
   /**
@@ -305,6 +366,80 @@ export class DocumentGraph {
       }
       this.notify();
     }
+  }
+
+  /**
+   * Encuentra una coordenada libre en el espacio para evitar que las tarjetas se solapen.
+   */
+  public findClearPosition(
+    targetPos: Vector2D,
+    excludeId?: string,
+    minDx: number = 380,
+    minDy: number = 260
+  ): Vector2D {
+    const otherNodes = Array.from(this.nodes.values()).filter((n) => n.id !== excludeId);
+    if (otherNodes.length === 0) return { ...targetPos };
+
+    let candidate = { ...targetPos };
+    let attempts = 0;
+    const maxAttempts = 36;
+
+    while (attempts < maxAttempts) {
+      const colliding = otherNodes.find(
+        (n) =>
+          Math.abs(n.position.x - candidate.x) < minDx &&
+          Math.abs(n.position.y - candidate.y) < minDy
+      );
+
+      if (!colliding) {
+        return candidate;
+      }
+
+      attempts++;
+      // Espiral de búsqueda áurea para encontrar orillas despejadas alrededor del río
+      const angle = attempts * 1.047; // ~60 grados
+      const layer = Math.floor((attempts - 1) / 6) + 1;
+      const radiusX = layer * minDx;
+      const radiusY = layer * minDy;
+
+      candidate = {
+        x: targetPos.x + Math.cos(angle) * radiusX,
+        y: targetPos.y + Math.sin(angle) * radiusY
+      };
+    }
+
+    return candidate;
+  }
+
+  /**
+   * Desplaza suavemente cualquier tarjeta en el lienzo que coincida espacialmente
+   * con otra para que nunca queden tapadas, ocultas ni sobrepuestas en el río.
+   */
+  public disperseCollidingSparks(): boolean {
+    const allNodes = Array.from(this.nodes.values());
+    let changed = false;
+
+    for (let i = 0; i < allNodes.length; i++) {
+      const nodeA = allNodes[i];
+      for (let j = 0; j < i; j++) {
+        const nodeB = allNodes[j];
+        const dx = Math.abs(nodeA.position.x - nodeB.position.x);
+        const dy = Math.abs(nodeA.position.y - nodeB.position.y);
+        if (dx < 360 && dy < 220) {
+          // Si colisionan, calculamos una posición despejada en espiral para el nodo A
+          const newPos = this.findClearPosition(nodeA.position, nodeA.id, 360, 220);
+          nodeA.position = newPos;
+          nodeA.liquidPosition = { ...newPos };
+          changed = true;
+          break;
+        }
+      }
+    }
+
+    if (changed) {
+      this.notify();
+    }
+    return changed;
   }
 
   /**

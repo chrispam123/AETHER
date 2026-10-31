@@ -239,9 +239,15 @@ header:hover {
 }
 
 .thought-card.dragging {
-  cursor: grabbing;
   transform: translate(-50%, -50%) scale(1.03);
   z-index: 100 !important;
+}
+
+body.is-dragging-card,
+body.is-dragging-card * {
+  cursor: inherit !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
 }
 
 .thought-card-header {
@@ -250,6 +256,8 @@ header:hover {
   align-items: center;
   margin-bottom: 12px;
   gap: 10px;
+  cursor: inherit;
+  user-select: none;
 }
 
 .thought-card-tag {

@@ -170,7 +170,8 @@ export class InteractionController {
 
       const phase = this.stateMachine.getPhase();
       const tag = phase === 'vapor' ? 'Chispa libre' : 'Corriente nodal';
-      this.graph.addNode('', worldPoint, tag);
+      const inDocument = phase === 'liquid';
+      this.graph.addNode('', worldPoint, tag, inDocument);
       this.audio.play(432, 'sine', 0.4, 0.12);
     });
   }

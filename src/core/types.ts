@@ -36,6 +36,10 @@ export interface ThoughtNode {
   text: string;
   /** Posición en el lienzo infinito (coordenadas del mundo) */
   position: Vector2D;
+  /** Posición espacial independiente en el lienzo de Niebla */
+  vaporPosition?: Vector2D;
+  /** Posición espacial independiente en el lienzo de Fluido */
+  liquidPosition?: Vector2D;
   /** Velocidad física (para inercia y amortiguación elástica) */
   velocity?: Vector2D;
   /** Estado de densidad en el que nació la nota */
@@ -44,6 +48,8 @@ export interface ThoughtNode {
   timestamp: number;
   /** Indica si la idea ya ha sido consumida e integrada en la prosa de Cristal */
   consumed?: boolean;
+  /** Indica si la idea forma parte del río / prosa de Cristal (las ideas del documento no aparecen en Niebla) */
+  inDocument?: boolean;
 }
 
 /**

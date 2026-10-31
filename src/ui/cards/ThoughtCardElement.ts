@@ -47,6 +47,10 @@ export class ThoughtCardElement {
     this.renderContent();
     this.updateProjection(this.camera);
     this.attachDragBehavior();
+
+    this.element.addEventListener('click', () => {
+      this.onCardClickCallback?.(this.node.id);
+    });
   }
 
   public getNodeId(): string {
@@ -177,18 +181,14 @@ export class ThoughtCardElement {
         this.onPortClickCallback?.(this.node.id);
       });
     }
-
-    this.element.addEventListener('click', () => {
-      this.onCardClickCallback?.(this.node.id);
-    });
   }
 
   /**
    * Habilita el arrastre de la tarjeta en el espacio bidimensional infinito con cursor artesanal táctil.
+   * Permite tanto la edición directa al hacer clic sin mover, como el arrastre fluido al desplazar (> 4px).
    */
   private attachDragBehavior(): void {
-    const textEl = this.element.querySelector('.thought-card-text') as HTMLDivElement;
-
+    let isPotentialDrag = false;
     let isDragging = false;
     let startScreenX = 0;
     let startScreenY = 0;
@@ -199,47 +199,72 @@ export class ThoughtCardElement {
       e.stopPropagation();
     });
 
-    this.element.addEventListener('mousedown', (e) => {
-      e.stopPropagation();
+    // Bloquea el arrastre nativo de texto HTML5 para que nunca interfiera con el arrastre de la tarjeta
+    this.element.addEventListener('dragstart', (e) => {
+      e.preventDefault();
+    });
 
-      // Si el clic es en el puerto o en el texto editable, no arrastramos
-      if (e.target === textEl || (e.target as HTMLElement).closest('.thought-card-port')) return;
+    this.element.addEventListener('mousedown', (e) => {
+      const target = e.target as HTMLElement;
+      // Si el clic es en un botón o en el puerto de conexión, no arrastramos
+      if (target.closest('.thought-card-port') || target.tagName === 'BUTTON') return;
       if (e.button !== 0) return;
 
-      isDragging = true;
-      this.element.classList.add('dragging');
-      this.element.style.cursor = CURSORS.TACTILE_GRIP;
-      document.body.style.cursor = CURSORS.TACTILE_GRIP;
+      e.stopPropagation();
 
+      isPotentialDrag = true;
+      isDragging = false;
       startScreenX = e.clientX;
       startScreenY = e.clientY;
       origWorldX = this.node.position.x;
       origWorldY = this.node.position.y;
-      this.audio.play(280, 'sine', 0.2, 0.05);
 
       const onMouseMove = (ev: MouseEvent) => {
-        if (!isDragging) return;
-        const deltaWorldX = (ev.clientX - startScreenX) / this.camera.zoom;
-        const deltaWorldY = (ev.clientY - startScreenY) / this.camera.zoom;
+        if (!isPotentialDrag) return;
 
-        const newX = origWorldX + deltaWorldX;
-        const newY = origWorldY + deltaWorldY;
+        const dist = Math.hypot(ev.clientX - startScreenX, ev.clientY - startScreenY);
+        if (!isDragging && dist > 4) {
+          isDragging = true;
+          this.element.classList.add('dragging');
+          document.body.classList.add('is-dragging-card');
+          this.element.style.cursor = CURSORS.TACTILE_GRIP;
+          document.body.style.cursor = CURSORS.TACTILE_GRIP;
 
-        this.node.position.x = newX;
-        this.node.position.y = newY;
-        this.updateProjection(this.camera);
+          // Limpiar cualquier selección accidental de texto y retirar foco para navegación pura
+          window.getSelection()?.removeAllRanges();
+          if (document.activeElement instanceof HTMLElement && this.element.contains(document.activeElement)) {
+            document.activeElement.blur();
+          }
+          this.audio.play(280, 'sine', 0.2, 0.05);
+        }
+
+        if (isDragging) {
+          const deltaWorldX = (ev.clientX - startScreenX) / this.camera.zoom;
+          const deltaWorldY = (ev.clientY - startScreenY) / this.camera.zoom;
+
+          this.node.position.x = origWorldX + deltaWorldX;
+          this.node.position.y = origWorldY + deltaWorldY;
+          if (this.phase === 'vapor') {
+            this.node.vaporPosition = { x: this.node.position.x, y: this.node.position.y };
+          } else if (this.phase === 'liquid') {
+            this.node.liquidPosition = { x: this.node.position.x, y: this.node.position.y };
+          }
+          this.updateProjection(this.camera);
+        }
       };
 
       const onMouseUp = () => {
         if (isDragging) {
           isDragging = false;
           this.element.classList.remove('dragging');
+          document.body.classList.remove('is-dragging-card');
           this.element.style.cursor = CURSORS.TACTILE_PINCH;
           document.body.style.cursor = CURSORS.COSMIC_OPEN;
 
-          this.graph.updateNodePosition(this.node.id, { ...this.node.position });
+          this.graph.updateNodePosition(this.node.id, { ...this.node.position }, this.phase);
           this.audio.play(220, 'sine', 0.2, 0.05);
         }
+        isPotentialDrag = false;
         window.removeEventListener('mousemove', onMouseMove);
         window.removeEventListener('mouseup', onMouseUp);
       };

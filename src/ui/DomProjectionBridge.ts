@@ -151,7 +151,14 @@ export class DomProjectionBridge {
       return;
     }
 
-    const currentNodes = this.graph.getAllNodes();
+    // Filtrado ontológico según la fase:
+    // En Niebla ('vapor'): Cielo limpio y libre. SOLO ideas vírgenes / chispas que NO forman parte del documento.
+    // En Fluido ('liquid'): Todas las ideas (el río documental conectado + chispas libres disponibles para conectar).
+    const allNodes = this.graph.getAllNodes();
+    const currentNodes = phase === 'vapor'
+      ? allNodes.filter((n) => !n.inDocument)
+      : allNodes;
+
     const currentIds = new Set(currentNodes.map((n) => n.id));
 
     // 1. Elimina únicamente las tarjetas que fueron borradas del grafo

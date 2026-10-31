@@ -18,7 +18,7 @@ import { HarmonicSynthesizer } from '../../audio/HarmonicSynthesizer';
 import { DiscardGutter } from '../margin/DiscardGutter';
 import { RawGutter } from '../margin/RawGutter';
 import { SemanticZoomController } from '../../engine/SemanticZoomController';
-import { SemanticLevel } from '../../core/types';
+import { SemanticLevel, ThoughtNode } from '../../core/types';
 import { SemanticZoomView, ParagraphBlock } from './SemanticZoomView';
 import { TextHud } from './TextHud';
 import { FocusManager } from '../focus/FocusManager';
@@ -46,6 +46,12 @@ export class EditorialEditor {
   private textHud: TextHud | null = null;
   private focusManager: FocusManager | null = null;
   private pressModal: PressModal;
+  private savedCaret: {
+    isTitle: boolean;
+    paragraphIndex: number;
+    nodeId?: string;
+    charOffset: number;
+  } | null = null;
 
   private graph: DocumentGraph;
   private audio: HarmonicSynthesizer;
@@ -98,6 +104,13 @@ export class EditorialEditor {
 
     // Actualiza los chips cuando el grafo de ideas cambie
     this.graph.subscribe(() => this.updateChips());
+
+    // Persistencia del cursor: registra la posición exacta del cursor en todo momento
+    document.addEventListener('selectionchange', () => {
+      if (this.container?.classList.contains('active')) {
+        this.saveCaretPosition();
+      }
+    });
   }
 
   /**
@@ -165,9 +178,6 @@ export class EditorialEditor {
     if (!this.bodyElement) return [];
 
     const blocks: { text: string; targetElement: HTMLElement }[] = [];
-    let currentBlockLines: string[] = [];
-    let currentBlockTargetEl: HTMLElement | null = null;
-
     const children = Array.from(this.bodyElement.children) as HTMLElement[];
 
     if (children.length === 0) {
@@ -184,31 +194,12 @@ export class EditorialEditor {
         .replace(/[\u200B\u00A0]/g, ' ')
         .trim();
 
-      if (cleanText.length === 0) {
-        // Párrafo vacío / Doble Enter explícito: delimita y cierra el bloque en curso
-        if (currentBlockLines.length > 0 && currentBlockTargetEl) {
-          blocks.push({
-            text: currentBlockLines.join('\n'),
-            targetElement: currentBlockTargetEl
-          });
-          currentBlockLines = [];
-          currentBlockTargetEl = null;
-        }
-      } else {
-        // Elemento con texto: continúa en el mismo bloque argumental
-        if (currentBlockLines.length === 0) {
-          currentBlockTargetEl = child;
-        }
-        currentBlockLines.push(cleanText);
+      if (cleanText.length > 0) {
+        blocks.push({
+          text: cleanText,
+          targetElement: child
+        });
       }
-    }
-
-    // Flush del último bloque acumulado
-    if (currentBlockLines.length > 0 && currentBlockTargetEl) {
-      blocks.push({
-        text: currentBlockLines.join('\n'),
-        targetElement: currentBlockTargetEl
-      });
     }
 
     return blocks;
@@ -507,6 +498,161 @@ export class EditorialEditor {
   }
 
   /**
+   * Guarda la posición exacta del cursor en el editor antes de cambiar de fase.
+   */
+  public saveCaretPosition(): void {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+
+    const titleEl = this.getTitleElement();
+    const anchor = sel.anchorNode;
+    if (!anchor) return;
+
+    if (titleEl && (titleEl === anchor || titleEl.contains(anchor))) {
+      this.savedCaret = {
+        isTitle: true,
+        paragraphIndex: -1,
+        charOffset: sel.anchorOffset
+      };
+      return;
+    }
+
+    if (this.bodyElement && this.bodyElement.contains(anchor)) {
+      const children = Array.from(this.bodyElement.children) as HTMLElement[];
+      let targetChild: HTMLElement | null = null;
+      let node: Node | null = anchor;
+
+      while (node && node !== this.bodyElement) {
+        if (node.parentElement === this.bodyElement) {
+          targetChild = node as HTMLElement;
+          break;
+        }
+        node = node.parentElement;
+      }
+
+      if (targetChild) {
+        const pIndex = children.indexOf(targetChild);
+        const nodeId = targetChild.dataset.nodeId;
+        let charOffset = 0;
+        try {
+          const range = sel.getRangeAt(0);
+          const preRange = range.cloneRange();
+          preRange.selectNodeContents(targetChild);
+          preRange.setEnd(range.startContainer, range.startOffset);
+          charOffset = preRange.toString().length;
+        } catch {
+          charOffset = sel.anchorOffset;
+        }
+
+        this.savedCaret = {
+          isTitle: false,
+          paragraphIndex: pIndex !== -1 ? pIndex : 0,
+          nodeId,
+          charOffset
+        };
+      }
+    }
+  }
+
+  /**
+   * Restaura con fidelidad milimétrica el cursor exactamente donde el autor lo dejó.
+   */
+  public restoreCaretPosition(): void {
+    if (!this.savedCaret) {
+      // Si no había cursor previo, colocar al final del primer párrafo
+      const firstChild = this.bodyElement?.firstElementChild as HTMLElement | null;
+      if (firstChild) {
+        this.setCaretInNode(firstChild, firstChild.innerText.length);
+      }
+      return;
+    }
+
+    if (this.savedCaret.isTitle) {
+      const titleEl = this.getTitleElement();
+      if (titleEl) {
+        titleEl.focus();
+        this.setCaretInNode(titleEl, this.savedCaret.charOffset);
+      }
+      return;
+    }
+
+    if (!this.bodyElement) return;
+
+    const children = Array.from(this.bodyElement.children) as HTMLElement[];
+    if (children.length === 0) {
+      this.bodyElement.focus();
+      return;
+    }
+
+    let targetEl: HTMLElement | null = null;
+
+    // 1. Intentar encontrar por nodeId si existía
+    if (this.savedCaret.nodeId) {
+      targetEl = children.find((c) => c.dataset.nodeId === this.savedCaret?.nodeId) || null;
+    }
+
+    // 2. Si no, por índice del párrafo
+    if (!targetEl) {
+      const idx = Math.min(Math.max(0, this.savedCaret.paragraphIndex), children.length - 1);
+      targetEl = children[idx] || null;
+    }
+
+    if (targetEl) {
+      this.bodyElement.focus();
+      this.setCaretInNode(targetEl, this.savedCaret.charOffset);
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      this.focusManager?.updateActiveParagraph();
+      this.focusManager?.updatePresencePosition();
+    }
+  }
+
+  /**
+   * Sitúa el caret en el nodo de texto adecuado según el offset de caracteres.
+   */
+  private setCaretInNode(element: HTMLElement, targetOffset: number): void {
+    const sel = window.getSelection();
+    if (!sel) return;
+
+    const range = document.createRange();
+
+    // Si el elemento está vacío (ej. nueva línea <p><br></p>)
+    if (!element.textContent || element.textContent.trim().length === 0) {
+      range.selectNodeContents(element);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      return;
+    }
+
+    let currentOffset = 0;
+    let found = false;
+
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null);
+    let textNode: Text | null = walker.nextNode() as Text | null;
+
+    while (textNode) {
+      const len = textNode.nodeValue ? textNode.nodeValue.length : 0;
+      if (currentOffset + len >= targetOffset) {
+        const offsetInNode = Math.min(Math.max(0, targetOffset - currentOffset), len);
+        range.setStart(textNode, offsetInNode);
+        range.collapse(true);
+        found = true;
+        break;
+      }
+      currentOffset += len;
+      textNode = walker.nextNode() as Text | null;
+    }
+
+    if (!found) {
+      range.selectNodeContents(element);
+      range.collapse(false);
+    }
+
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  /**
    * Obtiene la referencia al contenedor con scroll del santuario.
    */
   public getScrollContainer(): HTMLDivElement {
@@ -522,6 +668,9 @@ export class EditorialEditor {
       pressTrigger.style.display = visible ? 'inline-flex' : 'none';
     }
 
+    this.container.style.display = visible ? 'flex' : 'none';
+    this.container.style.pointerEvents = visible ? 'auto' : 'none';
+
     if (visible) {
       this.container.classList.add('active');
       if (this.rawShelf) this.rawShelf.classList.add('active');
@@ -530,7 +679,13 @@ export class EditorialEditor {
       if (this.rawGutter) this.rawGutter.setVisible(true);
       // Al entrar a Cristal, asegura que arrancamos en modo Prosa
       this.applySemanticZoom(this.zoomController?.getLevel() || 'prose');
+
+      // Restaurar el cursor exactamente donde el autor lo dejó
+      setTimeout(() => {
+        this.restoreCaretPosition();
+      }, 50);
     } else {
+      this.saveCaretPosition();
       this.container.classList.remove('active');
       if (this.rawShelf) {
         this.rawShelf.classList.remove('active');
@@ -617,6 +772,192 @@ export class EditorialEditor {
     this.focusManager?.updateActiveParagraph();
     this.focusManager?.triggerTypewriterScroll();
     this.bodyElement.dispatchEvent(new Event('input'));
+  }
+
+  /**
+   * ==========================================================================
+   * DERRETIR EL CRISTAL (Cristal -> Fluido / Niebla)
+   * ==========================================================================
+   * Desacopla la prosa de Cristal en barcas/tarjetas navegables en el lienzo 2D.
+   * Si el usuario redactó nuevos párrafos en Cristal, se sincronizan limpiamente al grafo.
+   */
+  public syncBlocksWithGraph(): void {
+    if (!this.bodyElement) return;
+
+    const blocks = this.getStructuredBlocks();
+    if (blocks.length === 0) return;
+
+    const linkedNodeIds: string[] = [];
+    const usedNodeIds = new Set<string>();
+
+    blocks.forEach((block, index) => {
+      const cleanText = block.text.trim();
+      if (!cleanText) return;
+
+      let nodeId = block.targetElement.dataset.nodeId;
+      let existingNode = nodeId ? this.graph.getNode(nodeId) : null;
+
+      // Si no tiene ID o no existe en el grafo, intentamos encontrarlo por coincidencia de texto (solo si no fue asignado a otro bloque)
+      if (!existingNode) {
+        const allNodes = this.graph.getAllNodes();
+        const found = allNodes.find((n) => !usedNodeIds.has(n.id) && n.inDocument && n.text.trim() === cleanText);
+        if (found) {
+          existingNode = found;
+          nodeId = found.id;
+          block.targetElement.dataset.nodeId = nodeId;
+        }
+      }
+
+      if (existingNode && !usedNodeIds.has(existingNode.id)) {
+        usedNodeIds.add(existingNode.id);
+        existingNode.inDocument = true;
+        // Actualiza el texto si el autor lo editó en la prosa
+        if (existingNode.text.trim() !== cleanText) {
+          this.graph.updateNodeText(existingNode.id, cleanText);
+        }
+        linkedNodeIds.push(existingNode.id);
+      } else {
+        // Crea una nueva barca/tarjeta en el río de ideas
+        const tag =
+          index === 0
+            ? 'Premisa'
+            : index === blocks.length - 1
+            ? 'Síntesis'
+            : `Afluente ${index + 1}`;
+
+        // Posición armónica en cascada en el lienzo 2D en espacios despejados
+        const basePos = {
+          x: -280 + index * 320,
+          y: -60 + (index % 2 === 0 ? -40 : 60)
+        };
+        const clearPos = this.graph.findClearPosition(basePos);
+
+        const newNode = this.graph.addNode(cleanText, clearPos, tag, true);
+        block.targetElement.dataset.nodeId = newNode.id;
+        usedNodeIds.add(newNode.id);
+        linkedNodeIds.push(newNode.id);
+      }
+    });
+
+    // Enlaza la corriente lineal A -> B -> C SOLO si el grafo aún no tenía ningún puente configurado
+    if (this.graph.getBridges().length === 0 && linkedNodeIds.length > 1) {
+      for (let i = 0; i < linkedNodeIds.length - 1; i++) {
+        this.graph.addBridge(linkedNodeIds[i], linkedNodeIds[i + 1]);
+      }
+    }
+  }
+
+  /**
+   * ==========================================================================
+   * SOLIDIFICAR LA CORRIENTE (Fluido / Niebla -> Cristal)
+   * ==========================================================================
+   * Toma el orden del río trazado en Fluido y reordena los párrafos en Cristal.
+   * Si una tarjeta cambió de orden o es nueva, emite el pulso mineral cálido.
+   * Garantiza CERO DUPLICADOS y preservación total de la prosa.
+   */
+  public applyFlowOrder(orderedNodes: ThoughtNode[]): void {
+    if (!this.bodyElement || orderedNodes.length === 0) return;
+
+    // Obtener los elementos hijos directos
+    const currentElements = Array.from(this.bodyElement.children) as HTMLElement[];
+    const elementMapByNodeId = new Map<string, HTMLElement>();
+    const elementMapByText = new Map<string, HTMLElement>();
+
+    currentElements.forEach((el) => {
+      const id = el.dataset.nodeId;
+      if (id) elementMapByNodeId.set(id, el);
+      const txt = (el.innerText || el.textContent || '').trim();
+      if (txt) elementMapByText.set(txt, el);
+    });
+
+    const usedElements = new Set<HTMLElement>();
+    const reorderedElements: HTMLElement[] = [];
+    let orderChanged = false;
+
+    orderedNodes.forEach((node) => {
+      const nodeText = node.text.trim();
+      if (!nodeText) return;
+
+      let targetEl = elementMapByNodeId.get(node.id);
+      if (!targetEl) {
+        targetEl = elementMapByText.get(nodeText);
+      }
+      if (targetEl && usedElements.has(targetEl)) {
+        targetEl = undefined;
+      }
+
+      if (targetEl) {
+        usedElements.add(targetEl);
+        if (targetEl.innerText.trim() !== nodeText) {
+          targetEl.innerText = nodeText;
+          orderChanged = true;
+        }
+        targetEl.dataset.nodeId = node.id;
+        reorderedElements.push(targetEl);
+      } else {
+        // Verificar que no tengamos ya este nodo o exactamente este texto en los elementos ordenados
+        const alreadyIncluded = reorderedElements.some(
+          (el) => el.dataset.nodeId === node.id || el.innerText.trim() === nodeText
+        );
+        if (!alreadyIncluded) {
+          const newP = document.createElement('p');
+          newP.dataset.nodeId = node.id;
+          newP.innerText = nodeText;
+          reorderedElements.push(newP);
+          orderChanged = true;
+        }
+      }
+    });
+
+    // Preservar cualquier párrafo existente de Cristal que no esté conectado al río (cero pérdida de datos)
+    currentElements.forEach((el) => {
+      if (!usedElements.has(el) && el.innerText.trim().length > 0) {
+        const isDuplicate = reorderedElements.some(
+          (r) => r.dataset.nodeId === el.dataset.nodeId || r.innerText.trim() === el.innerText.trim()
+        );
+        if (!isDuplicate) {
+          reorderedElements.push(el);
+          usedElements.add(el);
+        }
+      }
+    });
+
+    // Comprobar si las posiciones o cantidad cambiaron
+    if (reorderedElements.length !== currentElements.length) {
+      orderChanged = true;
+    } else {
+      for (let i = 0; i < reorderedElements.length; i++) {
+        if (currentElements[i] !== reorderedElements[i]) {
+          orderChanged = true;
+          break;
+        }
+      }
+    }
+
+    if (!orderChanged) return;
+
+    // Reensambla el documento según la nueva corriente del río
+    const fragment = document.createDocumentFragment();
+    reorderedElements.forEach((el, newIdx) => {
+      const oldIdx = currentElements.indexOf(el);
+      fragment.appendChild(el);
+
+      // Si cambió de lugar por el río en Fluido, iluminar con pulso mineral
+      if (oldIdx !== -1 && oldIdx !== newIdx) {
+        el.classList.remove('fusing-pulse');
+        void el.offsetWidth;
+        el.classList.add('fusing-pulse');
+        setTimeout(() => el.classList.remove('fusing-pulse'), 1900);
+      }
+    });
+
+    this.bodyElement.innerHTML = '';
+    this.bodyElement.appendChild(fragment);
+
+    // Actualiza métricas y foco
+    this.bodyElement.dispatchEvent(new Event('input'));
+    this.focusManager?.updateActiveParagraph();
+    this.focusManager?.triggerTypewriterScroll();
   }
 
   /**

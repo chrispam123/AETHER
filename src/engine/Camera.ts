@@ -104,7 +104,7 @@ export class Camera {
   /**
    * Notifica a todos los oyentes de la cámara.
    */
-  private notifyChange(): void {
+  public notifyChange(): void {
     for (let i = 0; i < this.listeners.length; i++) {
       this.listeners[i]();
     }
