@@ -1159,17 +1159,26 @@ body.hyperfocus-active .discard-gutter {
 
 /* Modulación de Escala de Voz en el Texto (TAMAÑOS FIJOS EN PX BLINDADOS) */
 .prose-voice-small {
+  display: inline !important;
   font-size: 16px !important;
-  line-height: 1.6 !important;
-  opacity: 0.78;
+  line-height: inherit !important;
+  opacity: 0.82;
   color: var(--ink-secondary);
   letter-spacing: 0.01em;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
 }
 
 .prose-voice-normal {
+  display: inline !important;
   font-size: 21px !important;
-  line-height: var(--line-height-prose) !important;
+  line-height: inherit !important;
   opacity: 1;
+  color: var(--ink-primary);
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
 }
 
 .prose-voice-large {

@@ -256,6 +256,27 @@ export class TextHud {
     }, 250);
   }
 
+  /**
+   * Busca si el nodo actual o alguno de sus ancestros (dentro del editor/título) es un span de voz.
+   */
+  private findVoiceSpan(node: Node | null): HTMLElement | null {
+    let curr: Node | null = node;
+    const boundary = this.activeTarget === 'title' ? this.titleElement : this.editorElement;
+    while (curr && curr !== boundary && curr !== document.body) {
+      if (curr instanceof HTMLElement) {
+        if (
+          curr.classList.contains('prose-voice-small') ||
+          curr.classList.contains('prose-voice-normal') ||
+          curr.classList.contains('prose-voice-large')
+        ) {
+          return curr;
+        }
+      }
+      curr = curr.parentNode;
+    }
+    return null;
+  }
+
   private updateActiveStates(): void {
     try {
       const isBold = document.queryCommandState('bold');
@@ -278,9 +299,26 @@ export class TextHud {
 
     // Reflejar escala activa si es en título
     if (this.activeTarget === 'title' && this.titleElement) {
-      const currentScale = this.titleElement.dataset.titleScale || 'normal';
+      const currentScale = (this.titleElement.dataset.titleScale as TextScale) || 'normal';
       this.scaleButtons.forEach((btn, s) => {
         btn.classList.toggle('active', s === currentScale);
+      });
+    } else if (this.activeTarget === 'body') {
+      const selection = window.getSelection();
+      let activeScale: TextScale = 'normal';
+      if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+        const range = selection.getRangeAt(0);
+        const voiceSpan = this.findVoiceSpan(range.commonAncestorContainer);
+        if (voiceSpan) {
+          if (voiceSpan.classList.contains('prose-voice-small')) {
+            activeScale = 'small';
+          } else if (voiceSpan.classList.contains('prose-voice-large')) {
+            activeScale = 'large';
+          }
+        }
+      }
+      this.scaleButtons.forEach((btn, s) => {
+        btn.classList.toggle('active', s === activeScale);
       });
     }
   }
@@ -303,15 +341,13 @@ export class TextHud {
    * - En CUERPO: Modula fragmentos de texto o eleva el bloque a Sección/Capítulo Orgánico (Vía A).
    */
   private applyTextScale(scale: TextScale): void {
-    this.scaleButtons.forEach((btn, s) => {
-      btn.classList.toggle('active', s === scale);
-    });
-
     if (this.activeTarget === 'title' && this.titleElement) {
       // 1. Modulación armónica del Título Principal
       this.titleElement.dataset.titleScale = scale;
       this.titleElement.classList.remove('scale-small', 'scale-normal', 'scale-large');
       this.titleElement.classList.add(`scale-${scale}`);
+
+      this.updateActiveStates();
 
       const freq = scale === 'small' ? 320 : scale === 'normal' ? 440 : 540;
       this.audio.play(freq, 'sine', 0.3, 0.1);
@@ -323,74 +359,123 @@ export class TextHud {
     if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
 
     const range = selection.getRangeAt(0);
+    const existingSpan = this.findVoiceSpan(range.commonAncestorContainer);
 
-    // 1. Extraemos el texto y desarmamos cualquier span de voz interno previo
-    const frag = range.cloneContents();
-    const tempDiv = document.createElement('div');
-    tempDiv.appendChild(frag);
+    const spanText = existingSpan ? (existingSpan.textContent || '').trim() : '';
+    const selText = range.toString().trim();
+    const isEntireSpan = existingSpan && (selText === spanText || spanText.length === 0);
 
-    // Si había spans de voz anidados dentro del fragmento, los desarmamos
-    tempDiv.querySelectorAll('.prose-voice-small, .prose-voice-normal, .prose-voice-large').forEach((el) => {
-      const parent = el.parentNode;
-      while (el.firstChild) {
-        parent?.insertBefore(el.firstChild, el);
-      }
-      parent?.removeChild(el);
-    });
-
-    const cleanFragment = document.createDocumentFragment();
-    while (tempDiv.firstChild) {
-      cleanFragment.appendChild(tempDiv.firstChild);
-    }
-
-    // 2. Comprobamos si el ancestro directo es un span de voz
-    let ancestor = range.commonAncestorContainer as HTMLElement;
-    if (ancestor.nodeType === Node.TEXT_NODE) {
-      ancestor = ancestor.parentElement as HTMLElement;
-    }
-    const isInsideVoiceSpan = Boolean(
-      ancestor &&
-      (ancestor.classList.contains('prose-voice-small') ||
-       ancestor.classList.contains('prose-voice-normal') ||
-       ancestor.classList.contains('prose-voice-large'))
-    );
-
-    let replacementNode: Node;
-
-    if (isInsideVoiceSpan && ancestor) {
-      // Si el contenedor padre ya es un span de voz, simplemente cambiamos su clase
-      ancestor.classList.remove('prose-voice-small', 'prose-voice-normal', 'prose-voice-large');
-      if (scale !== 'normal') {
-        ancestor.classList.add(`prose-voice-${scale}`);
-      } else {
-        // En normal, quitamos el contenedor y dejamos el texto plano
-        const p = ancestor.parentNode;
-        while (ancestor.firstChild) {
-          p?.insertBefore(ancestor.firstChild, ancestor);
-        }
-        p?.removeChild(ancestor);
-      }
-      replacementNode = ancestor;
-    } else {
-      range.deleteContents();
+    if (existingSpan && isEntireSpan) {
+      // Caso A: El span existente está completamente seleccionado
       if (scale === 'normal') {
-        range.insertNode(cleanFragment);
-        replacementNode = cleanFragment;
+        // Desarmar el span de voz y dejar el contenido plano en su lugar
+        const parent = existingSpan.parentNode;
+        if (parent) {
+          const children: Node[] = [];
+          while (existingSpan.firstChild) {
+            const child = existingSpan.firstChild;
+            children.push(child);
+            parent.insertBefore(child, existingSpan);
+          }
+          parent.removeChild(existingSpan);
+
+          // Re-seleccionar los nodos liberados para permitir seguir alternando
+          if (children.length > 0) {
+            try {
+              const newRange = document.createRange();
+              newRange.setStartBefore(children[0]);
+              newRange.setEndAfter(children[children.length - 1]);
+              selection.removeAllRanges();
+              selection.addRange(newRange);
+            } catch {
+              // Fallback
+            }
+          }
+        }
+      } else {
+        // Cambiar la clase del span existente directamente (de small a large o viceversa)
+        existingSpan.classList.remove('prose-voice-small', 'prose-voice-normal', 'prose-voice-large');
+        existingSpan.classList.add(`prose-voice-${scale}`);
+
+        // Mantener el span seleccionado
+        try {
+          const newRange = document.createRange();
+          newRange.selectNodeContents(existingSpan);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        } catch {
+          // Fallback
+        }
+      }
+    } else {
+      // Caso B: Texto plano o selección parcial
+      const frag = range.extractContents();
+
+      // Desarmar cualquier span de voz interno previo que pudiera venir en el fragmento
+      const tempDiv = document.createElement('div');
+      tempDiv.appendChild(frag);
+      tempDiv.querySelectorAll('.prose-voice-small, .prose-voice-normal, .prose-voice-large').forEach((el) => {
+        const p = el.parentNode;
+        while (el.firstChild) {
+          p?.insertBefore(el.firstChild, el);
+        }
+        p?.removeChild(el);
+      });
+
+      // Si el existingSpan original quedó vacío tras el extractContents, lo limpiamos
+      if (existingSpan && (!existingSpan.textContent || existingSpan.textContent.trim().length === 0)) {
+        existingSpan.remove();
+      }
+
+      if (scale === 'normal') {
+        const cleanFrag = document.createDocumentFragment();
+        const children: Node[] = [];
+        while (tempDiv.firstChild) {
+          const child = tempDiv.firstChild;
+          children.push(child);
+          cleanFrag.appendChild(child);
+        }
+        range.insertNode(cleanFrag);
+
+        if (children.length > 0) {
+          try {
+            const newRange = document.createRange();
+            newRange.setStartBefore(children[0]);
+            newRange.setEndAfter(children[children.length - 1]);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+          } catch {
+            // Fallback
+          }
+        }
       } else {
         const span = document.createElement('span');
         span.className = `prose-voice-${scale}`;
-        span.appendChild(cleanFragment);
+        while (tempDiv.firstChild) {
+          span.appendChild(tempDiv.firstChild);
+        }
         range.insertNode(span);
-        replacementNode = span;
+
+        try {
+          const newRange = document.createRange();
+          newRange.selectNodeContents(span);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        } catch {
+          // Fallback
+        }
       }
     }
 
-    // 3. Volvemos a seleccionar el nodo reemplazado para que el usuario pueda seguir pulsando T⁻, T, T⁺
+    this.updateActiveStates();
+
+    // Actualizar posición del HUD para acompañar la nueva altura del texto
     try {
-      const newRange = document.createRange();
-      newRange.selectNodeContents(replacementNode);
-      selection.removeAllRanges();
-      selection.addRange(newRange);
+      const activeRange = selection.getRangeAt(0);
+      const newRect = activeRange.getBoundingClientRect();
+      if (newRect && newRect.width > 0 && newRect.height > 0) {
+        this.showAtPosition(newRect);
+      }
     } catch {
       // Fallback
     }
