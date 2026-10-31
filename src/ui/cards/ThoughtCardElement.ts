@@ -6,9 +6,8 @@
  * - Edición de texto directa in-situ (`contenteditable`).
  * - Cursor artesanal táctil de pinza mineral (`TACTILE_PINCH`) en reposo.
  * - Cursor artesanal táctil de agarre firme (`TACTILE_GRIP`) durante el arrastre.
- * - Arrastre suave compensado por el factor de zoom de la cámara 2D.
+ * - Pilar 1: Conexión deliberada hacia el Río Narrativo con puerto de manantial interactivo.
  * - Proyección espacial reactiva mediante `camera.worldToScreen` y `scale(zoom)`.
- * - Preservación de foco y reconciliación reactiva sin destrucción de elementos.
  */
 
 import { ThoughtNode } from '../../core/types';
@@ -24,6 +23,8 @@ export class ThoughtCardElement {
   private audio: HarmonicSynthesizer;
   private camera: Camera;
   private phase: string;
+  private onPortClickCallback?: (nodeId: string) => void;
+  private onCardClickCallback?: (nodeId: string) => void;
 
   constructor(
     node: ThoughtNode,
@@ -48,6 +49,35 @@ export class ThoughtCardElement {
     this.attachDragBehavior();
   }
 
+  public getNodeId(): string {
+    return this.node.id;
+  }
+
+  public onPortClick(cb: (nodeId: string) => void): void {
+    this.onPortClickCallback = cb;
+  }
+
+  public onCardClick(cb: (nodeId: string) => void): void {
+    this.onCardClickCallback = cb;
+  }
+
+  public setConnecting(isConnecting: boolean): void {
+    const portBtn = this.element.querySelector('.thought-card-port');
+    const portLabel = this.element.querySelector('.port-label');
+    const portIcon = this.element.querySelector('.port-icon');
+    if (isConnecting) {
+      this.element.classList.add('is-connecting-source');
+      portBtn?.classList.add('is-connecting');
+      if (portLabel) portLabel.textContent = 'Enlazando...';
+      if (portIcon) portIcon.textContent = '●';
+    } else {
+      this.element.classList.remove('is-connecting-source');
+      portBtn?.classList.remove('is-connecting');
+      if (portLabel) portLabel.textContent = '';
+      if (portIcon) portIcon.textContent = '○';
+    }
+  }
+
   /**
    * Proyecta la posición del mundo infinito a la pantalla con escala de zoom.
    */
@@ -62,14 +92,32 @@ export class ThoughtCardElement {
    * Actualiza la fase de la tarjeta (Niebla <-> Fluido) sin destruir el nodo DOM.
    */
   public updatePhase(newPhase: string): void {
-    if (this.phase !== newPhase) {
+    const phaseChanged = this.phase !== newPhase;
+    if (phaseChanged) {
       this.element.classList.remove(`${this.phase}-card`);
       this.phase = newPhase;
       this.element.classList.add(`${newPhase}-card`);
+      this.renderContent();
+    } else if (this.phase === 'liquid') {
+      this.refreshFlowState();
+    }
+  }
 
-      const iconSpan = this.element.querySelector('.thought-card-tag span:first-child');
-      if (iconSpan) {
-        iconSpan.textContent = newPhase === 'vapor' ? '☁️' : '💧';
+  /**
+   * Actualiza el badge de flujo y estado de los puertos de corriente.
+   */
+  public refreshFlowState(): void {
+    if (this.phase !== 'liquid') return;
+    const flowRole = this.graph.getNodeFlowRole(this.node.id);
+    const badgeEl = this.element.querySelector('.thought-card-flow-badge') as HTMLElement | null;
+
+    if (badgeEl) {
+      if (flowRole.sequenceTitle) {
+        badgeEl.className = `thought-card-flow-badge ${flowRole.role}`;
+        badgeEl.innerText = flowRole.sequenceTitle;
+        badgeEl.style.display = 'inline-flex';
+      } else {
+        badgeEl.style.display = 'none';
       }
     }
   }
@@ -85,26 +133,54 @@ export class ThoughtCardElement {
   }
 
   /**
-   * Renderiza el contenido interno (icono de fase, tag semántico y texto editable).
+   * Renderiza el contenido interno (icono de fase, tag semántico, badge de flujo y puerto).
    */
   private renderContent(): void {
     const icon = this.phase === 'vapor' ? '☁️' : '💧';
+    const flowRole = this.graph.getNodeFlowRole(this.node.id);
+    const flowBadgeHtml =
+      this.phase === 'liquid' && flowRole.sequenceTitle
+        ? `<span class="thought-card-flow-badge ${flowRole.role}">${flowRole.sequenceTitle}</span>`
+        : `<span class="thought-card-flow-badge" style="display: none;"></span>`;
+
+    const portHtml =
+      this.phase === 'liquid'
+        ? `<button class="thought-card-port" data-tooltip="Encauzar hacia otra idea">
+            <span class="port-icon">○</span>
+            <span class="port-label"></span>
+           </button>`
+        : '';
 
     this.element.innerHTML = `
-      <div class="thought-card-tag">
-        <span>${icon}</span>
-        <span>${this.node.tag || 'Pensamiento'}</span>
+      <div class="thought-card-header">
+        <div class="thought-card-tag">
+          <span>${icon}</span>
+          <span>${this.node.tag || 'Pensamiento'}</span>
+        </div>
+        ${flowBadgeHtml}
       </div>
       <div class="thought-card-text" contenteditable="true" spellcheck="false">${this.node.text}</div>
+      ${portHtml ? `<div class="thought-card-footer">${portHtml}</div>` : ''}
     `;
 
     const textEl = this.element.querySelector('.thought-card-text') as HTMLDivElement;
     if (textEl) {
       textEl.addEventListener('input', () => {
-        // Actualiza el texto en el grafo de datos
         this.graph.updateNodeText(this.node.id, textEl.innerText);
       });
     }
+
+    const portBtn = this.element.querySelector('.thought-card-port');
+    if (portBtn) {
+      portBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.onPortClickCallback?.(this.node.id);
+      });
+    }
+
+    this.element.addEventListener('click', () => {
+      this.onCardClickCallback?.(this.node.id);
+    });
   }
 
   /**
@@ -119,19 +195,15 @@ export class ThoughtCardElement {
     let origWorldX = 0;
     let origWorldY = 0;
 
-    // Evitar que el doble clic en la tarjeta cree una idea en el lienzo de fondo
     this.element.addEventListener('dblclick', (e) => {
       e.stopPropagation();
     });
 
     this.element.addEventListener('mousedown', (e) => {
-      // Evitar que el mousedown en la tarjeta active el paneo del lienzo
       e.stopPropagation();
 
-      // Si el usuario hace clic dentro del texto para editar, permitir selección y no arrastrar
-      if (e.target === textEl) return;
-
-      // Si no es el botón izquierdo principal, ignorar
+      // Si el clic es en el puerto o en el texto editable, no arrastramos
+      if (e.target === textEl || (e.target as HTMLElement).closest('.thought-card-port')) return;
       if (e.button !== 0) return;
 
       isDragging = true;
@@ -147,7 +219,6 @@ export class ThoughtCardElement {
 
       const onMouseMove = (ev: MouseEvent) => {
         if (!isDragging) return;
-        // El delta de pantalla se compensa dividiendo por el zoom de la cámara
         const deltaWorldX = (ev.clientX - startScreenX) / this.camera.zoom;
         const deltaWorldY = (ev.clientY - startScreenY) / this.camera.zoom;
 
@@ -178,9 +249,6 @@ export class ThoughtCardElement {
     });
   }
 
-  /**
-   * Pone el foco del cursor automáticamente en el texto de la tarjeta.
-   */
   public focus(): void {
     const textEl = this.element.querySelector('.thought-card-text') as HTMLDivElement;
     if (textEl) {

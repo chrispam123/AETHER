@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="/src/styles/tokens.css">
   <link rel="stylesheet" href="/src/styles/canvas.css">
   <link rel="stylesheet" href="/src/styles/sanctuary.css">
+  <link rel="stylesheet" href="/src/styles/press.css">
   <link rel="stylesheet" href="/src/styles/atmospheres.css">
 
   <!-- CSS Crítico: Fondo basalto instantáneo antes de cargar JS -->
@@ -77,7 +78,12 @@
         <div class="brand-dot" id="brand-dot"></div>
         <span id="brand-text">AETHER</span>
       </div>
-      <div class="header-right-controls" id="header-right-controls" style="display: flex; align-items: center; gap: 10px;">
+      <div class="header-right-controls" id="header-right-controls" style="display: flex; align-items: center; gap: 16px;">
+        <button class="press-header-trigger" id="btn-press-open" title="La Prensa (Maquetación e Impresión - Ctrl+P)" style="display: none;">
+          <span class="press-trigger-icon">⎙</span>
+          <span class="press-trigger-label">La Prensa</span>
+          <span class="press-trigger-kbd">Ctrl+P</span>
+        </button>
         <button class="audio-toggle" id="audio-btn" title="Resonancia acústica armónica">
           <span id="audio-icon">♪</span>
           <span id="audio-label">Acústica</span>
@@ -113,18 +119,6 @@
             <kbd class="focus-kbd">Alt+Z</kbd>
           </button>
         </div>
-      </div>
-    </div>
-
-    <!-- Capa 3: Estante Flotante de Materia Prima (Modo Cristal) -->
-    <div id="crystal-raw-shelf" class="crystal-raw-shelf">
-      <button class="crystal-raw-toggle" id="raw-shelf-toggle" title="Alternar bandeja de materia prima">
-        <span class="raw-toggle-icon">✨</span>
-        <span class="raw-toggle-label" id="raw-shelf-label">Materia Prima</span>
-        <span class="raw-toggle-arrow" id="raw-shelf-arrow">▲</span>
-      </button>
-      <div class="crystal-raw-drawer" id="raw-shelf-drawer">
-        <div class="crystal-chips-row" id="crystal-chips-container"></div>
       </div>
     </div>
 

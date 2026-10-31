@@ -12,6 +12,7 @@ import { PortalOrbs } from './PortalOrbs';
 import { FluidBridges } from './FluidBridges';
 import { StateMachine } from '../core/StateMachine';
 import { DocumentGraph } from '../core/DocumentGraph';
+import { Vector2D } from '../core/types';
 
 export class CanvasRenderer {
   private canvas: HTMLCanvasElement;
@@ -22,6 +23,7 @@ export class CanvasRenderer {
   private bridges: FluidBridges;
   private stateMachine: StateMachine;
   private graph: DocumentGraph;
+  private dragStream: { sourcePos: Vector2D; currentPos: Vector2D } | null = null;
 
   private width: number = 0;
   private height: number = 0;
@@ -114,7 +116,7 @@ export class CanvasRenderer {
       this.ctx.scale(this.camera.zoom, this.camera.zoom);
       this.ctx.translate(-this.camera.x, -this.camera.y);
 
-      this.bridges.render(this.ctx, this.graph.getAllNodes(), this.time);
+      this.bridges.render(this.ctx, this.graph, this.time, this.dragStream);
 
       this.ctx.restore();
     }
@@ -125,5 +127,12 @@ export class CanvasRenderer {
    */
   public stop(): void {
     this.isRunning = false;
+  }
+
+  /**
+   * Actualiza el hilo de corriente interactivo que se está trazando en tiempo real.
+   */
+  public setDragStream(stream: { sourcePos: Vector2D; currentPos: Vector2D } | null): void {
+    this.dragStream = stream;
   }
 }

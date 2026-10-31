@@ -27,6 +27,7 @@ import { EditorialEditor } from './ui/sanctuary/EditorialEditor';
 import { PhaseDock } from './ui/dock/PhaseDock';
 import { FocusManager } from './ui/focus/FocusManager';
 import { DiscardGutter } from './ui/margin/DiscardGutter';
+import { RawGutter } from './ui/margin/RawGutter';
 import { SemanticZoomController } from './engine/SemanticZoomController';
 import { ZoomDial } from './ui/dock/ZoomDial';
 import { Phase } from './core/types';
@@ -43,6 +44,7 @@ class AetherApp {
   private dock: PhaseDock;
   private focusManager: FocusManager;
   private gutter: DiscardGutter;
+  private rawGutter: RawGutter;
   private zoomController: SemanticZoomController;
   private zoomDial: ZoomDial;
   private atmosphereSelector: AtmosphereSelector;
@@ -52,29 +54,35 @@ class AetherApp {
     const initialWidth = window.innerWidth;
     const initialHeight = window.innerHeight;
 
-    this.graph = new DocumentGraph([
-      {
-        id: '1',
-        tag: 'Intuición Nodal',
-        text: 'El lenguaje no es un inventario estático; es la prótesis viva de la imaginación humana.',
-        position: { x: initialWidth * 0.32, y: initialHeight * 0.36 },
-        timestamp: Date.now()
-      },
-      {
-        id: '2',
-        tag: 'Tensión Dialéctica',
-        text: 'La máquina de escribir nos obligó a pensar en una sola dimensión lineal.',
-        position: { x: initialWidth * 0.65, y: initialHeight * 0.42 },
-        timestamp: Date.now()
-      },
-      {
-        id: '3',
-        tag: 'Termodinámica',
-        text: 'Si el pensamiento pasa de vapor a líquido y a cristal, el software debe obedecer esa física.',
-        position: { x: initialWidth * 0.46, y: initialHeight * 0.66 },
-        timestamp: Date.now()
-      }
-    ]);
+    this.graph = new DocumentGraph(
+      [
+        {
+          id: '1',
+          tag: 'Premisa Inicial',
+          text: 'El lenguaje no es un inventario estático; es la prótesis viva de la imaginación humana.',
+          position: { x: initialWidth * 0.32, y: initialHeight * 0.36 },
+          timestamp: Date.now() - 3000
+        },
+        {
+          id: '2',
+          tag: 'Tensión Dialéctica',
+          text: 'La máquina de escribir nos obligó a pensar en una sola dimensión lineal.',
+          position: { x: initialWidth * 0.65, y: initialHeight * 0.42 },
+          timestamp: Date.now() - 2000
+        },
+        {
+          id: '3',
+          tag: 'Síntesis Final',
+          text: 'Si el pensamiento pasa de vapor a líquido y a cristal, el software debe obedecer esa física.',
+          position: { x: initialWidth * 0.46, y: initialHeight * 0.66 },
+          timestamp: Date.now() - 1000
+        }
+      ],
+      [
+        { id: '1->2', sourceId: '1', targetId: '2', timestamp: Date.now() },
+        { id: '2->3', sourceId: '2', targetId: '3', timestamp: Date.now() }
+      ]
+    );
 
     this.stateMachine = new StateMachine('portal');
 
@@ -95,11 +103,11 @@ class AetherApp {
     const cardsContainer = document.getElementById('cards-container') as HTMLDivElement;
     this.bridge = new DomProjectionBridge(
       cardsContainer,
-
       this.camera,
       this.graph,
       this.stateMachine,
-      this.audio
+      this.audio,
+      (stream) => this.renderer.setDragStream(stream)
     );
 
     this.editor = new EditorialEditor(this.graph, this.audio);
@@ -108,6 +116,15 @@ class AetherApp {
     // Pilar 2: El Margen de Descartes (Inercia y Masa del Texto)
     this.gutter = new DiscardGutter(this.audio);
     this.editor.setDiscardGutter(this.gutter);
+
+    // Pilar 1 & 3: El Aljibe de Materia Prima (Vía A: Margen Derecho Simétrico)
+    this.rawGutter = new RawGutter(this.graph, this.audio);
+    this.editor.setRawGutter(this.rawGutter);
+
+    // Ocultos en el arranque (solo deben despertar al entrar en fase Cristal)
+    this.gutter.setVisible(false);
+    this.rawGutter.setVisible(false);
+    this.editor.setVisible(false);
 
     // Pilar 2: El Foco Gravitatorio, Hiperfoco Sensorial y Enfoque Monástico (Alt + Z)
     this.focusManager = new FocusManager({ idleDelayMs: 2500 });
@@ -174,24 +191,48 @@ class AetherApp {
   }
 
   /**
-   * Conecta el botón de activación de audio sintético.
+   * Conecta el botón de activación de audio sintético y la firma sonora procedural.
    */
   private initAudioButton(): void {
     const audioBtn = document.getElementById('audio-btn');
     const audioLabel = document.getElementById('audio-label');
+    const crystalTitleEl = document.getElementById('crystal-title');
 
     if (audioBtn && audioLabel) {
-      audioBtn.addEventListener('click', () => {
-        const isEnabled = this.audio.toggle();
-        if (isEnabled) {
+      audioBtn.addEventListener('click', async () => {
+        const title = crystalTitleEl?.innerText.trim() || 'AETHER_ORIGIN';
+        const isPlaying = await this.audio.toggleAtmosphere(title);
+
+        if (isPlaying) {
           audioLabel.innerText = 'Acústica On';
-          audioBtn.style.color = 'var(--ink-primary)';
-          audioBtn.style.borderColor = 'rgba(255,255,255,0.2)';
+          audioBtn.classList.add('is-playing');
+          audioBtn.style.color = '#e5cb7a';
+          audioBtn.style.borderColor = 'rgba(212, 175, 55, 0.4)';
+          audioBtn.title = `Firma Sonora viva: "${title}"`;
         } else {
           audioLabel.innerText = 'Acústica';
+          audioBtn.classList.remove('is-playing');
           audioBtn.style.color = 'var(--ink-secondary)';
-          audioBtn.style.borderColor = 'rgba(255,255,255,0.05)';
+          audioBtn.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+          audioBtn.title = 'Resonancia acústica armónica';
         }
+      });
+    }
+
+    // Reactividad armónica: Si el usuario escribe o altera el título en Cristal,
+    // la atmósfera muta lentamente con un crossfade continuo hacia la nueva firma
+    if (crystalTitleEl) {
+      let titleDebounceTimer: number | null = null;
+      crystalTitleEl.addEventListener('input', () => {
+        if (!this.audio.isPlayingAtmosphere()) return;
+        if (titleDebounceTimer) window.clearTimeout(titleDebounceTimer);
+        titleDebounceTimer = window.setTimeout(() => {
+          const newTitle = crystalTitleEl.innerText.trim();
+          this.audio.updateAtmosphereSeed(newTitle);
+          if (audioBtn) {
+            audioBtn.title = `Firma Sonora viva: "${newTitle || 'AETHER_ORIGIN'}"`;
+          }
+        }, 600);
       });
     }
   }
@@ -215,9 +256,10 @@ class AetherApp {
       this.dock.update(phase);
       this.bridge.sync();
 
-      // 2. Actualizar santuario y margen de descartes en modo Cristal
+      // 2. Actualizar santuario y márgenes en modo Cristal
       this.editor.setVisible(phase === 'crystal');
       this.gutter.setVisible(phase === 'crystal');
+      this.rawGutter.setVisible(phase === 'crystal');
 
       if (phase === 'crystal') {
         this.focusManager.showPresenceHalo();

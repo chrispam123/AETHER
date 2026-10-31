@@ -50,12 +50,13 @@ export interface ThoughtNode {
  * Puente o filamento de tensión semántica entre dos ideas en estado Fluido.
  */
 export interface ConnectionBridge {
+  id: string;
   sourceId: string;
   targetId: string;
-  /** Nivel de afinidad semántica (0.0 a 1.0) */
-  tension: number;
-  /** Distancia calculada en tiempo real entre los dos nodos */
-  distance: number;
+  tension?: number;
+  distance?: number;
+  label?: string;
+  timestamp?: number;
 }
 
 /**

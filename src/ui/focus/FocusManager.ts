@@ -331,7 +331,7 @@ export class FocusManager {
   /**
    * Desplaza suavemente el contenedor para mantener el párrafo activo centrado (~40% de la ventana).
    */
-  private triggerTypewriterScroll(immediate: boolean = false): void {
+  public triggerTypewriterScroll(immediate: boolean = false): void {
     if (!this.scrollContainer || !this.activeBlock) return;
 
     if (this.typewriterTimer) {

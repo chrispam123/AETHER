@@ -15,7 +15,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 4;
+  z-index: 15;
   pointer-events: none;
   display: flex;
   flex-direction: column;
@@ -74,6 +74,23 @@ header:hover {
 .audio-toggle:hover {
   background: rgba(255, 255, 255, 0.06);
   color: var(--ink-primary);
+}
+
+.audio-toggle.is-playing {
+  background: rgba(212, 175, 55, 0.08) !important;
+  color: #f3e6c0 !important;
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.25);
+  animation: audioPillBreathe 4s infinite ease-in-out;
+}
+
+@keyframes audioPillBreathe {
+  0%, 100% {
+    border-color: rgba(212, 175, 55, 0.3);
+  }
+  50% {
+    border-color: rgba(212, 175, 55, 0.65);
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.35);
+  }
 }
 
 /* --- PORTAL DE LLEGADA (PREGUNTA ONTOLÓGICA) --- */
@@ -227,11 +244,19 @@ header:hover {
   z-index: 100 !important;
 }
 
+.thought-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 10px;
+}
+
 .thought-card-tag {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  margin-bottom: 10px;
+  margin-bottom: 0;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -240,6 +265,158 @@ header:hover {
 }
 .thought-card.vapor-card .thought-card-tag { color: var(--vapor-accent); }
 .thought-card.liquid-card .thought-card-tag { color: var(--liquid-accent); }
+
+/* Pilar 1: Insignias de rol en el Río Narrativo */
+.thought-card-flow-badge {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  padding: 3px 9px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  backdrop-filter: blur(12px);
+  user-select: none;
+  transition: all 0.3s ease;
+}
+.thought-card-flow-badge.source {
+  background: rgba(212, 175, 55, 0.16);
+  color: #e2d7c3;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+}
+.thought-card-flow-badge.flow {
+  background: rgba(126, 168, 149, 0.18);
+  color: #bbf0d8;
+  border: 1px solid rgba(126, 168, 149, 0.4);
+  box-shadow: 0 0 10px rgba(126, 168, 149, 0.2);
+}
+.thought-card-flow-badge.drain {
+  background: rgba(147, 197, 253, 0.18);
+  color: #dbeafe;
+  border: 1px solid rgba(147, 197, 253, 0.4);
+  box-shadow: 0 0 10px rgba(147, 197, 253, 0.2);
+}
+
+/* Pie de tarjeta con puerto interactivo de manantial */
+.thought-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.thought-card-port {
+  position: relative;
+  background: rgba(20, 24, 30, 0.75);
+  border: 1px solid rgba(126, 168, 149, 0.35);
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #a8d8c2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.thought-card-port .port-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 12px;
+}
+
+.thought-card-port .port-label {
+  display: none;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.thought-card-port:hover {
+  background: rgba(26, 32, 40, 0.95);
+  border-color: rgba(212, 175, 55, 0.6);
+  color: #f5eedb;
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Estado activo de conexión: se expande a pill noble para dar claridad */
+.thought-card-port.is-connecting,
+.thought-card.is-connecting-source .thought-card-port {
+  width: auto;
+  border-radius: 14px;
+  padding: 3px 10px;
+  gap: 6px;
+  background: rgba(212, 175, 55, 0.25) !important;
+  border-color: #d4af37 !important;
+  color: #fff8e8 !important;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.7) !important;
+  animation: portPulseGlow 1.2s infinite alternate ease-in-out;
+}
+
+.thought-card-port.is-connecting .port-label,
+.thought-card.is-connecting-source .thought-card-port .port-label {
+  display: inline;
+}
+
+/* Micro-Cristal Aether: Tooltip flotante artesanal */
+.thought-card-port::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: rgba(14, 17, 22, 0.94);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(126, 168, 149, 0.3);
+  border-radius: 6px;
+  color: #9eb3a7;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  padding: 4px 9px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 1px rgba(255, 255, 255, 0.1);
+  transform: translateY(4px);
+  transition: opacity 0.2s ease 0.35s, transform 0.2s ease 0.35s;
+  z-index: 9999;
+}
+
+.thought-card-port:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* Ocultar el tooltip si está enlazando o si no tiene texto */
+.thought-card-port.is-connecting::after,
+.thought-card.is-connecting-source .thought-card-port::after,
+.thought-card-port:not([data-tooltip])::after {
+  display: none !important;
+}
+
+@keyframes portPulseGlow {
+  from { transform: scale(1); box-shadow: 0 0 10px rgba(212, 175, 55, 0.4); }
+  to { transform: scale(1.06); box-shadow: 0 0 22px rgba(212, 175, 55, 0.85); }
+}
 
 .thought-card-text {
   font-family: var(--font-prose);
@@ -458,17 +635,7 @@ header, #phase-dock, .crystal-raw-shelf, .crystal-metrics, #canvas-hint {
 /* Bandeja de Materia Prima en Modo Cristal */
 /* Estante Flotante Colapsable de Materia Prima en Modo Cristal */
 .crystal-raw-shelf {
-  position: fixed;
-  bottom: 96px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-  display: flex;
-  flex-direction: column-reverse;
-  align-items: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  display: none !important;
 }
 .crystal-raw-shelf.active {
   opacity: 1;
@@ -726,7 +893,7 @@ header, #phase-dock, .crystal-raw-shelf, .crystal-metrics, #canvas-hint {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  z-index: 10;
+  z-index: 50;
   pointer-events: auto;
   scrollbar-width: none;
   opacity: 0;
@@ -830,6 +997,197 @@ body.hyperfocus-active .discard-gutter {
   to {
     opacity: 1;
     transform: translateX(0) scale(1);
+  }
+}
+
+/* ============================================================================
+   PILAR 1 & 3: MARGEN DE MATERIA PRIMA (RAW GUTTER - ALJIBE DERECHO)
+   ============================================================================ */
+.raw-gutter {
+  position: fixed;
+  top: 140px;
+  right: max(24px, calc(50% - 340px - 250px));
+  width: 220px;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: none; /* Oculto por defecto; solo se activa en modo Cristal */
+  flex-direction: column;
+  gap: 12px;
+  z-index: 50;
+  pointer-events: auto;
+  scrollbar-width: none;
+  opacity: 0.15;
+  transform: translateX(12px);
+  transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.raw-gutter::-webkit-scrollbar {
+  display: none;
+}
+
+/* Al acercarse con el ratón, despierta con nitidez cristalina al 100% */
+.raw-gutter:hover {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Atenuación profunda en hiperfoco */
+body.hyperfocus-active .raw-gutter {
+  opacity: 0.05 !important;
+  pointer-events: none;
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.raw-gutter-header {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: #d4af37;
+  opacity: 0.85;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+
+.raw-chip {
+  background: rgba(22, 24, 30, 0.72);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(226, 215, 195, 0.12);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.raw-chip:hover {
+  background: rgba(28, 31, 40, 0.92);
+  border-color: rgba(226, 215, 195, 0.35);
+  box-shadow: 0 6px 24px -4px rgba(212, 175, 55, 0.25);
+  transform: translateY(-2px);
+}
+
+.raw-chip-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #e2d7c3;
+  opacity: 0.75;
+}
+
+.raw-chip-text {
+  font-family: var(--font-prose);
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink-primary);
+  opacity: 0.88;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.raw-chip-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.raw-chip-action {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: #d4af37;
+  opacity: 0;
+  transform: translateX(4px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.raw-chip:hover .raw-chip-action {
+  opacity: 0.9;
+  transform: translateX(0);
+}
+
+/* Animación de disolución y fuga de la gema hacia el texto */
+.raw-chip.is-dissolving {
+  pointer-events: none;
+  animation: chipDissolve 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes chipDissolve {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-36px) scale(0.92);
+    filter: blur(6px);
+  }
+}
+
+/* Mensaje Zen cuando todo está cristalizado */
+.raw-empty-zen {
+  padding: 16px 14px;
+  border-radius: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  font-family: var(--font-prose);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--ink-secondary);
+  opacity: 0.5;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.4;
+  user-select: none;
+}
+
+.raw-empty-icon {
+  font-size: 14px;
+  color: #e2d7c3;
+  opacity: 0.7;
+}
+
+/* ============================================================================
+   PULSO DE LUZ MINERAL EN EL PÁRRAFO RECEPTOR (FUSIÓN SUAVE)
+   ============================================================================ */
+.crystal-body > *.fusing-pulse {
+  animation: fusingParagraphGlow 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+@keyframes fusingParagraphGlow {
+  0% {
+    background: rgba(226, 215, 195, 0.15);
+    box-shadow: 0 0 35px rgba(226, 215, 195, 0.25), inset 0 0 15px rgba(226, 215, 195, 0.1);
+    text-shadow: 0 0 12px rgba(226, 215, 195, 0.65);
+    border-radius: 6px;
+    transform: scale(1.008);
+  }
+  40% {
+    background: rgba(226, 215, 195, 0.08);
+    box-shadow: 0 0 20px rgba(226, 215, 195, 0.15);
+    text-shadow: 0 0 6px rgba(226, 215, 195, 0.4);
+  }
+  100% {
+    background: transparent;
+    box-shadow: none;
+    text-shadow: none;
+    border-radius: 0;
+    transform: scale(1);
   }
 }
 

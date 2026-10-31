@@ -16,11 +16,13 @@
 import { DocumentGraph } from '../../core/DocumentGraph';
 import { HarmonicSynthesizer } from '../../audio/HarmonicSynthesizer';
 import { DiscardGutter } from '../margin/DiscardGutter';
+import { RawGutter } from '../margin/RawGutter';
 import { SemanticZoomController } from '../../engine/SemanticZoomController';
 import { SemanticLevel } from '../../core/types';
 import { SemanticZoomView, ParagraphBlock } from './SemanticZoomView';
 import { TextHud } from './TextHud';
 import { FocusManager } from '../focus/FocusManager';
+import { PressModal } from '../press/PressModal';
 
 export class EditorialEditor {
   private container: HTMLDivElement;
@@ -43,10 +45,12 @@ export class EditorialEditor {
   private cachedRawText: string = '';
   private textHud: TextHud | null = null;
   private focusManager: FocusManager | null = null;
+  private pressModal: PressModal;
 
   private graph: DocumentGraph;
   private audio: HarmonicSynthesizer;
   private gutter: DiscardGutter | null = null;
+  private rawGutter: RawGutter | null = null;
 
   constructor(graph: DocumentGraph, audio: HarmonicSynthesizer) {
     this.graph = graph;
@@ -88,8 +92,50 @@ export class EditorialEditor {
     this.initRightClickThesisSelection();
     this.updateChips();
 
+    // La Prensa Editorial (Maquetación e Impresión para Sociedad/Empresa)
+    this.pressModal = new PressModal(this.audio);
+    this.initPressButton();
+
     // Actualiza los chips cuando el grafo de ideas cambie
     this.graph.subscribe(() => this.updateChips());
+  }
+
+  /**
+   * Conecta el botón de La Prensa y el atajo global Ctrl+P en modo Cristal.
+   */
+  private initPressButton(): void {
+    const pressBtn = document.getElementById('btn-press-open');
+    pressBtn?.addEventListener('click', () => {
+      this.openPress();
+    });
+
+    // Atajo global Ctrl+P / Cmd+P cuando estamos en el Santuario
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P')) {
+        // Solo interceptar si el santuario de Cristal está activo y visible
+        if (this.container && this.container.style.display !== 'none') {
+          e.preventDefault();
+          this.openPress();
+        }
+      }
+    });
+  }
+
+  /**
+   * Abre La Prensa inyectando el contenido vivo de Cristal al pliego físico.
+   */
+  public openPress(): void {
+    const titleEl = this.getTitleElement();
+    const title = titleEl?.innerText.trim() || 'Sin Título';
+    const blocks = this.getStructuredBlocks();
+    const paragraphs =
+      blocks.length > 0
+        ? blocks.map((b) => b.text)
+        : this.bodyElement?.innerText.trim()
+        ? [this.bodyElement.innerText.trim()]
+        : [];
+
+    this.pressModal.open({ title, paragraphs });
   }
 
   /**
@@ -361,6 +407,8 @@ export class EditorialEditor {
       this.thesisContainer.style.display = 'none';
       this.mapContainer.style.display = 'none';
       if (this.wordCountEl) this.wordCountEl.parentElement!.style.display = 'flex';
+      this.gutter?.setVisible(true);
+      this.rawGutter?.setVisible(true);
     } else if (level === 'thesis') {
       // 50%: Frases tesis destacadas y relleno secundario plegado
       this.bodyElement.style.display = 'none';
@@ -368,6 +416,8 @@ export class EditorialEditor {
       this.mapContainer.style.display = 'none';
       this.semanticView.renderThesisView(blocks);
       if (this.wordCountEl) this.wordCountEl.parentElement!.style.display = 'none';
+      this.gutter?.setVisible(false);
+      this.rawGutter?.setVisible(false);
     } else if (level === 'map') {
       // 20%: Cartografía modular de bloques argumentales
       this.bodyElement.style.display = 'none';
@@ -375,6 +425,8 @@ export class EditorialEditor {
       this.mapContainer.style.display = 'flex';
       this.semanticView.renderMapView(blocks);
       if (this.wordCountEl) this.wordCountEl.parentElement!.style.display = 'none';
+      this.gutter?.setVisible(false);
+      this.rawGutter?.setVisible(false);
     }
   }
 
@@ -433,6 +485,14 @@ export class EditorialEditor {
   }
 
   /**
+   * Conecta el canalón simétrico derecho de Materia Prima (Vía A).
+   */
+  public setRawGutter(gutter: RawGutter): void {
+    this.rawGutter = gutter;
+    this.rawGutter.onFuse((text) => this.insertFusedThought(text));
+  }
+
+  /**
    * Obtiene la referencia al elemento editable del cuerpo de texto.
    */
   public getBodyElement(): HTMLDivElement {
@@ -454,14 +514,20 @@ export class EditorialEditor {
   }
 
   /**
-   * Muestra u oculta el santuario editorial y el estante flotante según la fase activa.
+   * Muestra u oculta el santuario editorial y los márgenes según la fase activa.
    */
   public setVisible(visible: boolean): void {
+    const pressTrigger = document.getElementById('btn-press-open');
+    if (pressTrigger) {
+      pressTrigger.style.display = visible ? 'inline-flex' : 'none';
+    }
+
     if (visible) {
       this.container.classList.add('active');
       if (this.rawShelf) this.rawShelf.classList.add('active');
       this.updateChips();
       if (this.gutter) this.gutter.setVisible(true);
+      if (this.rawGutter) this.rawGutter.setVisible(true);
       // Al entrar a Cristal, asegura que arrancamos en modo Prosa
       this.applySemanticZoom(this.zoomController?.getLevel() || 'prose');
     } else {
@@ -471,8 +537,86 @@ export class EditorialEditor {
         this.rawShelf.classList.remove('expanded');
       }
       if (this.gutter) this.gutter.setVisible(false);
+      if (this.rawGutter) this.rawGutter.setVisible(false);
       this.textHud?.hideImmediately();
     }
+  }
+
+  /**
+   * Funde una chispa de Materia Prima en el cursor de la prosa y despierta un pulso
+   * de luz cálida mineral en el párrafo receptor que se asienta suavemente.
+   */
+  public insertFusedThought(text: string): void {
+    if (!this.bodyElement) return;
+    this.bodyElement.focus();
+
+    let targetP: HTMLElement | null = null;
+    const selection = window.getSelection();
+
+    if (selection && selection.rangeCount > 0 && this.bodyElement.contains(selection.anchorNode)) {
+      // Localiza el bloque <p> o <div> directo hijo que contiene el cursor
+      let node: Node | null = selection.anchorNode;
+      while (node && node !== this.bodyElement) {
+        if (node.nodeType === Node.ELEMENT_NODE && (node as HTMLElement).parentElement === this.bodyElement) {
+          targetP = node as HTMLElement;
+          break;
+        }
+        node = node.parentNode;
+      }
+
+      // Si hay texto antes del cursor y no termina en espacio, añadimos espacio de cortesía
+      const needsLeadingSpace =
+        selection.anchorOffset > 0 &&
+        selection.anchorNode?.textContent?.charAt(selection.anchorOffset - 1) !== ' ';
+      const formatted = (needsLeadingSpace ? ' ' : '') + text;
+
+      const success = document.execCommand('insertText', false, formatted);
+      if (!success) {
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        const textNode = document.createTextNode(formatted);
+        range.insertNode(textNode);
+        range.setStartAfter(textNode);
+        range.setEndAfter(textNode);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    } else {
+      // Si el cursor no estaba en el texto, añade un nuevo párrafo limpio al final
+      const newP = document.createElement('p');
+      newP.innerText = text;
+      this.bodyElement.appendChild(newP);
+      targetP = newP;
+
+      const range = document.createRange();
+      range.selectNodeContents(newP);
+      range.collapse(false);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    }
+
+    if (!targetP) {
+      targetP =
+        (this.bodyElement.querySelector('.is-active-focus') as HTMLElement) ||
+        (this.bodyElement.lastElementChild as HTMLElement);
+    }
+
+    // Disparo del pulso de luz cálida mineral que se asienta suavemente
+    if (targetP) {
+      targetP.classList.remove('fusing-pulse');
+      void targetP.offsetWidth; // Reflow para reiniciar la animación
+      targetP.classList.add('fusing-pulse');
+
+      setTimeout(() => {
+        targetP?.classList.remove('fusing-pulse');
+      }, 1900);
+
+      targetP.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    this.focusManager?.updateActiveParagraph();
+    this.focusManager?.triggerTypewriterScroll();
+    this.bodyElement.dispatchEvent(new Event('input'));
   }
 
   /**
