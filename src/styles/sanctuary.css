@@ -997,6 +997,10 @@ body.hyperfocus-active .discard-gutter {
   backdrop-filter: blur(24px);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
+  box-sizing: border-box;
+  width: 100%;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .thesis-card:hover {
@@ -1016,6 +1020,15 @@ body.hyperfocus-active .discard-gutter {
   display: flex;
   align-items: baseline;
   gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.thesis-text {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .thesis-marker {
@@ -1040,6 +1053,8 @@ body.hyperfocus-active .discard-gutter {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
   transition: opacity 0.4s ease, max-height 0.4s ease;
 }
 
@@ -1055,6 +1070,7 @@ body.hyperfocus-active .discard-gutter {
   flex-direction: column;
   align-items: center;
   width: 100%;
+  box-sizing: border-box;
   padding-bottom: 50vh;
   animation: fadeInSoft 0.4s ease forwards;
 }
@@ -1066,10 +1082,12 @@ body.hyperfocus-active .discard-gutter {
   gap: 16px;
   width: 100%;
   max-width: 580px;
+  box-sizing: border-box;
 }
 
 .argument-node-card {
   width: 100%;
+  box-sizing: border-box;
   background: rgba(22, 24, 30, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(28px);
@@ -1078,6 +1096,8 @@ body.hyperfocus-active .discard-gutter {
   box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.7);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .argument-node-card:hover {
@@ -1101,6 +1121,8 @@ body.hyperfocus-active .discard-gutter {
   color: var(--ink-primary);
   line-height: 1.45;
   margin-bottom: 14px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .argument-node-footer {
