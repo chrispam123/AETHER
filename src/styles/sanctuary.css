@@ -366,11 +366,11 @@ header:hover {
 }
 
 /* ============================================================================
-   ENFOQUE MONÁSTICO: DIMMING DE PÁRRAFOS (PÁRRAFO VIVO 100% / SUSURRO GRAFITO 18%)
+   ENFOQUE MONÁSTICO: DIMMING DE PÁRRAFOS (PÁRRAFO VIVO 100% / SUSURRO GRAFITO 10%)
    ============================================================================ */
 #crystal-sanctuary.focus-dim-mode .crystal-title,
 #crystal-sanctuary.focus-dim-mode .crystal-body p {
-  opacity: 0.18;
+  opacity: 0.10;
   transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
