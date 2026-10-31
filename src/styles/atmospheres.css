@@ -21,7 +21,7 @@ body[data-atmosphere="atmosfera"] {
 /* 2. AURA · OBSIDIANA Y CIAN GLACIAL */
 body[data-atmosphere="aura"] {
   --font-prose: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --bg-sanctuary: #090a0d;
+  --bg-sanctuary: #111215;
   --ink-primary: #f5f7fa;
   --ink-secondary: #8892a0;
   --crystal-accent: #6fe0eb;
@@ -32,7 +32,7 @@ body[data-atmosphere="aura"] {
 /* 3. FLUJO · CAFÉ CARBÓN Y COBRE CÁLIDO */
 body[data-atmosphere="halo"] {
   --font-prose: 'Lora', 'Palatino Linotype', Palatino, serif;
-  --bg-sanctuary: #141211;
+  --bg-sanctuary: #111215;
   --ink-primary: #f3ede2;
   --ink-secondary: #a6988c;
   --crystal-accent: #e59c77;
