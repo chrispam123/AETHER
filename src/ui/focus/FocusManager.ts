@@ -110,11 +110,12 @@ export class FocusManager {
       target.addEventListener('keydown', (e) => {
         this.handleActivity();
         if (e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete') {
-          requestAnimationFrame(() => {
+          // El navegador genera o destruye nodos en el DOM; en el siguiente tick limpiamos clases clonadas
+          setTimeout(() => {
             this.updateActiveParagraph();
             this.updatePresencePosition();
             this.triggerTypewriterScroll();
-          });
+          }, 15);
         }
       });
 
@@ -248,6 +249,7 @@ export class FocusManager {
 
   /**
    * Detecta y marca el párrafo o título donde se encuentra actualmente el cursor.
+   * Garantiza que ÚNICAMENTE un bloque en todo el santuario tenga la clase is-active-focus.
    */
   public updateActiveParagraph(): void {
     const selection = window.getSelection();
@@ -268,38 +270,37 @@ export class FocusManager {
     }
     // B. ¿Está dentro del Cuerpo de Prosa?
     else if (this.trackedElement && (this.trackedElement === node || this.trackedElement.contains(node))) {
-      const p = (node as HTMLElement).closest('p');
-      if (p && this.trackedElement.contains(p)) {
-        newActive = p;
+      // Localizamos el hijo DIRECTO de trackedElement (p, div, blockquote, etc.) que contiene al nodo
+      let curr: Node | null = node;
+      while (curr && curr.parentNode !== this.trackedElement && curr !== document.body) {
+        curr = curr.parentNode;
+      }
+
+      if (curr instanceof HTMLElement && curr.parentNode === this.trackedElement) {
+        newActive = curr;
       } else if (node === this.trackedElement) {
-        newActive = (this.trackedElement.firstElementChild as HTMLElement) || null;
-      } else {
-        // Si es un nodo de bloque directo hijo del editor
-        let curr: Node | null = node;
-        while (curr && curr.parentNode !== this.trackedElement && curr !== document.body) {
-          curr = curr.parentNode;
-        }
-        if (curr instanceof HTMLElement) {
-          newActive = curr;
-        }
+        // Si el cursor está en la raíz, buscar el hijo en el offset o el primer elemento
+        const childAtOffset = this.trackedElement.children[selection.anchorOffset];
+        newActive = (childAtOffset as HTMLElement) || (this.trackedElement.firstElementChild as HTMLElement) || null;
       }
     }
 
-    // Si no se encontró y el foco está en el editor, por defecto el primer párrafo
+    // Fallback si el foco está activo en el editor
     if (!newActive && document.activeElement === this.trackedElement) {
       newActive = (this.trackedElement?.firstElementChild as HTMLElement) || null;
     }
 
-    // Aplicar las clases si hubo cambio de bloque activo
-    if (newActive && newActive !== this.activeBlock) {
-      if (this.activeBlock) {
-        this.activeBlock.classList.remove('is-active-focus');
+    // LIMPIEZA TOTAL: Remover 'is-active-focus' de CUALQUIER elemento en el santuario que no sea newActive
+    const root = this.scrollContainer || document.body;
+    root.querySelectorAll('.is-active-focus').forEach((el) => {
+      if (el !== newActive) {
+        el.classList.remove('is-active-focus');
       }
+    });
+
+    if (newActive) {
+      newActive.classList.add('is-active-focus');
       this.activeBlock = newActive;
-      this.activeBlock.classList.add('is-active-focus');
-    } else if (!this.activeBlock && newActive) {
-      this.activeBlock = newActive;
-      this.activeBlock.classList.add('is-active-focus');
     }
   }
 

@@ -366,18 +366,30 @@ header:hover {
 }
 
 /* ============================================================================
-   ENFOQUE MONÁSTICO: DIMMING DE PÁRRAFOS (PÁRRAFO VIVO 100% / SUSURRO GRAFITO 10%)
+   ENFOQUE MONÁSTICO: DIMMING DE BLOQUES (PÁRRAFO VIVO 100% / SUSURRO GRAFITO 10%)
    ============================================================================ */
+/* Toda la periferia del editor (título y todos los hijos directos del cuerpo) entra en modo susurro */
 #crystal-sanctuary.focus-dim-mode .crystal-title,
-#crystal-sanctuary.focus-dim-mode .crystal-body p {
+#crystal-sanctuary.focus-dim-mode .crystal-body > * {
   opacity: 0.10;
   transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* El único bloque activo (párrafo, div o título) brilla al 100% */
 #crystal-sanctuary.focus-dim-mode .crystal-title.is-active-focus,
-#crystal-sanctuary.focus-dim-mode .crystal-body p.is-active-focus {
+#crystal-sanctuary.focus-dim-mode .crystal-body > *.is-active-focus {
   opacity: 1 !important;
   text-shadow: 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+/* Atenuar la barra de métricas inferior durante el enfoque monástico */
+#crystal-sanctuary.focus-dim-mode .crystal-metrics {
+  opacity: 0.25;
+  transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#crystal-sanctuary.focus-dim-mode .crystal-metrics:hover {
+  opacity: 0.85;
 }
 
 /* ============================================================================
