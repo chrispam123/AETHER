@@ -118,25 +118,13 @@ class AetherApp {
     this.zoomDial = new ZoomDial(this.zoomController, this.stateMachine);
     this.editor.setSemanticZoomController(this.zoomController);
 
-    // Sistema de Atmósferas Editoriales (ATMÓSFERA, AURA, HALO)
+    // Sistema de Atmósferas Editoriales: Tríptico de luz en el logo (ATMÓSFERA, AURA, HALO)
     this.atmosphereSelector = new AtmosphereSelector(this.audio, this.stateMachine);
     const brandContainer = document.querySelector('.brand');
-    if (brandContainer && brandContainer.parentElement) {
-      // Contenedor vertical en la esquina izquierda para AETHER y su atmósfera debajo
-      let brandCol = document.getElementById('brand-column');
-      if (!brandCol) {
-        brandCol = document.createElement('div');
-        brandCol.id = 'brand-column';
-        brandCol.className = 'brand-column';
-        brandCol.style.display = 'flex';
-        brandCol.style.flexDirection = 'column';
-        brandCol.style.gap = '8px';
-        brandCol.style.alignItems = 'flex-start';
-
-        brandContainer.parentElement.insertBefore(brandCol, brandContainer);
-        brandCol.appendChild(brandContainer);
-      }
-      brandCol.appendChild(this.atmosphereSelector.getElement());
+    const brandDot = document.getElementById('brand-dot');
+    if (brandContainer) {
+      // Si estamos en cristal, el tríptico de 3 perlas sustituye armoniosamente al brand-dot único
+      brandContainer.insertBefore(this.atmosphereSelector.getElement(), brandDot);
     }
 
     this.initPhaseOrchestration();
@@ -260,11 +248,15 @@ class AetherApp {
           hint.classList.remove('visible');
         }
         if (brandDot) {
-          brandDot.style.background = 'var(--crystal-accent)';
-          brandDot.style.boxShadow = '0 0 10px var(--crystal-accent)';
+          // El tríptico de luz asume la presencia en Cristal
+          brandDot.style.display = 'none';
         }
         if (brandText) brandText.innerText = 'AETHER';
         this.audio.play(528, 'sine', 1.4, 0.18);
+      } else {
+        if (brandDot) {
+          brandDot.style.display = 'block';
+        }
       }
     });
   }

@@ -1,13 +1,17 @@
 /**
  * ============================================================================
- * CAPA 3: SELECTOR DE ATMÓSFERA EDITORIAL (ATMOSPHERE SELECTOR)
+ * CAPA 3: TRÍPTICO DE LUZ EN EL LOGO (BRAND ATMOSPHERE TRIPTYCH)
  * ============================================================================
- * Modula la atmósfera visual, tipográfica y cromática del Santuario Cristal:
- * - 1. ATMÓSFERA (Basalto & Ámbar vela · Newsreader)
- * - 2. AURA (Obsidiana & Cian glacial · Inter)
- * - 3. HALO (Café carbón & Cobre cálido · Lora)
- * - Se ubica en la esquina superior izquierda debajo del logo AETHER.
- * - Desaparece suavemente durante el hiperfoco de escritura para no invadir.
+ * Transforma el punto de luz junto a AETHER en un tríptico de 3 cuentas minerales
+ * puras: [ º • º ] AETHER
+ * - Cero menús desplegables, cero botones web pesados.
+ * - 3 perlas minerales que representan:
+ *   1. ATMÓSFERA (Ámbar vela · Newsreader)
+ *   2. AURA (Cian glacial · Inter)
+ *   3. HALO (Cobre cálido · Lora)
+ * - Al pulsar en cualquiera de las 3 perlas, la personalidad del santuario
+ *   muta al instante con un acorde armónico y la perla seleccionada se enciende.
+ * - Desaparece en el hiperfoco al teclear para no distraer.
  */
 
 import { HarmonicSynthesizer } from '../../audio/HarmonicSynthesizer';
@@ -15,29 +19,25 @@ import { StateMachine } from '../../core/StateMachine';
 
 export type AtmosphereMode = 'atmosfera' | 'aura' | 'halo';
 
-interface AtmosphereConfig {
+interface BeadConfig {
   id: AtmosphereMode;
   label: string;
-  dotColor: string;
+  color: string;
   toneFreq: number;
 }
 
 export class AtmosphereSelector {
   private container: HTMLDivElement;
-  private btn: HTMLButtonElement;
-  private dropdown: HTMLDivElement;
-  private indicatorDot: HTMLSpanElement;
-  private labelSpan: HTMLSpanElement;
   private audio: HarmonicSynthesizer;
   private stateMachine: StateMachine;
 
   private currentAtmosphere: AtmosphereMode = 'atmosfera';
-  private isOpen: boolean = false;
+  private beads: Map<AtmosphereMode, HTMLSpanElement> = new Map();
 
-  private readonly atmospheres: AtmosphereConfig[] = [
-    { id: 'atmosfera', label: 'ATMÓSFERA', dotColor: '#d9ba85', toneFreq: 330 },
-    { id: 'aura', label: 'AURA', dotColor: '#6fe0eb', toneFreq: 528 },
-    { id: 'halo', label: 'HALO', dotColor: '#e59c77', toneFreq: 415 }
+  private readonly config: BeadConfig[] = [
+    { id: 'atmosfera', label: 'ATMÓSFERA', color: '#d9ba85', toneFreq: 330 },
+    { id: 'aura', label: 'AURA', color: '#6fe0eb', toneFreq: 528 },
+    { id: 'halo', label: 'HALO', color: '#e59c77', toneFreq: 415 }
   ];
 
   constructor(audio: HarmonicSynthesizer, stateMachine: StateMachine) {
@@ -45,153 +45,76 @@ export class AtmosphereSelector {
     this.stateMachine = stateMachine;
 
     this.container = document.createElement('div');
-    this.container.className = 'atmosphere-control';
-    this.container.id = 'atmosphere-control';
-    this.container.style.display = 'none'; // Estrictamente oculto por defecto
+    this.container.className = 'brand-triptych';
+    this.container.id = 'brand-triptych';
+    this.container.title = 'Tríptico de luz: conmuta entre Atmósfera, Aura y Halo';
 
-    // 1. Botón disparador esbelto
-    this.btn = document.createElement('button');
-    this.btn.className = 'atmosphere-btn';
-    this.btn.title = 'Modula la atmósfera y personalidad del santuario';
-
-    this.indicatorDot = document.createElement('span');
-    this.indicatorDot.className = 'atmosphere-indicator-dot';
-
-    this.labelSpan = document.createElement('span');
-    this.labelSpan.className = 'atmosphere-label';
-    this.labelSpan.innerText = 'ATMÓSFERA';
-
-    this.btn.appendChild(this.indicatorDot);
-    this.btn.appendChild(this.labelSpan);
-
-    // 2. Desplegable etéreo
-    this.dropdown = document.createElement('div');
-    this.dropdown.className = 'atmosphere-dropdown';
-
-    this.renderDropdownItems();
-
-    this.container.appendChild(this.btn);
-    this.container.appendChild(this.dropdown);
-
-    this.bindEvents();
+    this.createBeads();
     this.bindPhaseObserver();
     this.applyAtmosphere(this.currentAtmosphere, false);
-
-    // Asegura visibilidad solo si la fase inicial es cristal
-    const currentPhase = this.stateMachine.getPhase();
-    this.container.style.display = currentPhase === 'crystal' ? 'flex' : 'none';
   }
 
   /**
-   * Obtiene el elemento contenedor para insertarlo en el DOM.
+   * Crea las 3 cuentas minerales de luz pura.
    */
+  private createBeads(): void {
+    this.config.forEach((cfg) => {
+      const bead = document.createElement('span');
+      bead.className = `triptych-bead ${cfg.id === this.currentAtmosphere ? 'active' : ''}`;
+      bead.dataset.id = cfg.id;
+      bead.title = `Personalidad: ${cfg.label}`;
+
+      bead.style.setProperty('--bead-color', cfg.color);
+
+      bead.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.applyAtmosphere(cfg.id, true);
+      });
+
+      this.beads.set(cfg.id, bead);
+      this.container.appendChild(bead);
+    });
+  }
+
   public getElement(): HTMLDivElement {
     return this.container;
   }
 
   /**
-   * Pinta las 3 opciones del menú desplegable con sus nombres en mayúsculas.
-   */
-  private renderDropdownItems(): void {
-    this.dropdown.innerHTML = '';
-
-    this.atmospheres.forEach((item) => {
-      const btnItem = document.createElement('button');
-      btnItem.className = `atmosphere-item ${item.id === this.currentAtmosphere ? 'active' : ''}`;
-      btnItem.dataset.id = item.id;
-
-      btnItem.innerHTML = `
-        <span>${item.label}</span>
-        <span class="atmosphere-item-dot" style="background-color: ${item.dotColor};"></span>
-      `;
-
-      btnItem.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.applyAtmosphere(item.id, true);
-        this.close();
-      });
-
-      this.dropdown.appendChild(btnItem);
-    });
-  }
-
-  /**
-   * Conecta los escuchadores de clic y de cierre al pulsar fuera.
-   */
-  private bindEvents(): void {
-    this.btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.toggle();
-    });
-
-    document.addEventListener('click', (e) => {
-      if (this.isOpen && !this.container.contains(e.target as Node)) {
-        this.close();
-      }
-    });
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.isOpen) {
-        this.close();
-      }
-    });
-  }
-
-  /**
-   * Visibilidad ligada a la fase Cristal.
+   * Solo visible en la fase Cristal.
    */
   private bindPhaseObserver(): void {
     this.stateMachine.onPhaseChange((phase) => {
       if (phase === 'crystal') {
-        this.container.style.display = 'flex';
+        this.container.style.display = 'inline-flex';
       } else {
         this.container.style.display = 'none';
-        this.close();
       }
     });
+
+    const currentPhase = this.stateMachine.getPhase();
+    this.container.style.display = currentPhase === 'crystal' ? 'inline-flex' : 'none';
   }
 
   /**
-   * Abre o cierra el desplegable con transición suave.
-   */
-  private toggle(): void {
-    if (this.isOpen) {
-      this.close();
-    } else {
-      this.open();
-    }
-  }
-
-  private open(): void {
-    this.isOpen = true;
-    this.dropdown.classList.add('visible');
-    this.audio.play(440, 'sine', 0.15, 0.05);
-  }
-
-  private close(): void {
-    this.isOpen = false;
-    this.dropdown.classList.remove('visible');
-  }
-
-  /**
-   * Aplica la atmósfera al cuerpo del documento y emite el acorde acústico.
+   * Aplica la atmósfera mutando el atributo del body y encendiendo la perla correspondiente.
    */
   public applyAtmosphere(id: AtmosphereMode, playSound: boolean = true): void {
     this.currentAtmosphere = id;
     document.body.setAttribute('data-atmosphere', id);
 
-    const config = this.atmospheres.find((a) => a.id === id);
-    if (config) {
-      this.labelSpan.innerText = config.label;
-      this.indicatorDot.style.backgroundColor = config.dotColor;
-      this.indicatorDot.style.boxShadow = `0 0 8px ${config.dotColor}`;
-
-      if (playSound) {
-        this.audio.play(config.toneFreq, 'sine', 0.35, 0.12);
+    this.beads.forEach((bead, mode) => {
+      if (mode === id) {
+        bead.classList.add('active');
+      } else {
+        bead.classList.remove('active');
       }
-    }
+    });
 
-    this.renderDropdownItems();
+    const cfg = this.config.find((c) => c.id === id);
+    if (cfg && playSound) {
+      this.audio.play(cfg.toneFreq, 'sine', 0.35, 0.12);
+    }
   }
 
   public getCurrentAtmosphere(): AtmosphereMode {
