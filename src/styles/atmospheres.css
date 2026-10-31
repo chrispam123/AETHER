@@ -98,3 +98,12 @@ header,
   transform: scale(1.25);
   box-shadow: 0 0 10px var(--bead-color), 0 0 4px var(--bead-color);
 }
+
+/* Etiqueta de atmósfera con la misma voz tipográfica de AETHER */
+.brand-atmosphere-tag {
+  color: var(--crystal-accent);
+  opacity: 0.85;
+  letter-spacing: 0.28em;
+  font-weight: 400;
+  transition: color 0.4s ease, opacity 0.4s ease;
+}

@@ -3,15 +3,15 @@
  * CAPA 3: TRÍPTICO DE LUZ EN EL LOGO (BRAND ATMOSPHERE TRIPTYCH)
  * ============================================================================
  * Transforma el punto de luz junto a AETHER en un tríptico de 3 cuentas minerales
- * puras: [ º • º ] AETHER
- * - Cero menús desplegables, cero botones web pesados.
+ * puras: [ • • • ] AETHER · ATMÓSFERA
+ * - Cero tooltips invasivos de Windows (cero atributos title con texto feo).
+ * - Misma tipografía, color y espaciado exacto de AETHER (Geist Mono, 11px, letter-spacing).
  * - 3 perlas minerales que representan:
  *   1. ATMÓSFERA (Ámbar vela · Newsreader)
  *   2. AURA (Cian glacial · Inter)
  *   3. HALO (Cobre cálido · Lora)
- * - Al pulsar en cualquiera de las 3 perlas, la personalidad del santuario
- *   muta al instante con un acorde armónico y la perla seleccionada se enciende.
- * - Desaparece en el hiperfoco al teclear para no distraer.
+ * - Al pulsar en cualquiera de las 3 perlas, el texto junto al logo refleja
+ *   inmediatamente la personalidad activa con la misma voz tipográfica.
  */
 
 import { HarmonicSynthesizer } from '../../audio/HarmonicSynthesizer';
@@ -33,6 +33,7 @@ export class AtmosphereSelector {
 
   private currentAtmosphere: AtmosphereMode = 'atmosfera';
   private beads: Map<AtmosphereMode, HTMLSpanElement> = new Map();
+  private brandTextElement: HTMLElement | null = null;
 
   private readonly config: BeadConfig[] = [
     { id: 'atmosfera', label: 'ATMÓSFERA', color: '#d9ba85', toneFreq: 330 },
@@ -43,11 +44,11 @@ export class AtmosphereSelector {
   constructor(audio: HarmonicSynthesizer, stateMachine: StateMachine) {
     this.audio = audio;
     this.stateMachine = stateMachine;
+    this.brandTextElement = document.getElementById('brand-text');
 
     this.container = document.createElement('div');
     this.container.className = 'brand-triptych';
     this.container.id = 'brand-triptych';
-    this.container.title = 'Tríptico de luz: conmuta entre Atmósfera, Aura y Halo';
 
     this.createBeads();
     this.bindPhaseObserver();
@@ -55,14 +56,13 @@ export class AtmosphereSelector {
   }
 
   /**
-   * Crea las 3 cuentas minerales de luz pura.
+   * Crea las 3 cuentas minerales de luz pura SIN tooltips 'title' invasivos.
    */
   private createBeads(): void {
     this.config.forEach((cfg) => {
       const bead = document.createElement('span');
       bead.className = `triptych-bead ${cfg.id === this.currentAtmosphere ? 'active' : ''}`;
       bead.dataset.id = cfg.id;
-      bead.title = `Personalidad: ${cfg.label}`;
 
       bead.style.setProperty('--bead-color', cfg.color);
 
@@ -87,6 +87,7 @@ export class AtmosphereSelector {
     this.stateMachine.onPhaseChange((phase) => {
       if (phase === 'crystal') {
         this.container.style.display = 'inline-flex';
+        this.updateBrandLabel();
       } else {
         this.container.style.display = 'none';
       }
@@ -94,6 +95,20 @@ export class AtmosphereSelector {
 
     const currentPhase = this.stateMachine.getPhase();
     this.container.style.display = currentPhase === 'crystal' ? 'inline-flex' : 'none';
+  }
+
+  /**
+   * Actualiza el texto de marca con exactamente la misma tipografía y estilo de AETHER.
+   */
+  private updateBrandLabel(): void {
+    if (!this.brandTextElement) {
+      this.brandTextElement = document.getElementById('brand-text');
+    }
+    if (this.brandTextElement) {
+      const cfg = this.config.find((c) => c.id === this.currentAtmosphere);
+      const label = cfg ? cfg.label : 'ATMÓSFERA';
+      this.brandTextElement.innerHTML = `AETHER <span class="brand-atmosphere-tag">· ${label}</span>`;
+    }
   }
 
   /**
@@ -114,6 +129,10 @@ export class AtmosphereSelector {
     const cfg = this.config.find((c) => c.id === id);
     if (cfg && playSound) {
       this.audio.play(cfg.toneFreq, 'sine', 0.35, 0.12);
+    }
+
+    if (this.stateMachine.getPhase() === 'crystal') {
+      this.updateBrandLabel();
     }
   }
 
