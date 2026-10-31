@@ -220,33 +220,28 @@ class AetherApp {
         this.focusManager.hidePresenceHalo();
       }
 
-      // 3. Modulación de atmósfera según la fase
+      // 3. Modulación de atmósfera según la fase (Pureza y Cero Ruido Visual)
+      if (hint) {
+        hint.classList.remove('visible');
+      }
+
       if (phase === 'vapor') {
-        if (hint) {
-          hint.classList.add('visible');
-          hint.innerText = '☁️ NIEBLA INFINITA · ARRASTRAR PARA MOVER · RUEDA: ZOOM · DOBLE CLIC: CREAR IDEA';
-        }
         if (brandDot) {
+          brandDot.style.display = 'block';
           brandDot.style.background = 'var(--vapor-accent)';
           brandDot.style.boxShadow = '0 0 10px var(--vapor-accent)';
         }
-        if (brandText) brandText.innerText = 'AETHER · FASE NIEBLA';
+        if (brandText) brandText.innerText = 'AETHER';
         this.audio.play(320, 'sine', 0.8, 0.12);
       } else if (phase === 'liquid') {
-        if (hint) {
-          hint.classList.add('visible');
-          hint.innerText = '💧 FLUIDO INFINITO · ARRASTRAR PARA MOVER · RUEDA: ZOOM · DOBLE CLIC: CREAR IDEA';
-        }
         if (brandDot) {
+          brandDot.style.display = 'block';
           brandDot.style.background = 'var(--liquid-accent)';
           brandDot.style.boxShadow = '0 0 10px var(--liquid-accent)';
         }
-        if (brandText) brandText.innerText = 'AETHER · FASE FLUIDO';
+        if (brandText) brandText.innerText = 'AETHER';
         this.audio.play(432, 'triangle', 1.0, 0.15);
       } else if (phase === 'crystal') {
-        if (hint) {
-          hint.classList.remove('visible');
-        }
         if (brandDot) {
           // El tríptico de luz asume la presencia en Cristal
           brandDot.style.display = 'none';
@@ -257,6 +252,7 @@ class AetherApp {
         if (brandDot) {
           brandDot.style.display = 'block';
         }
+        if (brandText) brandText.innerText = 'AETHER';
       }
     });
   }
