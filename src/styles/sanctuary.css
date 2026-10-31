@@ -312,20 +312,29 @@ header:hover {
 
 .crystal-title {
   font-family: var(--font-prose);
-  font-size: 44px;
-  font-weight: 300;
+  font-size: 32px;
+  font-weight: 400;
   outline: none;
   border: none;
   background: transparent;
   color: var(--ink-primary);
-  margin-bottom: 32px;
-  line-height: 1.22;
+  margin-bottom: 28px;
+  line-height: 1.28;
   letter-spacing: -0.015em;
+  width: 100%;
+  max-width: var(--measure-prose);
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+  caret-color: transparent; /* El pulso de presencia guía el foco */
 }
 
-.crystal-title::placeholder {
+.crystal-title:empty::before {
+  content: attr(data-placeholder);
   color: var(--ink-ghost);
   font-style: italic;
+  opacity: 0.6;
 }
 
 .crystal-body {
