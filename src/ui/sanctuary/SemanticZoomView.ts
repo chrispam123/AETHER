@@ -13,6 +13,11 @@
 
 import { HarmonicSynthesizer } from '../../audio/HarmonicSynthesizer';
 
+export interface InputBlock {
+  text: string;
+  targetElement?: HTMLElement | null;
+}
+
 export interface ParagraphBlock {
   index: number;
   fullText: string;
@@ -21,9 +26,10 @@ export interface ParagraphBlock {
   isManualThesis: boolean;
   roleLabel: string;
   sectionTitle?: string;
+  targetElement?: HTMLElement | null;
 }
 
-export type JumpToParagraphCallback = (paragraphIndex: number) => void;
+export type JumpToParagraphCallback = (paragraphIndex: number, targetElement?: HTMLElement | null) => void;
 
 export class SemanticZoomView {
   private thesisContainer: HTMLDivElement;
@@ -49,15 +55,16 @@ export class SemanticZoomView {
   }
 
   /**
-   * Parsea el texto del cuerpo en bloques de párrafos y oraciones,
-   * detectando de forma inteligente títulos de sección / lemas breves para agruparlos armónicamente.
+   * Vía 2: Regla del Doble Enter Explícito
+   * Parsea los bloques argumentales directamente garantizando que:
+   * - Saltos simples (Enter) continúan dentro de la misma tarjeta argumental.
+   * - Solo un salto doble (Doble Enter explícito) divide en tarjetas separadas.
+   * - La primera frase es la Tesis (●) y el resto del bloque se pliega como texto secundario.
    */
-  public parseParagraphs(text: string, manualTheses: Map<number, string>): ParagraphBlock[] {
-    const rawParagraphs = text
-      .split(/\r?\n\s*\r?\n+/)
-      .map((p) => p.trim())
-      .filter((p) => p.length > 0);
-
+  public parseBlocks(
+    blocks: InputBlock[],
+    manualTheses: Map<number, string> = new Map()
+  ): ParagraphBlock[] {
     const roles = [
       '01 · Premisa Fundamental',
       '02 · Tensión Dialéctica',
@@ -71,37 +78,51 @@ export class SemanticZoomView {
     let pendingSectionTitle: string | undefined = undefined;
     let blockIndex = 0;
 
-    for (let i = 0; i < rawParagraphs.length; i++) {
-      const pText = rawParagraphs[i];
+    for (let i = 0; i < blocks.length; i++) {
+      const bText = blocks[i].text.trim();
+      if (!bText) continue;
 
       // Detección de encabezado de sección o lema:
       // Corto (hasta 48 caracteres), sin punto final, y seguido de otro bloque
-      const isHeaderLike = pText.length <= 48 && !/[.!?:]\s*$/.test(pText) && i < rawParagraphs.length - 1;
+      const isHeaderLike = bText.length <= 48 && !/[.!?:]\s*$/.test(bText) && i < blocks.length - 1;
 
       if (isHeaderLike) {
-        pendingSectionTitle = pText;
+        pendingSectionTitle = bText;
         continue; // Este encabezado se une como estandarte del párrafo siguiente
       }
 
       // Divide en oraciones respetando puntos (.!?), o saltos de línea internos simples (\n)
-      const sentences = pText
+      let sentences = bText
         .split(/(?<=[.!?])\s+|\r?\n+/)
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
 
+      let blockSectionTitle = pendingSectionTitle;
+
+      // Si no traíamos un título previo de un bloque anterior,
+      // comprobamos si la primera línea de este bloque es un título (corta, sin puntuación terminal, y con más texto a continuación)
+      if (!blockSectionTitle && sentences.length > 1) {
+        const first = sentences[0];
+        if (first.length <= 48 && !/[.!?:]\s*$/.test(first)) {
+          blockSectionTitle = first;
+          sentences = sentences.slice(1);
+        }
+      }
+
       const manual = manualTheses.get(blockIndex);
-      const thesis = manual || (sentences.length > 0 ? sentences[0] : pText);
+      const thesis = manual || (sentences.length > 0 ? sentences[0] : bText);
       const isManual = Boolean(manual);
       const roleLabel = roles[blockIndex] || `${(blockIndex + 1).toString().padStart(2, '0')} · Bloque Argumental`;
 
       result.push({
         index: blockIndex,
-        fullText: pText,
-        sentences: sentences.length > 0 ? sentences : [pText],
+        fullText: bText,
+        sentences: sentences.length > 0 ? sentences : [bText],
         thesisSentence: thesis,
         isManualThesis: isManual,
         roleLabel,
-        sectionTitle: pendingSectionTitle
+        sectionTitle: blockSectionTitle,
+        targetElement: blocks[i].targetElement
       });
 
       pendingSectionTitle = undefined;
@@ -109,19 +130,37 @@ export class SemanticZoomView {
     }
 
     // Fallback si todos los bloques eran cortos y quedó vacío
-    if (result.length === 0 && rawParagraphs.length > 0) {
-      const pText = rawParagraphs[0];
+    if (result.length === 0 && blocks.length > 0) {
+      const bText = blocks[0].text.trim();
       result.push({
         index: 0,
-        fullText: pText,
-        sentences: [pText],
-        thesisSentence: pText,
+        fullText: bText,
+        sentences: [bText],
+        thesisSentence: bText,
         isManualThesis: false,
-        roleLabel: roles[0]
+        roleLabel: roles[0],
+        targetElement: blocks[0].targetElement
       });
     }
 
     return result;
+  }
+
+  /**
+   * Compatibilidad hacia atrás: parsea a partir de un texto plano separado por doble Enter (\n\n).
+   */
+  public parseParagraphs(text: string, manualTheses: Map<number, string> = new Map()): ParagraphBlock[] {
+    const rawParagraphs = text
+      .split(/\r?\n\s*\r?\n+/)
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
+
+    const inputBlocks: InputBlock[] = rawParagraphs.map((p) => ({
+      text: p,
+      targetElement: null
+    }));
+
+    return this.parseBlocks(inputBlocks, manualTheses);
   }
 
   /**
@@ -161,7 +200,7 @@ export class SemanticZoomView {
 
       thesisEl.addEventListener('click', () => {
         this.audio.play(528, 'sine', 0.3, 0.1);
-        if (this.onJumpCallback) this.onJumpCallback(block.index);
+        if (this.onJumpCallback) this.onJumpCallback(block.index, block.targetElement);
       });
 
       // Texto secundario del párrafo (plegado en reposo, legible al pasar el cursor)
@@ -226,7 +265,7 @@ export class SemanticZoomView {
 
       nodeEl.addEventListener('click', () => {
         this.audio.play(528, 'sine', 0.4, 0.12);
-        if (this.onJumpCallback) this.onJumpCallback(block.index);
+        if (this.onJumpCallback) this.onJumpCallback(block.index, block.targetElement);
       });
 
       flowWrapper.appendChild(nodeEl);

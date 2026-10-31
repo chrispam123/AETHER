@@ -18,7 +18,7 @@ import { HarmonicSynthesizer } from '../../audio/HarmonicSynthesizer';
 import { DiscardGutter } from '../margin/DiscardGutter';
 import { SemanticZoomController } from '../../engine/SemanticZoomController';
 import { SemanticLevel } from '../../core/types';
-import { SemanticZoomView } from './SemanticZoomView';
+import { SemanticZoomView, ParagraphBlock } from './SemanticZoomView';
 import { TextHud } from './TextHud';
 import { FocusManager } from '../focus/FocusManager';
 
@@ -73,11 +73,12 @@ export class EditorialEditor {
     );
 
     // Salto al hacer clic en un bloque de tesis hacia el modo prosa enfocado
-    this.semanticView.onJumpToParagraph((pIndex) => this.jumpToParagraph(pIndex));
+    this.semanticView.onJumpToParagraph((pIndex, targetEl) => this.jumpToParagraph(pIndex, targetEl));
 
     const titleEl = document.getElementById('crystal-title');
     if (this.bodyElement) {
-      this.cachedRawText = this.bodyElement.innerText;
+      const blocks = this.getStructuredBlocks();
+      this.cachedRawText = blocks.length > 0 ? blocks.map((b) => b.text).join('\n\n') : this.bodyElement.innerText;
       this.textHud = new TextHud(this.bodyElement, titleEl, this.audio);
     }
 
@@ -109,14 +110,78 @@ export class EditorialEditor {
   }
 
   /**
+   * Vía 2: Regla del Doble Enter Explícito
+   * Extrae los bloques argumentales directamente del DOM:
+   * - Saltos de línea simples (Enter) continúan la idea dentro del mismo bloque.
+   * - Solo un salto de línea doble (párrafo vacío / Doble Enter explícito) genera un nuevo bloque argumental.
+   */
+  public getStructuredBlocks(): { text: string; targetElement: HTMLElement }[] {
+    if (!this.bodyElement) return [];
+
+    const blocks: { text: string; targetElement: HTMLElement }[] = [];
+    let currentBlockLines: string[] = [];
+    let currentBlockTargetEl: HTMLElement | null = null;
+
+    const children = Array.from(this.bodyElement.children) as HTMLElement[];
+
+    if (children.length === 0) {
+      const raw = this.bodyElement.innerText.trim();
+      if (raw.length > 0) {
+        const rawBlocks = raw.split(/\r?\n\s*\r?\n+/).map((b) => b.trim()).filter((b) => b.length > 0);
+        return rawBlocks.map((b) => ({ text: b, targetElement: this.bodyElement }));
+      }
+      return [];
+    }
+
+    for (const child of children) {
+      const cleanText = (child.innerText || child.textContent || '')
+        .replace(/[\u200B\u00A0]/g, ' ')
+        .trim();
+
+      if (cleanText.length === 0) {
+        // Párrafo vacío / Doble Enter explícito: delimita y cierra el bloque en curso
+        if (currentBlockLines.length > 0 && currentBlockTargetEl) {
+          blocks.push({
+            text: currentBlockLines.join('\n'),
+            targetElement: currentBlockTargetEl
+          });
+          currentBlockLines = [];
+          currentBlockTargetEl = null;
+        }
+      } else {
+        // Elemento con texto: continúa en el mismo bloque argumental
+        if (currentBlockLines.length === 0) {
+          currentBlockTargetEl = child;
+        }
+        currentBlockLines.push(cleanText);
+      }
+    }
+
+    // Flush del último bloque acumulado
+    if (currentBlockLines.length > 0 && currentBlockTargetEl) {
+      blocks.push({
+        text: currentBlockLines.join('\n'),
+        targetElement: currentBlockTargetEl
+      });
+    }
+
+    return blocks;
+  }
+
+  /**
    * Obtiene el texto en prosa del autor garantizando que nunca se degrade
    * al alternar entre vistas cuando el elemento DOM está temporalmente oculto (display: none).
    */
   public getRawText(): string {
     if (this.bodyElement && this.bodyElement.style.display !== 'none') {
-      const current = this.bodyElement.innerText;
-      if (current.trim().length > 0) {
-        this.cachedRawText = current;
+      const blocks = this.getStructuredBlocks();
+      if (blocks.length > 0) {
+        this.cachedRawText = blocks.map((b) => b.text).join('\n\n');
+      } else {
+        const raw = this.bodyElement.innerText.trim();
+        if (raw.length > 0) {
+          this.cachedRawText = raw;
+        }
       }
     }
     return this.cachedRawText || this.bodyElement?.innerText || '';
@@ -269,11 +334,20 @@ export class EditorialEditor {
   }
 
   /**
-   * Aplica la transformación de densidad conceptual según el nivel de zoom.
+   * Aplica la transformación de densidad conceptual según el nivel de zoom (Vía 2: Regla del Doble Enter).
    */
   public applySemanticZoom(level: SemanticLevel): void {
-    const rawText = this.getRawText();
-    const blocks = this.semanticView.parseParagraphs(rawText, this.manualTheses);
+    const blocksData = this.getStructuredBlocks();
+    let blocks: ParagraphBlock[];
+
+    if (blocksData.length > 0) {
+      this.cachedRawText = blocksData.map((b) => b.text).join('\n\n');
+      blocks = this.semanticView.parseBlocks(blocksData, this.manualTheses);
+    } else {
+      const rawText = this.getRawText();
+      blocks = this.semanticView.parseParagraphs(rawText, this.manualTheses);
+    }
+
     if (level !== 'prose') {
       this.textHud?.hideImmediately();
       this.focusManager?.onLeaveProseView();
@@ -305,9 +379,9 @@ export class EditorialEditor {
   }
 
   /**
-   * Salta al modo Prosa enfocado en un párrafo específico.
+   * Salta al modo Prosa enfocado exactamente en el elemento DOM de ese bloque argumental.
    */
-  private jumpToParagraph(pIndex: number): void {
+  private jumpToParagraph(pIndex: number, targetEl?: HTMLElement | null): void {
     // 1. Cambia el zoom de regreso al 100% (Prosa)
     if (this.zoomController) {
       this.zoomController.setLevel('prose');
@@ -316,18 +390,22 @@ export class EditorialEditor {
     // 2. Coloca el foco en el editor de texto y sitúa el cursor en el párrafo real
     setTimeout(() => {
       this.bodyElement.focus();
-      const blocks = Array.from(this.bodyElement.querySelectorAll('p, div'));
-      const targetP = (blocks[pIndex] as HTMLElement) || (this.bodyElement.firstElementChild as HTMLElement);
+      let target: HTMLElement | null = targetEl || null;
 
-      if (targetP) {
+      if (!target || !this.bodyElement.contains(target)) {
+        const blocks = this.getStructuredBlocks();
+        target = blocks[pIndex]?.targetElement || (this.bodyElement.firstElementChild as HTMLElement);
+      }
+
+      if (target) {
         const range = document.createRange();
-        range.selectNodeContents(targetP);
+        range.selectNodeContents(target);
         range.collapse(false);
         const sel = window.getSelection();
         sel?.removeAllRanges();
         sel?.addRange(range);
 
-        targetP.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
 
       this.focusManager?.onEnterProseView();
@@ -404,7 +482,12 @@ export class EditorialEditor {
     if (!this.bodyElement) return;
 
     this.bodyElement.addEventListener('input', () => {
-      this.cachedRawText = this.bodyElement.innerText;
+      const blocks = this.getStructuredBlocks();
+      if (blocks.length > 0) {
+        this.cachedRawText = blocks.map((b) => b.text).join('\n\n');
+      } else {
+        this.cachedRawText = this.bodyElement.innerText;
+      }
       const text = this.cachedRawText.trim();
       const words = text ? text.split(/\s+/).length : 0;
       if (this.wordCountEl) this.wordCountEl.innerText = `${words} palabras`;
