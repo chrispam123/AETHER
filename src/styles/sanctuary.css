@@ -348,20 +348,21 @@ header:hover {
   border: none;
   background: transparent;
   min-height: 380px;
-  white-space: pre-wrap;
   word-break: break-word;
   user-select: text;
   /* El cursor parpadeante mecánico se oculta para dar paso al Pulso de Presencia */
   caret-color: transparent;
 }
 
-.crystal-body p {
-  margin: 0 0 1.6em 0;
+.crystal-body p,
+.crystal-body > * {
+  margin: 0 0 0.85em 0;
   line-height: var(--line-height-prose);
   transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.crystal-body p:last-child {
+.crystal-body p:last-child,
+.crystal-body > *:last-child {
   margin-bottom: 0;
 }
 

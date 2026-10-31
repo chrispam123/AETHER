@@ -108,6 +108,28 @@ export class FocusManager {
 
     targets.forEach((target) => {
       target.addEventListener('keydown', (e) => {
+        // En el título, pulsar Enter salta elegantemente al cuerpo en vez de crear saltos vacíos
+        if (target === this.titleElement && e.key === 'Enter') {
+          e.preventDefault();
+          if (this.trackedElement) {
+            const firstP = this.trackedElement.firstElementChild as HTMLElement;
+            if (firstP) {
+              firstP.focus();
+              const range = document.createRange();
+              range.selectNodeContents(firstP);
+              range.collapse(true);
+              const sel = window.getSelection();
+              sel?.removeAllRanges();
+              sel?.addRange(range);
+            } else {
+              this.trackedElement.focus();
+            }
+            this.updateActiveParagraph();
+            this.updatePresencePosition();
+          }
+          return;
+        }
+
         this.handleActivity();
         if (e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete') {
           // El navegador genera o destruye nodos en el DOM; en el siguiente tick limpiamos clases clonadas
