@@ -1,17 +1,23 @@
 /**
  * ============================================================================
- * CAPA 3: GESTOR DE FOCO GRAVITATORIO E HIPERFOCO (FOCUS MANAGER)
+ * CAPA 3: GESTOR DE FOCO MONÁSTICO, HIPERFOCO & TYPEWRITER SCROLL
  * ============================================================================
- * Implementa el Pilar 2 del Manifiesto de Aether:
- * - Sustituye el cursor mecánico parpadeante por el "Pulso de Presencia":
- *   un halo sutil de luz que sigue la posición del cursor de texto en tiempo real.
- * - Detecta la cadencia de tecleo y activa el estado de "Hiperfoco":
- *   atenúa la interfaz periférica cuando el usuario entra en flujo de escritura,
- *   y restaura suavemente los controles cuando se toma una pausa para pensar.
+ * Implementa el Pilar 2 del Manifiesto de Aether con máxima pureza UX:
+ * 1. Pulso de Presencia: Halo sutil que sigue al cursor en tiempo real.
+ * 2. Hiperfoco Periférico: Atenúa la periferia de la UI durante la cadencia viva.
+ * 3. Enfoque Monástico (Dimming de Párrafos):
+ *    - El párrafo vivo o título activo permanece al 100% de luz y contraste.
+ *    - Los párrafos anteriores y posteriores descienden con suavidad al 45%-55%.
+ *    - Caso C (Híbrido):
+ *      * Respiración automática al escribir (tras pausa de 3s vuelve al 100%).
+ *      * Anclaje permanente con atajo Alt + Z o botón ◎ Enfoque en la barra de métricas.
+ * 4. Typewriter Scroll: Mantiene el párrafo vivo suavemente centrado a la altura de los ojos (~40%).
  */
 
+import { HarmonicSynthesizer } from '../../audio/HarmonicSynthesizer';
+
 export interface FocusOptions {
-  /** Milisegundos de inactividad antes de salir del hiperfoco (por defecto 2500ms) */
+  /** Milisegundos de inactividad antes de suspender el modo automático (por defecto 3000ms) */
   idleDelayMs?: number;
 }
 
@@ -19,11 +25,21 @@ export class FocusManager {
   private idleDelayMs: number;
   private idleTimer: number | null = null;
   private isHyperfocusActive: boolean = false;
+  private isPinned: boolean = false;
+  private isAutoDimActive: boolean = false;
+
   private trackedElement: HTMLElement | null = null;
+  private titleElement: HTMLElement | null = null;
+  private scrollContainer: HTMLElement | null = null;
+  private audio: HarmonicSynthesizer | null = null;
   private presenceHalo: HTMLDivElement;
 
+  private activeBlock: HTMLElement | null = null;
+  private btnFocusToggle: HTMLButtonElement | null = null;
+  private typewriterTimer: number | null = null;
+
   constructor(options: FocusOptions = {}) {
-    this.idleDelayMs = options.idleDelayMs ?? 2500;
+    this.idleDelayMs = options.idleDelayMs ?? 3000;
     this.presenceHalo = this.createPresenceHalo();
   }
 
@@ -39,78 +55,292 @@ export class FocusManager {
   }
 
   /**
-   * Vincula el gestor de foco a un elemento editable (como el Santuario Editorial).
+   * Vincula el gestor de foco a los elementos del Santuario Editorial.
    */
-  public attach(element: HTMLElement, scrollContainer?: HTMLElement): void {
+  public attach(
+    element: HTMLElement,
+    scrollContainer?: HTMLElement,
+    titleElement?: HTMLElement | null,
+    audio?: HarmonicSynthesizer
+  ): void {
     this.trackedElement = element;
+    this.scrollContainer = scrollContainer || null;
+    this.titleElement = titleElement || null;
+    this.audio = audio || null;
 
-    if (scrollContainer) {
-      scrollContainer.addEventListener('scroll', () => {
-        if (document.activeElement === this.trackedElement) {
+    // 1. Asegurar separación semántica nativa por párrafos (<p>)
+    try {
+      document.execCommand('defaultParagraphSeparator', false, 'p');
+    } catch {
+      // Fallback
+    }
+    this.normalizeParagraphs();
+
+    // 2. Conectar el botón ◎ Enfoque en la barra de métricas
+    this.btnFocusToggle = document.getElementById('btn-focus-toggle') as HTMLButtonElement | null;
+    if (this.btnFocusToggle) {
+      this.btnFocusToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.togglePinnedFocus();
+      });
+    }
+
+    // 3. Atajo global Alt + Z
+    window.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.altKey && (e.key === 'z' || e.key === 'Z' || e.code === 'KeyZ')) {
+        e.preventDefault();
+        this.togglePinnedFocus();
+      }
+    });
+
+    // 4. Escuchadores en el contenedor de scroll
+    if (this.scrollContainer) {
+      this.scrollContainer.addEventListener('scroll', () => {
+        if (document.activeElement === this.trackedElement || document.activeElement === this.titleElement) {
           this.updatePresencePosition();
         }
       }, { passive: true });
     }
 
-    // Escucha eventos de teclado y entrada de texto
-    element.addEventListener('keydown', (e) => {
-      this.handleActivity();
-      // En pulsaciones de Enter o borrado, sincroniza en el siguiente frame tras la mutación del DOM
-      if (e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete') {
+    // 5. Escuchadores en el Cuerpo de Prosa
+    const targets = [this.trackedElement, this.titleElement].filter(Boolean) as HTMLElement[];
+
+    targets.forEach((target) => {
+      target.addEventListener('keydown', (e) => {
+        this.handleActivity();
+        if (e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete') {
+          requestAnimationFrame(() => {
+            this.updateActiveParagraph();
+            this.updatePresencePosition();
+            this.triggerTypewriterScroll();
+          });
+        }
+      });
+
+      target.addEventListener('input', () => {
+        this.handleActivity();
+        this.updateActiveParagraph();
+        requestAnimationFrame(() => {
+          this.updatePresencePosition();
+          this.triggerTypewriterScroll();
+        });
+      });
+
+      target.addEventListener('click', () => {
+        this.updateActiveParagraph();
         requestAnimationFrame(() => this.updatePresencePosition());
-      }
+      });
+
+      target.addEventListener('keyup', (e) => {
+        if (e.key.startsWith('Arrow') || e.key === 'Home' || e.key === 'End') {
+          this.updateActiveParagraph();
+          requestAnimationFrame(() => {
+            this.updatePresencePosition();
+            this.triggerTypewriterScroll();
+          });
+        }
+      });
+
+      target.addEventListener('focus', () => {
+        this.showPresenceHalo();
+        this.updateActiveParagraph();
+        this.updatePresencePosition();
+      });
+
+      target.addEventListener('blur', () => {
+        if (!this.isPinned) {
+          this.exitHyperfocus();
+        }
+        this.hidePresenceHalo();
+      });
     });
 
-    element.addEventListener('input', () => {
-      this.handleActivity();
-      requestAnimationFrame(() => this.updatePresencePosition());
-    });
-
-    // Escucha movimientos del cursor y clics del ratón
-    element.addEventListener('click', () => {
-      requestAnimationFrame(() => this.updatePresencePosition());
-    });
-
-    element.addEventListener('keyup', () => {
-      this.updatePresencePosition();
-    });
-
-    // Cuando el usuario sale del editor, se desactiva el hiperfoco
-    element.addEventListener('blur', () => {
-      this.exitHyperfocus();
-      this.hidePresenceHalo();
-    });
-
-    element.addEventListener('focus', () => {
-      this.showPresenceHalo();
-      this.updatePresencePosition();
-    });
-
-    // Escucha cambios globales en la selección para mantener el halo sincronizado
+    // 6. Escuchar cambios de selección global
     document.addEventListener('selectionchange', () => {
-      if (document.activeElement === this.trackedElement) {
+      const activeEl = document.activeElement;
+      if (activeEl === this.trackedElement || activeEl === this.titleElement) {
+        this.updateActiveParagraph();
         this.updatePresencePosition();
       }
     });
+
+    // Estado inicial de párrafo activo
+    setTimeout(() => {
+      this.updateActiveParagraph();
+    }, 100);
   }
 
   /**
-   * Se ejecuta con cada pulsación de tecla para modular el hiperfoco.
+   * Asegura que el contenido del cuerpo esté envuelto en párrafos <p> limpios.
+   */
+  private normalizeParagraphs(): void {
+    if (!this.trackedElement) return;
+
+    const existingP = this.trackedElement.querySelectorAll('p');
+    if (existingP.length > 0) return;
+
+    const raw = this.trackedElement.innerText.trim();
+    if (raw.length === 0) {
+      this.trackedElement.innerHTML = '<p><br></p>';
+      return;
+    }
+
+    const blocks = raw.split(/\r?\n\s*\r?\n+/).map((b) => b.trim()).filter((b) => b.length > 0);
+    if (blocks.length > 0) {
+      this.trackedElement.innerHTML = blocks.map((b) => `<p>${b}</p>`).join('');
+    }
+  }
+
+  /**
+   * Conmuta el modo de Enfoque Monástico Anclado (Alt + Z).
+   */
+  public togglePinnedFocus(): void {
+    this.isPinned = !this.isPinned;
+
+    if (this.btnFocusToggle) {
+      this.btnFocusToggle.classList.toggle('active', this.isPinned);
+    }
+
+    if (this.isPinned) {
+      // Activar foco fijo
+      this.scrollContainer?.classList.add('focus-dim-mode');
+      this.updateActiveParagraph();
+      this.triggerTypewriterScroll(true);
+      this.audio?.play(540, 'sine', 0.25, 0.12);
+    } else {
+      // Apagar anclaje: si no estamos tecleando en ese instante, relajamos el dimming
+      if (!this.isAutoDimActive) {
+        this.scrollContainer?.classList.remove('focus-dim-mode');
+      }
+      this.audio?.play(360, 'sine', 0.2, 0.08);
+    }
+  }
+
+  /**
+   * Se ejecuta con cada pulsación de tecla para modular la respiración del foco.
    */
   private handleActivity(): void {
-    // Si no estábamos en hiperfoco, entrar en él de forma fluida
+    // 1. Activar Hiperfoco periférico si no estaba activo
     if (!this.isHyperfocusActive) {
       this.enterHyperfocus();
     }
 
-    // Reinicia el temporizador de inactividad reflexiva
+    // 2. Respiración automática del Enfoque Monástico (si no está ya anclado)
+    if (!this.isPinned) {
+      this.isAutoDimActive = true;
+      this.scrollContainer?.classList.add('focus-dim-mode');
+    }
+
+    // 3. Reiniciar temporizador de inactividad
     if (this.idleTimer !== null) {
       window.clearTimeout(this.idleTimer);
     }
 
     this.idleTimer = window.setTimeout(() => {
       this.exitHyperfocus();
+      if (!this.isPinned) {
+        this.isAutoDimActive = false;
+        this.scrollContainer?.classList.remove('focus-dim-mode');
+      }
     }, this.idleDelayMs);
+  }
+
+  /**
+   * Detecta y marca el párrafo o título donde se encuentra actualmente el cursor.
+   */
+  public updateActiveParagraph(): void {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    let node: Node | null = selection.anchorNode;
+    if (!node) return;
+
+    if (node.nodeType === Node.TEXT_NODE) {
+      node = node.parentElement;
+    }
+
+    let newActive: HTMLElement | null = null;
+
+    // A. ¿Está en el Título Principal?
+    if (this.titleElement && (this.titleElement === node || this.titleElement.contains(node))) {
+      newActive = this.titleElement;
+    }
+    // B. ¿Está dentro del Cuerpo de Prosa?
+    else if (this.trackedElement && (this.trackedElement === node || this.trackedElement.contains(node))) {
+      const p = (node as HTMLElement).closest('p');
+      if (p && this.trackedElement.contains(p)) {
+        newActive = p;
+      } else if (node === this.trackedElement) {
+        newActive = (this.trackedElement.firstElementChild as HTMLElement) || null;
+      } else {
+        // Si es un nodo de bloque directo hijo del editor
+        let curr: Node | null = node;
+        while (curr && curr.parentNode !== this.trackedElement && curr !== document.body) {
+          curr = curr.parentNode;
+        }
+        if (curr instanceof HTMLElement) {
+          newActive = curr;
+        }
+      }
+    }
+
+    // Si no se encontró y el foco está en el editor, por defecto el primer párrafo
+    if (!newActive && document.activeElement === this.trackedElement) {
+      newActive = (this.trackedElement?.firstElementChild as HTMLElement) || null;
+    }
+
+    // Aplicar las clases si hubo cambio de bloque activo
+    if (newActive && newActive !== this.activeBlock) {
+      if (this.activeBlock) {
+        this.activeBlock.classList.remove('is-active-focus');
+      }
+      this.activeBlock = newActive;
+      this.activeBlock.classList.add('is-active-focus');
+    } else if (!this.activeBlock && newActive) {
+      this.activeBlock = newActive;
+      this.activeBlock.classList.add('is-active-focus');
+    }
+  }
+
+  /**
+   * Desplaza suavemente el contenedor para mantener el párrafo activo centrado (~40% de la ventana).
+   */
+  private triggerTypewriterScroll(immediate: boolean = false): void {
+    if (!this.scrollContainer || !this.activeBlock) return;
+
+    if (this.typewriterTimer) {
+      window.clearTimeout(this.typewriterTimer);
+      this.typewriterTimer = null;
+    }
+
+    const doScroll = () => {
+      if (!this.scrollContainer || !this.activeBlock) return;
+
+      const sRect = this.scrollContainer.getBoundingClientRect();
+      const bRect = this.activeBlock.getBoundingClientRect();
+
+      // Posición del bloque dentro del flujo de scroll
+      const relativeTop = bRect.top - sRect.top;
+      const targetHeight = this.scrollContainer.clientHeight;
+      const eyeLevel = targetHeight * 0.40;
+
+      // Solo desplazar si la desviación es notable (> 35px) para evitar temblores
+      const drift = relativeTop - eyeLevel;
+      if (Math.abs(drift) > 35 || immediate) {
+        const targetScrollTop = this.scrollContainer.scrollTop + drift;
+        this.scrollContainer.scrollTo({
+          top: Math.max(0, targetScrollTop),
+          behavior: 'smooth'
+        });
+      }
+    };
+
+    if (immediate) {
+      doScroll();
+    } else {
+      this.typewriterTimer = window.setTimeout(doScroll, 80);
+    }
   }
 
   /**
@@ -138,7 +368,6 @@ export class FocusManager {
 
   /**
    * Calcula la posición exacta del cursor de texto en pantalla y mueve el halo de luz.
-   * Maneja saltos de línea (Enter), líneas vacías y finales de bloque sin retardo.
    */
   public updatePresencePosition(): void {
     const selection = window.getSelection();
@@ -151,7 +380,7 @@ export class FocusManager {
     let height = 22;
     let found = false;
 
-    // 1. Primer intento: getClientRects (más preciso en saltos de línea con texto previo)
+    // 1. getClientRects
     const rects = range.getClientRects();
     if (rects.length > 0) {
       const r = rects[rects.length - 1];
@@ -163,7 +392,7 @@ export class FocusManager {
       }
     }
 
-    // 2. Segundo intento: getBoundingClientRect estándar
+    // 2. getBoundingClientRect
     if (!found) {
       const r = range.getBoundingClientRect();
       if (r.height > 0 && (r.top !== 0 || r.left !== 0)) {
@@ -174,9 +403,7 @@ export class FocusManager {
       }
     }
 
-    // 3. Fallback para saltos de línea (Enter en línea vacía):
-    // El navegador no crea un rect visible hasta que hay un carácter.
-    // Insertamos un marcador invisible de ancho cero (\u200B) para obtener las coordenadas exactas de la nueva línea.
+    // 3. Fallback en línea vacía
     if (!found || (x === 0 && y === 0)) {
       try {
         const marker = document.createElement('span');
@@ -198,7 +425,7 @@ export class FocusManager {
           found = true;
         }
       } catch {
-        // Fallback silencioso si el rango no permite mutación temporal
+        // Fallback silencioso
       }
     }
 
@@ -211,24 +438,19 @@ export class FocusManager {
     }
   }
 
-  /**
-   * Muestra el halo de luz del cursor.
-   */
   public showPresenceHalo(): void {
     this.presenceHalo.style.display = 'block';
   }
 
-  /**
-   * Oculta el halo de luz cuando no hay foco en el texto.
-   */
   public hidePresenceHalo(): void {
     this.presenceHalo.style.display = 'none';
   }
 
-  /**
-   * Consulta si el usuario está actualmente en estado de hiperfoco.
-   */
   public isInHyperfocus(): boolean {
     return this.isHyperfocusActive;
+  }
+
+  public isFocusPinned(): boolean {
+    return this.isPinned;
   }
 }

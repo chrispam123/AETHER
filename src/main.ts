@@ -109,9 +109,14 @@ class AetherApp {
     this.gutter = new DiscardGutter(this.audio);
     this.editor.setDiscardGutter(this.gutter);
 
-    // Pilar 2: El Foco Gravitatorio e Hiperfoco Sensorial
+    // Pilar 2: El Foco Gravitatorio, Hiperfoco Sensorial y Enfoque Monástico (Alt + Z)
     this.focusManager = new FocusManager({ idleDelayMs: 2500 });
-    this.focusManager.attach(this.editor.getBodyElement(), this.editor.getScrollContainer());
+    this.focusManager.attach(
+      this.editor.getBodyElement(),
+      this.editor.getScrollContainer(),
+      this.editor.getTitleElement(),
+      this.audio
+    );
 
     // Pilar 3: Zoom Semántico (Bret Victor) y Dial de Abstracción
     this.zoomController = new SemanticZoomController(this.stateMachine, this.audio);

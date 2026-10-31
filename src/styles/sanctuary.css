@@ -328,6 +328,7 @@ header:hover {
   word-break: break-word;
   user-select: text;
   caret-color: var(--crystal-accent); /* Cursor mineral noble y visible */
+  transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .crystal-title:empty::before {
@@ -352,6 +353,29 @@ header:hover {
   user-select: text;
   /* El cursor parpadeante mecánico se oculta para dar paso al Pulso de Presencia */
   caret-color: transparent;
+}
+
+.crystal-body p {
+  margin: 0 0 1.6em 0;
+  line-height: var(--line-height-prose);
+  transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.crystal-body p:last-child {
+  margin-bottom: 0;
+}
+
+/* ============================================================================
+   ENFOQUE MONÁSTICO: DIMMING DE PÁRRAFOS (PÁRRAFO VIVO 100% / PERIFERIA 45%)
+   ============================================================================ */
+#crystal-sanctuary.focus-dim-mode .crystal-title,
+#crystal-sanctuary.focus-dim-mode .crystal-body p {
+  opacity: 0.42;
+}
+
+#crystal-sanctuary.focus-dim-mode .crystal-title.is-active-focus,
+#crystal-sanctuary.focus-dim-mode .crystal-body p.is-active-focus {
+  opacity: 1 !important;
 }
 
 /* ============================================================================
@@ -525,14 +549,67 @@ header, #phase-dock, .crystal-raw-shelf, .crystal-metrics, #canvas-hint {
 
 .crystal-metrics {
   display: flex;
-  gap: 20px;
+  align-items: center;
+  gap: 16px;
   margin-top: 32px;
   padding-top: 18px;
   font-size: 11px;
   color: var(--ink-secondary);
   letter-spacing: 0.08em;
   font-family: var(--font-mono);
-  opacity: 0.7;
+  opacity: 0.75;
+}
+
+/* Botón Zen de Enfoque Monástico en la barra de métricas */
+.metric-btn-focus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 3px 10px;
+  color: var(--ink-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+  user-select: none;
+  margin-left: 4px;
+}
+
+.metric-btn-focus:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--ink-primary);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.metric-btn-focus.active {
+  background: rgba(232, 229, 222, 0.09);
+  color: var(--crystal-accent);
+  border-color: var(--crystal-accent);
+  box-shadow: 0 0 14px var(--crystal-glow);
+}
+
+.metric-btn-focus .focus-icon {
+  font-size: 12px;
+  line-height: 1;
+  transition: transform 0.3s ease;
+}
+
+.metric-btn-focus.active .focus-icon {
+  transform: scale(1.15);
+}
+
+.metric-btn-focus .focus-kbd {
+  font-size: 9px;
+  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  opacity: 0.8;
+  letter-spacing: 0.02em;
 }
 
 /* --- MODULADOR DE FASE (DOCK FLOTANTE INFERIOR) --- */

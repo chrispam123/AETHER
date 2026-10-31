@@ -336,6 +336,13 @@ export class EditorialEditor {
   }
 
   /**
+   * Obtiene la referencia al elemento del título noble.
+   */
+  public getTitleElement(): HTMLElement | null {
+    return document.getElementById('crystal-title');
+  }
+
+  /**
    * Obtiene la referencia al contenedor con scroll del santuario.
    */
   public getScrollContainer(): HTMLDivElement {
