@@ -965,6 +965,29 @@ body.hyperfocus-active .discard-gutter {
   animation: fadeInSoft 0.4s ease forwards;
 }
 
+.thesis-section-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--crystal-accent);
+  opacity: 0.88;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-section-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--crystal-accent);
+  opacity: 0.85;
+  margin-bottom: 6px;
+}
+
 .thesis-card {
   position: relative;
   padding: 18px 22px;

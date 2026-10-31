@@ -117,6 +117,7 @@ class AetherApp {
       this.editor.getTitleElement(),
       this.audio
     );
+    this.editor.setFocusManager(this.focusManager);
 
     // Pilar 3: Zoom Semántico (Bret Victor) y Dial de Abstracción
     this.zoomController = new SemanticZoomController(this.stateMachine, this.audio);

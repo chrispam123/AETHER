@@ -172,10 +172,12 @@ export class FocusManager {
       });
 
       target.addEventListener('blur', () => {
+        this.hidePresenceHalo();
         if (!this.isPinned) {
           this.exitHyperfocus();
+          this.isAutoDimActive = false;
+          this.scrollContainer?.classList.remove('focus-dim-mode');
         }
-        this.hidePresenceHalo();
       });
     });
 
@@ -475,5 +477,43 @@ export class FocusManager {
 
   public isFocusPinned(): boolean {
     return this.isPinned;
+  }
+
+  /**
+   * Llamado al entrar o retornar al Modo Prosa (100%).
+   * Asegura que el texto vuelva a iluminarse plenamente al 100% si no está anclado.
+   */
+  public onEnterProseView(): void {
+    if (!this.isPinned) {
+      this.isAutoDimActive = false;
+      this.scrollContainer?.classList.remove('focus-dim-mode');
+      if (this.idleTimer !== null) {
+        window.clearTimeout(this.idleTimer);
+        this.idleTimer = null;
+      }
+    } else {
+      this.scrollContainer?.classList.add('focus-dim-mode');
+    }
+
+    this.showPresenceHalo();
+    setTimeout(() => {
+      this.updateActiveParagraph();
+      this.updatePresencePosition();
+    }, 50);
+  }
+
+  /**
+   * Llamado al salir de Prosa hacia Tesis (50%) o Estructura (20%).
+   */
+  public onLeaveProseView(): void {
+    this.hidePresenceHalo();
+    if (!this.isPinned) {
+      this.isAutoDimActive = false;
+      this.scrollContainer?.classList.remove('focus-dim-mode');
+      if (this.idleTimer !== null) {
+        window.clearTimeout(this.idleTimer);
+        this.idleTimer = null;
+      }
+    }
   }
 }

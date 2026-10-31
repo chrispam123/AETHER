@@ -20,6 +20,7 @@ export interface ParagraphBlock {
   thesisSentence: string;
   isManualThesis: boolean;
   roleLabel: string;
+  sectionTitle?: string;
 }
 
 export type JumpToParagraphCallback = (paragraphIndex: number) => void;
@@ -48,15 +49,14 @@ export class SemanticZoomView {
   }
 
   /**
-   * Parsea el texto del cuerpo en bloques de párrafos y oraciones.
+   * Parsea el texto del cuerpo en bloques de párrafos y oraciones,
+   * detectando de forma inteligente títulos de sección / lemas breves para agruparlos armónicamente.
    */
   public parseParagraphs(text: string, manualTheses: Map<number, string>): ParagraphBlock[] {
-    // Los párrafos se delimitan por líneas en blanco (doble salto de línea / doble Enter).
-    // Dentro de un mismo párrafo pueden existir saltos simples (\n) sin romper la unidad del bloque.
     const rawParagraphs = text
       .split(/\r?\n\s*\r?\n+/)
-      .map(p => p.trim())
-      .filter(p => p.length > 0);
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
 
     const roles = [
       '01 · Premisa Fundamental',
@@ -67,27 +67,61 @@ export class SemanticZoomView {
       '06 · Resonancia Final'
     ];
 
-    return rawParagraphs.map((pText, index) => {
+    const result: ParagraphBlock[] = [];
+    let pendingSectionTitle: string | undefined = undefined;
+    let blockIndex = 0;
+
+    for (let i = 0; i < rawParagraphs.length; i++) {
+      const pText = rawParagraphs[i];
+
+      // Detección de encabezado de sección o lema:
+      // Corto (hasta 48 caracteres), sin punto final, y seguido de otro bloque
+      const isHeaderLike = pText.length <= 48 && !/[.!?:]\s*$/.test(pText) && i < rawParagraphs.length - 1;
+
+      if (isHeaderLike) {
+        pendingSectionTitle = pText;
+        continue; // Este encabezado se une como estandarte del párrafo siguiente
+      }
+
       // Divide en oraciones respetando puntos (.!?), o saltos de línea internos simples (\n)
       const sentences = pText
         .split(/(?<=[.!?])\s+|\r?\n+/)
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
 
-      const manual = manualTheses.get(index);
+      const manual = manualTheses.get(blockIndex);
       const thesis = manual || (sentences.length > 0 ? sentences[0] : pText);
       const isManual = Boolean(manual);
-      const roleLabel = roles[index] || `${(index + 1).toString().padStart(2, '0')} · Bloque Argumental`;
+      const roleLabel = roles[blockIndex] || `${(blockIndex + 1).toString().padStart(2, '0')} · Bloque Argumental`;
 
-      return {
-        index,
+      result.push({
+        index: blockIndex,
         fullText: pText,
         sentences: sentences.length > 0 ? sentences : [pText],
         thesisSentence: thesis,
         isManualThesis: isManual,
-        roleLabel
-      };
-    });
+        roleLabel,
+        sectionTitle: pendingSectionTitle
+      });
+
+      pendingSectionTitle = undefined;
+      blockIndex++;
+    }
+
+    // Fallback si todos los bloques eran cortos y quedó vacío
+    if (result.length === 0 && rawParagraphs.length > 0) {
+      const pText = rawParagraphs[0];
+      result.push({
+        index: 0,
+        fullText: pText,
+        sentences: [pText],
+        thesisSentence: pText,
+        isManualThesis: false,
+        roleLabel: roles[0]
+      });
+    }
+
+    return result;
   }
 
   /**
@@ -108,6 +142,14 @@ export class SemanticZoomView {
       card.className = 'thesis-card';
       card.dataset.index = block.index.toString();
 
+      // Si tiene título de sección asociado, lo mostramos como insignia noble
+      if (block.sectionTitle) {
+        const sectionEl = document.createElement('div');
+        sectionEl.className = 'thesis-section-tag';
+        sectionEl.innerText = `§ ${block.sectionTitle}`;
+        card.appendChild(sectionEl);
+      }
+
       // Frase tesis principal
       const thesisEl = document.createElement('div');
       thesisEl.className = `thesis-sentence ${block.isManualThesis ? 'manual-chosen' : ''}`;
@@ -123,7 +165,7 @@ export class SemanticZoomView {
       });
 
       // Texto secundario del párrafo (plegado en reposo, legible al pasar el cursor)
-      const secondarySentences = block.sentences.filter(s => s !== block.thesisSentence);
+      const secondarySentences = block.sentences.filter((s) => s !== block.thesisSentence);
       const secondaryEl = document.createElement('div');
       secondaryEl.className = 'thesis-secondary-text';
 
@@ -165,11 +207,15 @@ export class SemanticZoomView {
       nodeEl.dataset.index = block.index.toString();
 
       // Recorta la tesis si es muy extensa para que se mantenga como bloque visual nítido
-      const shortThesis = block.thesisSentence.length > 110 
-        ? block.thesisSentence.substring(0, 106) + '...' 
-        : block.thesisSentence;
+      const shortThesis =
+        block.thesisSentence.length > 110
+          ? block.thesisSentence.substring(0, 106) + '...'
+          : block.thesisSentence;
+
+      const sectionBadge = block.sectionTitle ? `<div class="map-section-tag">§ ${block.sectionTitle}</div>` : '';
 
       nodeEl.innerHTML = `
+        ${sectionBadge}
         <div class="argument-node-tag">${block.roleLabel}</div>
         <div class="argument-node-body">${shortThesis}</div>
         <div class="argument-node-footer">

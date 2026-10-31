@@ -20,6 +20,7 @@ import { SemanticZoomController } from '../../engine/SemanticZoomController';
 import { SemanticLevel } from '../../core/types';
 import { SemanticZoomView } from './SemanticZoomView';
 import { TextHud } from './TextHud';
+import { FocusManager } from '../focus/FocusManager';
 
 export class EditorialEditor {
   private container: HTMLDivElement;
@@ -41,6 +42,7 @@ export class EditorialEditor {
   private toastTimer: number | null = null;
   private cachedRawText: string = '';
   private textHud: TextHud | null = null;
+  private focusManager: FocusManager | null = null;
 
   private graph: DocumentGraph;
   private audio: HarmonicSynthesizer;
@@ -97,6 +99,13 @@ export class EditorialEditor {
     this.zoomController.onChange((state) => {
       this.applySemanticZoom(state.level);
     });
+  }
+
+  /**
+   * Conecta el gestor de foco monástico.
+   */
+  public setFocusManager(fm: FocusManager): void {
+    this.focusManager = fm;
   }
 
   /**
@@ -265,7 +274,12 @@ export class EditorialEditor {
   public applySemanticZoom(level: SemanticLevel): void {
     const rawText = this.getRawText();
     const blocks = this.semanticView.parseParagraphs(rawText, this.manualTheses);
-    if (level !== 'prose') { this.textHud?.hideImmediately(); }
+    if (level !== 'prose') {
+      this.textHud?.hideImmediately();
+      this.focusManager?.onLeaveProseView();
+    } else {
+      this.focusManager?.onEnterProseView();
+    }
 
     if (level === 'prose') {
       // 100%: Prosa continua completa
@@ -299,13 +313,25 @@ export class EditorialEditor {
       this.zoomController.setLevel('prose');
     }
 
-    // 2. Coloca el foco en el editor de texto
+    // 2. Coloca el foco en el editor de texto y sitúa el cursor en el párrafo real
     setTimeout(() => {
       this.bodyElement.focus();
-      // Desplaza suavemente hacia el párrafo
-      const scrollY = Math.max(0, pIndex * 180);
-      this.container.scrollTo({ top: scrollY, behavior: 'smooth' });
-    }, 50);
+      const blocks = Array.from(this.bodyElement.querySelectorAll('p, div'));
+      const targetP = (blocks[pIndex] as HTMLElement) || (this.bodyElement.firstElementChild as HTMLElement);
+
+      if (targetP) {
+        const range = document.createRange();
+        range.selectNodeContents(targetP);
+        range.collapse(false);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+
+        targetP.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
+      this.focusManager?.onEnterProseView();
+    }, 60);
   }
 
   /**
