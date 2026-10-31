@@ -73,9 +73,10 @@ export class EditorialEditor {
     // Salto al hacer clic en un bloque de tesis hacia el modo prosa enfocado
     this.semanticView.onJumpToParagraph((pIndex) => this.jumpToParagraph(pIndex));
 
+    const titleEl = document.getElementById('crystal-title');
     if (this.bodyElement) {
       this.cachedRawText = this.bodyElement.innerText;
-      this.textHud = new TextHud(this.bodyElement, this.audio);
+      this.textHud = new TextHud(this.bodyElement, titleEl, this.audio);
     }
 
     this.initMetrics();

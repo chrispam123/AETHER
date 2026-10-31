@@ -327,7 +327,7 @@ header:hover {
   white-space: pre-wrap;
   word-break: break-word;
   user-select: text;
-  caret-color: transparent; /* El pulso de presencia guía el foco */
+  caret-color: var(--crystal-accent); /* Cursor mineral noble y visible */
 }
 
 .crystal-title:empty::before {
@@ -1175,4 +1175,37 @@ body.hyperfocus-active .discard-gutter {
   font-weight: 500;
   color: #f8f6f0;
   line-height: 1.48;
+}
+
+/* Escalas dinámicas del título principal según preferencia del autor */
+.crystal-title.scale-small {
+  font-size: 21px;
+  line-height: 1.4;
+  margin-bottom: 22px;
+}
+
+.crystal-title.scale-normal {
+  font-size: 32px;
+  line-height: 1.28;
+  margin-bottom: 28px;
+}
+
+.crystal-title.scale-large {
+  font-size: 42px;
+  line-height: 1.2;
+  margin-bottom: 34px;
+}
+
+/* Vía A: Modulación de Secciones y Capítulos dentro del cuerpo de texto */
+.prose-voice-large {
+  display: inline-block;
+  font-size: 1.35em;
+  font-weight: 500;
+  color: var(--ink-primary);
+  margin-top: 24px;
+  margin-bottom: 8px;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 4px;
 }
