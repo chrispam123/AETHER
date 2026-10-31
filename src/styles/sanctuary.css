@@ -366,16 +366,18 @@ header:hover {
 }
 
 /* ============================================================================
-   ENFOQUE MONÁSTICO: DIMMING DE PÁRRAFOS (PÁRRAFO VIVO 100% / PERIFERIA 45%)
+   ENFOQUE MONÁSTICO: DIMMING DE PÁRRAFOS (PÁRRAFO VIVO 100% / SUSURRO GRAFITO 18%)
    ============================================================================ */
 #crystal-sanctuary.focus-dim-mode .crystal-title,
 #crystal-sanctuary.focus-dim-mode .crystal-body p {
-  opacity: 0.42;
+  opacity: 0.18;
+  transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 #crystal-sanctuary.focus-dim-mode .crystal-title.is-active-focus,
 #crystal-sanctuary.focus-dim-mode .crystal-body p.is-active-focus {
   opacity: 1 !important;
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.15);
 }
 
 /* ============================================================================
