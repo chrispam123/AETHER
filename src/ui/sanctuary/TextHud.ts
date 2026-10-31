@@ -323,11 +323,39 @@ export class TextHud {
     if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
 
     const range = selection.getRangeAt(0);
-    const selectedContent = range.extractContents();
-    const span = document.createElement('span');
-    span.className = `prose-voice-${scale}`;
-    span.appendChild(selectedContent);
-    range.insertNode(span);
+
+    // Si la selección ya está dentro de un span de voz previo, limpiamos la clase en vez de anidar
+    let parentVoiceSpan = range.commonAncestorContainer as HTMLElement;
+    if (parentVoiceSpan.nodeType === Node.TEXT_NODE) {
+      parentVoiceSpan = parentVoiceSpan.parentElement as HTMLElement;
+    }
+
+    if (parentVoiceSpan && parentVoiceSpan.classList.contains('prose-voice-small') ||
+        parentVoiceSpan && parentVoiceSpan.classList.contains('prose-voice-normal') ||
+        parentVoiceSpan && parentVoiceSpan.classList.contains('prose-voice-large')) {
+      parentVoiceSpan.classList.remove('prose-voice-small', 'prose-voice-normal', 'prose-voice-large');
+      if (scale !== 'normal') {
+        parentVoiceSpan.classList.add(`prose-voice-${scale}`);
+      } else {
+        // En normal, desenrollamos el span si no aporta estilos adicionales
+        const parent = parentVoiceSpan.parentNode;
+        while (parentVoiceSpan.firstChild) {
+          parent?.insertBefore(parentVoiceSpan.firstChild, parentVoiceSpan);
+        }
+        parent?.removeChild(parentVoiceSpan);
+      }
+    } else {
+      const selectedContent = range.extractContents();
+      if (scale === 'normal') {
+        // Si es normal, simplemente reinsertamos el texto plano sin envolver en spans
+        range.insertNode(selectedContent);
+      } else {
+        const span = document.createElement('span');
+        span.className = `prose-voice-${scale}`;
+        span.appendChild(selectedContent);
+        range.insertNode(span);
+      }
+    }
 
     const freq = scale === 'small' ? 380 : scale === 'normal' ? 440 : 580;
     this.audio.play(freq, 'sine', 0.25, 0.1);

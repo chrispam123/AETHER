@@ -1157,24 +1157,32 @@ body.hyperfocus-active .discard-gutter {
   text-shadow: 0 0 8px var(--crystal-accent);
 }
 
-/* Modulación de Escala de Voz en el Texto */
+/* Modulación de Escala de Voz en el Texto (TAMAÑOS FIJOS EN PX BLINDADOS) */
 .prose-voice-small {
-  font-size: 0.84em;
+  font-size: 16px !important;
+  line-height: 1.6 !important;
   opacity: 0.78;
   color: var(--ink-secondary);
   letter-spacing: 0.01em;
 }
 
 .prose-voice-normal {
-  font-size: 1em;
+  font-size: 21px !important;
+  line-height: var(--line-height-prose) !important;
   opacity: 1;
 }
 
 .prose-voice-large {
-  font-size: 1.22em;
+  display: inline-block;
+  font-size: 28px !important;
+  line-height: 1.35 !important;
   font-weight: 500;
-  color: #f8f6f0;
-  line-height: 1.48;
+  color: var(--ink-primary);
+  margin-top: 18px;
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 4px;
 }
 
 /* Escalas dinámicas del título principal según preferencia del autor */
@@ -1196,16 +1204,4 @@ body.hyperfocus-active .discard-gutter {
   margin-bottom: 34px;
 }
 
-/* Vía A: Modulación de Secciones y Capítulos dentro del cuerpo de texto */
-.prose-voice-large {
-  display: inline-block;
-  font-size: 1.35em;
-  font-weight: 500;
-  color: var(--ink-primary);
-  margin-top: 24px;
-  margin-bottom: 8px;
-  line-height: 1.35;
-  letter-spacing: -0.01em;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  padding-bottom: 4px;
-}
+
