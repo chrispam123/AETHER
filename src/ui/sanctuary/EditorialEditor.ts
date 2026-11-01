@@ -893,7 +893,7 @@ export class EditorialEditor {
 
         // Posición armónica en cascada en el lienzo 2D en espacios despejados
         const basePos = {
-          x: -280 + index * 320,
+          x: -320 + index * 440,
           y: -60 + (index % 2 === 0 ? -40 : 60)
         };
         const clearPos = this.graph.findClearPosition(basePos);

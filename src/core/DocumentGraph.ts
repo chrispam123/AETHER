@@ -407,8 +407,8 @@ export class DocumentGraph {
   public findClearPosition(
     targetPos: Vector2D,
     excludeId?: string,
-    minDx: number = 380,
-    minDy: number = 260
+    minDx: number = 440,
+    minDy: number = 240
   ): Vector2D {
     const otherNodes = Array.from(this.nodes.values()).filter((n) => n.id !== excludeId);
     if (otherNodes.length === 0) return { ...targetPos };
@@ -458,9 +458,9 @@ export class DocumentGraph {
         const nodeB = allNodes[j];
         const dx = Math.abs(nodeA.position.x - nodeB.position.x);
         const dy = Math.abs(nodeA.position.y - nodeB.position.y);
-        if (dx < 360 && dy < 220) {
+        if (dx < 420 && dy < 200) {
           // Si colisionan, calculamos una posición despejada en espiral para el nodo A
-          const newPos = this.findClearPosition(nodeA.position, nodeA.id, 360, 220);
+          const newPos = this.findClearPosition(nodeA.position, nodeA.id, 440, 240);
           nodeA.position = newPos;
           nodeA.liquidPosition = { ...newPos };
           changed = true;
