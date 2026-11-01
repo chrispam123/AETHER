@@ -527,7 +527,7 @@
 @media print {
   @page {
     size: auto;
-    margin: 8mm 12mm;
+    margin: 0;
   }
 
   html, body {
@@ -573,7 +573,7 @@
     opacity: 1 !important;
   }
 
-  /* 4. Rescatar y hacer visible ÚNICAMENTE las hojas de papel físicas y su contenido */
+  /* 4. Rescatar y hacer visible ÚNICAMENTE las hojas de papel físicas y su contenido (Calibración WYSIWYG 1:1) */
   .press-sheet,
   .press-sheet * {
     visibility: visible !important;
@@ -583,16 +583,16 @@
     position: relative !important;
     display: flex !important;
     flex-direction: column !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    height: auto !important;
-    min-height: auto !important;
-    max-height: none !important;
+    width: 680px !important;
+    max-width: 680px !important;
+    height: 962px !important;
+    min-height: 962px !important;
+    max-height: 962px !important;
     page-break-after: always !important;
     break-after: page !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    margin: 0 !important;
+    margin: 20px auto !important;
     box-shadow: none !important;
     border: none !important;
     border-radius: 0 !important;
@@ -607,42 +607,43 @@
   }
 
   .press-sheet.margin-monastic {
-    padding: 4mm 6mm !important;
+    padding: 56px 64px !important;
   }
   .press-sheet.margin-academic {
-    padding: 2mm 4mm !important;
+    padding: 44px 48px !important;
   }
   .press-sheet.margin-compact {
-    padding: 0 !important;
+    padding: 32px 36px !important;
   }
 
   .press-sheet-header {
-    border-bottom: 1px solid #999999 !important;
-    color: #555555 !important;
-    margin-bottom: 12px !important;
-    padding-bottom: 4px !important;
+    border-bottom: 1px solid #d0d0d0 !important;
+    padding-bottom: 10px !important;
+    margin-bottom: 34px !important;
+    color: #777777 !important;
   }
 
   .press-sheet-title {
-    color: #000000 !important;
-    margin-bottom: 16px !important;
+    color: #111111 !important;
+    margin-bottom: 24px !important;
   }
 
   .press-sheet-content {
-    flex: none !important;
-    color: #000000 !important;
-    overflow: visible !important;
+    flex: 1 !important;
+    min-height: 0 !important;
+    color: #1c1c1c !important;
+    overflow: hidden !important;
   }
 
   .press-sheet-content p {
-    margin: 0 0 0.9em 0 !important;
+    margin: 0 0 1.25em 0 !important;
   }
 
   .press-sheet-footer {
-    border-top: 1px solid #999999 !important;
-    color: #666666 !important;
-    margin-top: 14px !important;
-    padding-top: 6px !important;
+    border-top: 1px solid #e0e0e0 !important;
+    color: #888888 !important;
+    margin-top: 40px !important;
+    padding-top: 12px !important;
   }
 
   /* Si el usuario desactivó encabezado o pie, respetar su ocultación */
