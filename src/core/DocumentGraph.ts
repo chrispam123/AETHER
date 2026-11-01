@@ -173,6 +173,39 @@ export class DocumentGraph {
   }
 
   /**
+   * Hidrata y reconstruye el grafo en caliente a partir de una instantánea persistida.
+   */
+  public hydrate(nodes: ThoughtNode[], bridges: ConnectionBridge[] = []): void {
+    this.nodes.clear();
+    this.bridges.clear();
+
+    nodes.forEach((node) => {
+      const pos = node.position || { x: 0, y: 0 };
+      const vaporPos = node.vaporPosition || { ...pos };
+      const liquidPos = node.liquidPosition || { ...pos };
+
+      this.nodes.set(node.id, {
+        ...node,
+        position: { ...pos },
+        vaporPosition: { ...vaporPos },
+        liquidPosition: { ...liquidPos },
+        velocity: node.velocity || { x: 0, y: 0 },
+        consumed: !!node.consumed,
+        inDocument: !!node.inDocument
+      });
+    });
+
+    bridges.forEach((bridge) => {
+      if (this.nodes.has(bridge.sourceId) && this.nodes.has(bridge.targetId)) {
+        this.bridges.set(bridge.id, bridge);
+      }
+    });
+
+    this.riverTopologyChanged = true;
+    this.notify();
+  }
+
+  /**
    * Calcula el rol de una idea dentro de la corriente viva:
    * - 'source' (01 · Manantial): Comienzo del río narrativo.
    * - 'flow'   (02 · Afluente): Eslabón intermedio en la corriente.

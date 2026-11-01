@@ -16,6 +16,11 @@ export interface PressDocumentData {
   paragraphs: string[];
 }
 
+export interface PressExportHandlers {
+  onExportMarkdown?: () => void;
+  onExportAether?: () => void;
+}
+
 export type FontFamilyChoice = 'serif' | 'sans' | 'mono';
 export type MarginChoice = 'monastic' | 'academic' | 'compact';
 export type TextAlignChoice = 'justify' | 'left';
@@ -42,6 +47,7 @@ export class PressModal {
   private sheetTitleEl!: HTMLDivElement;
   private sheetContentEl!: HTMLDivElement;
   private sheetFooterEl!: HTMLDivElement;
+  private exportHandlers: PressExportHandlers | null = null;
 
   constructor(audio: HarmonicSynthesizer) {
     this.audio = audio;
@@ -137,11 +143,19 @@ export class PressModal {
               </label>
             </div>
 
-            <!-- Footer: Botón Maestro de Impresión -->
+            <!-- Footer: Botón Maestro de Impresión y Exportación -->
             <div class="press-sidebar-footer">
               <button class="press-action-print" id="press-btn-print">
                 <span>⎙ Imprimir / Guardar PDF</span>
               </button>
+              <div class="press-exports-row">
+                <button class="press-action-secondary" id="press-btn-export-md" type="button">
+                  <span>↓ Markdown (.md)</span>
+                </button>
+                <button class="press-action-secondary" id="press-btn-export-aether" type="button">
+                  <span>✦ Respaldo (.aether)</span>
+                </button>
+              </div>
               <div class="press-print-hint">Listo para papel A4 y PDF a 300 DPI</div>
             </div>
           </aside>
@@ -262,11 +276,25 @@ export class PressModal {
       this.audio.play(520, 'sine', 0.15, 0.03);
     });
 
-    // 8. Botón Maestro de Impresión
+    // 8. Botón Maestro de Impresión y Exportación
     const printBtn = this.backdropEl.querySelector('#press-btn-print');
     printBtn?.addEventListener('click', () => {
       this.triggerPrint();
     });
+
+    const exportMdBtn = this.backdropEl.querySelector('#press-btn-export-md');
+    exportMdBtn?.addEventListener('click', () => {
+      this.exportHandlers?.onExportMarkdown?.();
+    });
+
+    const exportAetherBtn = this.backdropEl.querySelector('#press-btn-export-aether');
+    exportAetherBtn?.addEventListener('click', () => {
+      this.exportHandlers?.onExportAether?.();
+    });
+  }
+
+  public setExportHandlers(handlers: PressExportHandlers): void {
+    this.exportHandlers = handlers;
   }
 
   /**

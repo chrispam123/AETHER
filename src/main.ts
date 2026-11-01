@@ -31,6 +31,8 @@ import { RawGutter } from './ui/margin/RawGutter';
 import { SemanticZoomController } from './engine/SemanticZoomController';
 import { ZoomDial } from './ui/dock/ZoomDial';
 import { Phase } from './core/types';
+import { StorageManager } from './storage/StorageManager';
+import { ExportManager } from './storage/exporters/ExportManager';
 
 class AetherApp {
   private graph: DocumentGraph;
@@ -49,6 +51,7 @@ class AetherApp {
   private zoomDial: ZoomDial;
   private atmosphereSelector: AtmosphereSelector;
   private cameraStates: Partial<Record<Phase, { x: number; y: number; zoom: number }>> = {};
+  private storageManager: StorageManager;
 
   constructor() {
     // 1. Inicialización de Capa 1: Modelo puro de datos
@@ -163,6 +166,24 @@ class AetherApp {
     this.initPhaseOrchestration();
     this.initAudioButton();
     this.initPortalCards();
+
+    // Capa de Almacenamiento Local-First (IndexedDB y Respaldo Topológico)
+    this.storageManager = new StorageManager(
+      this.graph,
+      this.stateMachine,
+      () => this.cameraStates,
+      () => this.audio.getCurrentLandscape()?.id || null
+    );
+    this.storageManager.setEditor(this.editor);
+
+    this.editor.setPressExportHandlers({
+      onExportMarkdown: () => this.exportMarkdown(),
+      onExportAether: () => this.exportAetherBackup()
+    });
+
+    this.initStorageAutosave();
+    this.initStorageShortcuts();
+    this.restoreWorkspace();
 
     // Arranca el bucle a 120 FPS
     this.renderer.start();
@@ -362,6 +383,173 @@ class AetherApp {
         if (brandText) brandText.innerText = 'AETHER';
       }
     });
+  }
+
+  /**
+   * Restaura la topología y prosa persistidas en IndexedDB al abrir la página.
+   */
+  private async restoreWorkspace(): Promise<void> {
+    try {
+      const workspace = await this.storageManager.loadWorkspace();
+      if (workspace.hasData) {
+        // 1. Restaurar Grafo de Pensamientos
+        if (workspace.nodes.length > 0) {
+          this.graph.hydrate(workspace.nodes, workspace.bridges);
+        }
+
+        // 2. Restaurar Documento Editorial en Cristal
+        if (workspace.document) {
+          this.editor.hydrateDocument(workspace.document.title, workspace.document.bodyHtml);
+        }
+
+        // 3. Restaurar Encuadres de Cámara
+        if (workspace.state?.cameraStates) {
+          this.cameraStates = { ...workspace.state.cameraStates };
+        }
+
+        // 4. Restaurar Fase Activa (si el usuario ya había salido del Portal)
+        if (workspace.state?.activePhase && workspace.state.activePhase !== 'portal') {
+          this.stateMachine.transitionTo(workspace.state.activePhase);
+        }
+
+        // 5. Sincronización de Proyecciones DOM y Márgenes
+        this.bridge.sync();
+        this.rawGutter.render();
+      }
+    } catch (e) {
+      console.warn('[Aether] Error al restaurar workspace:', e);
+    }
+  }
+
+  /**
+   * Conecta los eventos de escritura en tiempo real de Cristal con el debouncer de autosave.
+   */
+  private initStorageAutosave(): void {
+    const crystalTitleEl = document.getElementById('crystal-title');
+    const crystalBodyEl = document.querySelector('.crystal-body');
+
+    crystalTitleEl?.addEventListener('input', () => {
+      this.storageManager.triggerAutosave();
+    });
+
+    crystalBodyEl?.addEventListener('input', () => {
+      this.storageManager.triggerAutosave();
+    });
+  }
+
+  /**
+   * Conecta los atajos de teclado para persistencia y respaldo:
+   * - Ctrl + S / Cmd + S: Guardado atómico inmediato + chime discreto.
+   * - Ctrl + Shift + E: Exportar respaldo topológico (.aether).
+   * - Ctrl + Shift + M: Exportar Markdown (.md).
+   * - Ctrl + Shift + O: Importar archivo de respaldo (.aether).
+   */
+  private initStorageShortcuts(): void {
+    window.addEventListener('keydown', (e: KeyboardEvent) => {
+      const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+      const modKey = isMac ? e.metaKey : e.ctrlKey;
+
+      if (!modKey) return;
+
+      // 1. Guardar de Inmediato (Ctrl + S)
+      if (!e.shiftKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        this.storageManager.saveImmediately();
+        this.audio.play(528, 'sine', 0.5, 0.1);
+        return;
+      }
+
+      // 2. Exportar Topología (.aether) (Ctrl + Shift + E)
+      if (e.shiftKey && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        this.exportAetherBackup();
+        return;
+      }
+
+      // 3. Exportar Markdown (.md) (Ctrl + Shift + M)
+      if (e.shiftKey && e.key.toLowerCase() === 'm') {
+        e.preventDefault();
+        this.exportMarkdown();
+        return;
+      }
+
+      // 4. Importar Respaldo (.aether) (Ctrl + Shift + O)
+      if (e.shiftKey && e.key.toLowerCase() === 'o') {
+        e.preventDefault();
+        this.importAetherBackup();
+        return;
+      }
+    });
+  }
+
+  /**
+   * Descarga el respaldo completo en formato .aether.
+   */
+  public exportAetherBackup(): void {
+    const titleEl = document.getElementById('crystal-title');
+    const bodyEl = document.querySelector('.crystal-body') as HTMLElement | null;
+
+    ExportManager.exportToAetherFile({
+      title: titleEl?.innerText.trim() || 'Sobre la naturaleza del pensamiento',
+      bodyHtml: bodyEl?.innerHTML || '',
+      bodyText: bodyEl?.innerText || '',
+      nodes: this.graph.getAllNodes(),
+      bridges: this.graph.getBridges(),
+      activePhase: this.stateMachine.getPhase(),
+      cameraStates: this.cameraStates,
+      atmosphereLandscapeId: this.audio.getCurrentLandscape()?.id || null
+    });
+    this.audio.play(640, 'triangle', 0.5, 0.1);
+  }
+
+  /**
+   * Descarga la prosa limpia en formato Markdown (.md).
+   */
+  public exportMarkdown(): void {
+    const titleEl = document.getElementById('crystal-title');
+    const bodyEl = document.querySelector('.crystal-body') as HTMLElement | null;
+
+    ExportManager.exportToMarkdownFile({
+      title: titleEl?.innerText.trim() || 'Sobre la naturaleza del pensamiento',
+      bodyText: bodyEl?.innerText || '',
+      nodesCount: this.graph.getAllNodes().length,
+      activePhase: this.stateMachine.getPhase()
+    });
+    this.audio.play(640, 'triangle', 0.5, 0.1);
+  }
+
+  /**
+   * Importa y reconstituye en caliente un archivo .aether.
+   */
+  public async importAetherBackup(): Promise<void> {
+    const file = await ExportManager.selectFile('.aether');
+    if (!file) return;
+
+    try {
+      const backup = await ExportManager.parseAetherFile(file);
+
+      // Rehidratar estructuras en memoria
+      this.graph.hydrate(backup.nodes, backup.bridges);
+      this.editor.hydrateDocument(backup.document.title, backup.document.bodyHtml);
+
+      if (backup.workspace.cameraStates) {
+        this.cameraStates = { ...backup.workspace.cameraStates };
+      }
+
+      if (backup.workspace.activePhase) {
+        this.stateMachine.transitionTo(backup.workspace.activePhase);
+      }
+
+      this.bridge.sync();
+      this.rawGutter.render();
+
+      // Guardar de inmediato en la base de datos local
+      await this.storageManager.saveImmediately();
+      this.audio.play(528, 'sine', 0.8, 0.15);
+    } catch (err: any) {
+      console.error('[Aether Import]:', err);
+      alert(err.message || 'Error al importar archivo .aether');
+    }
   }
 }
 

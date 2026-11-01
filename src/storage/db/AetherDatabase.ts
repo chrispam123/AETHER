@@ -1,0 +1,270 @@
+/**
+ * ============================================================================
+ * CAPA DE ALMACENAMIENTO: BASE DE DATOS LOCAL-FIRST (INDEXEDDB NATIVA)
+ * ============================================================================
+ * Implementa el motor transaccional ACID local en el navegador del autor:
+ * - 0 ms de latencia: Todo se lee y escribe en disco local asíncronamente.
+ * - Sin dependencias externas pesadas (IndexedDB nativa con Promesas).
+ * - Stores orientados a la física de Aether:
+ *   1. 'documents': Título de la obra, prosa de Cristal y metadatos.
+ *   2. 'thought_nodes': Chispas de Niebla y barcas de Fluido con posiciones duales.
+ *   3. 'connection_bridges': Corrientes del Río Narrativo (A -> B).
+ *   4. 'workspace_state': Fase activa, encuadre de cámara y atmósfera acústica.
+ */
+
+import { ThoughtNode, ConnectionBridge, Phase } from '../../core/types';
+
+export interface SavedDocument {
+  id: string;
+  title: string;
+  bodyHtml: string;
+  bodyText: string;
+  updatedAt: number;
+}
+
+export interface SavedWorkspaceState {
+  activePhase: Phase;
+  cameraStates: Partial<Record<Phase, { x: number; y: number; zoom: number }>>;
+  atmosphereLandscapeId?: string | null;
+  updatedAt: number;
+}
+
+export class AetherDatabase {
+  private static readonly DB_NAME = 'aether_knowledge_v1';
+  private static readonly DB_VERSION = 1;
+
+  // Nombres de los Object Stores
+  public static readonly STORE_DOCUMENTS = 'documents';
+  public static readonly STORE_NODES = 'thought_nodes';
+  public static readonly STORE_BRIDGES = 'connection_bridges';
+  public static readonly STORE_STATE = 'workspace_state';
+
+  private db: IDBDatabase | null = null;
+  private isInitializing: Promise<void> | null = null;
+
+  /**
+   * Abre e inicializa la base de datos IndexedDB creando los almacenes de objetos.
+   */
+  public async init(): Promise<void> {
+    if (this.db) return;
+    if (this.isInitializing) return this.isInitializing;
+
+    this.isInitializing = new Promise<void>((resolve, reject) => {
+      if (typeof window === 'undefined' || !window.indexedDB) {
+        console.warn('[AetherDB] IndexedDB no está disponible en este entorno.');
+        resolve();
+        return;
+      }
+
+      const request = window.indexedDB.open(
+        AetherDatabase.DB_NAME,
+        AetherDatabase.DB_VERSION
+      );
+
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+
+        // 1. Store de Documentos (Clave primaria: 'id')
+        if (!db.objectStoreNames.contains(AetherDatabase.STORE_DOCUMENTS)) {
+          db.createObjectStore(AetherDatabase.STORE_DOCUMENTS, { keyPath: 'id' });
+        }
+
+        // 2. Store de Nodos de Pensamiento (Clave primaria: 'id')
+        if (!db.objectStoreNames.contains(AetherDatabase.STORE_NODES)) {
+          const nodeStore = db.createObjectStore(AetherDatabase.STORE_NODES, { keyPath: 'id' });
+          nodeStore.createIndex('inDocument', 'inDocument', { unique: false });
+          nodeStore.createIndex('timestamp', 'timestamp', { unique: false });
+        }
+
+        // 3. Store de Puentes y Corrientes (Clave primaria: 'id')
+        if (!db.objectStoreNames.contains(AetherDatabase.STORE_BRIDGES)) {
+          const bridgeStore = db.createObjectStore(AetherDatabase.STORE_BRIDGES, { keyPath: 'id' });
+          bridgeStore.createIndex('sourceId', 'sourceId', { unique: false });
+          bridgeStore.createIndex('targetId', 'targetId', { unique: false });
+        }
+
+        // 4. Store de Estado Global del Workspace (Clave primaria: 'key')
+        if (!db.objectStoreNames.contains(AetherDatabase.STORE_STATE)) {
+          db.createObjectStore(AetherDatabase.STORE_STATE, { keyPath: 'key' });
+        }
+      };
+
+      request.onsuccess = (event) => {
+        this.db = (event.target as IDBOpenDBRequest).result;
+        resolve();
+      };
+
+      request.onerror = (event) => {
+        console.error('[AetherDB] Error al abrir base de datos:', (event.target as IDBOpenDBRequest).error);
+        reject((event.target as IDBOpenDBRequest).error);
+      };
+    });
+
+    return this.isInitializing;
+  }
+
+  /**
+   * Ejecuta una transacción genérica en un store determinado.
+   */
+  private async getStore(
+    storeName: string,
+    mode: IDBTransactionMode = 'readonly'
+  ): Promise<IDBObjectStore | null> {
+    await this.init();
+    if (!this.db) return null;
+    const tx = this.db.transaction(storeName, mode);
+    return tx.objectStore(storeName);
+  }
+
+  // ==========================================================================
+  // OPERACIONES DE DOCUMENTO (SANTUARIO CRISTAL)
+  // ==========================================================================
+
+  public async saveDocument(doc: SavedDocument): Promise<void> {
+    const store = await this.getStore(AetherDatabase.STORE_DOCUMENTS, 'readwrite');
+    if (!store) return;
+
+    return new Promise((resolve, reject) => {
+      const request = store.put(doc);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  public async getDocument(docId: string = 'active_document'): Promise<SavedDocument | null> {
+    const store = await this.getStore(AetherDatabase.STORE_DOCUMENTS, 'readonly');
+    if (!store) return null;
+
+    return new Promise((resolve, reject) => {
+      const request = store.get(docId);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // ==========================================================================
+  // OPERACIONES DE NODOS DE PENSAMIENTO (NIEBLA Y FLUIDO)
+  // ==========================================================================
+
+  public async saveNodes(nodes: ThoughtNode[]): Promise<void> {
+    await this.init();
+    if (!this.db) return;
+
+    return new Promise((resolve, reject) => {
+      const tx = this.db!.transaction(AetherDatabase.STORE_NODES, 'readwrite');
+      const store = tx.objectStore(AetherDatabase.STORE_NODES);
+
+      // Limpia la colección anterior e inserta el conjunto completo actual
+      const clearReq = store.clear();
+      clearReq.onsuccess = () => {
+        nodes.forEach((node) => {
+          store.put(node);
+        });
+      };
+
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  public async getNodes(): Promise<ThoughtNode[]> {
+    const store = await this.getStore(AetherDatabase.STORE_NODES, 'readonly');
+    if (!store) return [];
+
+    return new Promise((resolve, reject) => {
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // ==========================================================================
+  // OPERACIONES DE PUENTES Y RÍO NARRATIVO
+  // ==========================================================================
+
+  public async saveBridges(bridges: ConnectionBridge[]): Promise<void> {
+    await this.init();
+    if (!this.db) return;
+
+    return new Promise((resolve, reject) => {
+      const tx = this.db!.transaction(AetherDatabase.STORE_BRIDGES, 'readwrite');
+      const store = tx.objectStore(AetherDatabase.STORE_BRIDGES);
+
+      const clearReq = store.clear();
+      clearReq.onsuccess = () => {
+        bridges.forEach((bridge) => {
+          store.put(bridge);
+        });
+      };
+
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  public async getBridges(): Promise<ConnectionBridge[]> {
+    const store = await this.getStore(AetherDatabase.STORE_BRIDGES, 'readonly');
+    if (!store) return [];
+
+    return new Promise((resolve, reject) => {
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // ==========================================================================
+  // OPERACIONES DE ESTADO GLOBAL DEL WORKSPACE
+  // ==========================================================================
+
+  public async saveWorkspaceState(state: SavedWorkspaceState): Promise<void> {
+    const store = await this.getStore(AetherDatabase.STORE_STATE, 'readwrite');
+    if (!store) return;
+
+    return new Promise((resolve, reject) => {
+      const record = { key: 'global_state', ...state };
+      const request = store.put(record);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  public async getWorkspaceState(): Promise<SavedWorkspaceState | null> {
+    const store = await this.getStore(AetherDatabase.STORE_STATE, 'readonly');
+    if (!store) return null;
+
+    return new Promise((resolve, reject) => {
+      const request = store.get('global_state');
+      request.onsuccess = () => resolve(request.result ? (request.result as SavedWorkspaceState) : null);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Limpia toda la base de datos (para reinicio de fábrica o importación limpia).
+   */
+  public async clearAll(): Promise<void> {
+    await this.init();
+    if (!this.db) return;
+
+    return new Promise((resolve, reject) => {
+      const tx = this.db!.transaction(
+        [
+          AetherDatabase.STORE_DOCUMENTS,
+          AetherDatabase.STORE_NODES,
+          AetherDatabase.STORE_BRIDGES,
+          AetherDatabase.STORE_STATE
+        ],
+        'readwrite'
+      );
+
+      tx.objectStore(AetherDatabase.STORE_DOCUMENTS).clear();
+      tx.objectStore(AetherDatabase.STORE_NODES).clear();
+      tx.objectStore(AetherDatabase.STORE_BRIDGES).clear();
+      tx.objectStore(AetherDatabase.STORE_STATE).clear();
+
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+}

@@ -169,6 +169,13 @@ export class EditorialEditor {
   }
 
   /**
+   * Conecta los manejadores de exportación de La Prensa.
+   */
+  public setPressExportHandlers(handlers: { onExportMarkdown?: () => void; onExportAether?: () => void }): void {
+    this.pressModal.setExportHandlers(handlers);
+  }
+
+  /**
    * Vía 2: Regla del Doble Enter Explícito
    * Extrae los bloques argumentales directamente del DOM:
    * - Saltos de línea simples (Enter) continúan la idea dentro del mismo bloque.
@@ -488,6 +495,20 @@ export class EditorialEditor {
    */
   public getBodyElement(): HTMLDivElement {
     return this.bodyElement;
+  }
+
+  /**
+   * Hidrata el título y cuerpo de Cristal con los datos persistidos o importados.
+   */
+  public hydrateDocument(title: string, bodyHtml: string): void {
+    const titleEl = this.getTitleElement();
+    if (titleEl && title) {
+      titleEl.innerText = title;
+    }
+    if (this.bodyElement && bodyHtml) {
+      this.bodyElement.innerHTML = bodyHtml;
+      this.updateMetrics();
+    }
   }
 
   /**
@@ -967,19 +988,28 @@ export class EditorialEditor {
     if (!this.bodyElement) return;
 
     this.bodyElement.addEventListener('input', () => {
-      const blocks = this.getStructuredBlocks();
-      if (blocks.length > 0) {
-        this.cachedRawText = blocks.map((b) => b.text).join('\n\n');
-      } else {
-        this.cachedRawText = this.bodyElement.innerText;
-      }
-      const text = this.cachedRawText.trim();
-      const words = text ? text.split(/\s+/).length : 0;
-      if (this.wordCountEl) this.wordCountEl.innerText = `${words} palabras`;
-
-      const seconds = Math.ceil((words / 200) * 60);
-      if (this.readTimeEl) this.readTimeEl.innerText = `Lectura: ${seconds} seg`;
+      this.updateMetrics();
     });
+  }
+
+  /**
+   * Recalcula las métricas de palabras y tiempo de lectura.
+   */
+  public updateMetrics(): void {
+    if (!this.bodyElement) return;
+
+    const blocks = this.getStructuredBlocks();
+    if (blocks.length > 0) {
+      this.cachedRawText = blocks.map((b) => b.text).join('\n\n');
+    } else {
+      this.cachedRawText = this.bodyElement.innerText;
+    }
+    const text = this.cachedRawText.trim();
+    const words = text ? text.split(/\s+/).length : 0;
+    if (this.wordCountEl) this.wordCountEl.innerText = `${words} palabras`;
+
+    const seconds = Math.ceil((words / 200) * 60);
+    if (this.readTimeEl) this.readTimeEl.innerText = `Lectura: ${seconds} seg`;
   }
 
   /**
