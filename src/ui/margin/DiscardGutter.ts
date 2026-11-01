@@ -50,7 +50,7 @@ export class DiscardGutter {
   }
 
   /**
-   * Hidrata el margen desde la base de datos persistida (sin emitir falsas mutaciones).
+   * Hidrata el margen desde la base de datos persistida.
    */
   public hydrate(items: DiscardItem[]): void {
     if (!Array.isArray(items)) return;
@@ -148,19 +148,11 @@ export class DiscardGutter {
   /**
    * Renderiza las virutas de pensamiento en el canalón lateral izquierdo.
    */
-  private render(): void {
+  public render(): void {
     this.container.innerHTML = '';
 
     if (this.items.length === 0) {
       this.container.classList.remove('has-items');
-      this.container.style.display = 'none';
-      return;
-    }
-
-    if (this.isVisible) {
-      this.container.style.display = 'flex';
-      this.container.classList.add('has-items');
-    } else {
       this.container.style.display = 'none';
       return;
     }
@@ -205,6 +197,14 @@ export class DiscardGutter {
 
       this.container.appendChild(chip);
     });
+
+    if (this.isVisible) {
+      this.container.style.display = 'flex';
+      this.container.classList.add('has-items');
+    } else {
+      this.container.style.display = 'none';
+      this.container.classList.remove('has-items');
+    }
   }
 
   /**
@@ -212,17 +212,6 @@ export class DiscardGutter {
    */
   public setVisible(visible: boolean): void {
     this.isVisible = visible;
-    if (visible) {
-      if (this.items.length > 0) {
-        this.container.style.display = 'flex';
-        this.container.classList.add('has-items');
-      } else {
-        this.container.style.display = 'none';
-        this.container.classList.remove('has-items');
-      }
-    } else {
-      this.container.style.display = 'none';
-      this.container.classList.remove('has-items');
-    }
+    this.render();
   }
 }

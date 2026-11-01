@@ -432,6 +432,7 @@ class AetherApp {
         // 6. Sincronización de Proyecciones DOM y Márgenes
         this.bridge.sync();
         this.rawGutter.render();
+        this.gutter.render();
       }
     } catch (e) {
       console.warn('[Aether] Error al restaurar workspace:', e);
