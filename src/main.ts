@@ -175,6 +175,7 @@ class AetherApp {
       () => this.audio.getCurrentLandscape()?.id || null
     );
     this.storageManager.setEditor(this.editor);
+    this.storageManager.setDiscardGutter(this.gutter);
 
     this.editor.setPressExportHandlers({
       onExportMarkdown: () => this.exportMarkdown(),
@@ -402,6 +403,11 @@ class AetherApp {
           this.editor.hydrateDocument(workspace.document.title, workspace.document.bodyHtml);
         }
 
+        // 2b. Restaurar Descartes en el Margen Izquierdo
+        if (workspace.discards && workspace.discards.length > 0) {
+          this.gutter.hydrate(workspace.discards);
+        }
+
         // 3. Restaurar Encuadres de Cámara
         if (workspace.state?.cameraStates) {
           this.cameraStates = { ...workspace.state.cameraStates };
@@ -509,6 +515,7 @@ class AetherApp {
       bodyText: bodyEl?.innerText || '',
       nodes: this.graph.getAllNodes(),
       bridges: this.graph.getBridges(),
+      discards: this.gutter.getItems(),
       activePhase: this.stateMachine.getPhase(),
       cameraStates: this.cameraStates,
       atmosphereLandscapeId: this.audio.getCurrentLandscape()?.id || null
@@ -545,6 +552,10 @@ class AetherApp {
       // Rehidratar estructuras en memoria
       this.graph.hydrate(backup.nodes, backup.bridges);
       this.editor.hydrateDocument(backup.document.title, backup.document.bodyHtml);
+
+      if (backup.discards && Array.isArray(backup.discards)) {
+        this.gutter.hydrate(backup.discards);
+      }
 
       if (backup.workspace.cameraStates) {
         this.cameraStates = { ...backup.workspace.cameraStates };

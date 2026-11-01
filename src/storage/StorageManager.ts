@@ -7,13 +7,15 @@
  * - Protección del ciclo de vida del navegador (beforeunload y visibilitychange).
  * - Solicitud de persistencia blindada (navigator.storage.persist).
  * - Restauración holística del espacio de trabajo al iniciar la aplicación.
+ * - Soporte total para el Margen de Descartes (virutas podadas pero preservadas).
  */
 
 import { DocumentGraph } from '../core/DocumentGraph';
 import { StateMachine } from '../core/StateMachine';
 import { EditorialEditor } from '../ui/sanctuary/EditorialEditor';
+import { DiscardGutter } from '../ui/margin/DiscardGutter';
 import { AetherDatabase, SavedDocument, SavedWorkspaceState } from './db/AetherDatabase';
-import { Phase, ThoughtNode, ConnectionBridge } from '../core/types';
+import { Phase, ThoughtNode, ConnectionBridge, DiscardItem } from '../core/types';
 
 export interface LoadedWorkspace {
   hasData: boolean;
@@ -21,6 +23,7 @@ export interface LoadedWorkspace {
   nodes: ThoughtNode[];
   bridges: ConnectionBridge[];
   state: SavedWorkspaceState | null;
+  discards: DiscardItem[];
 }
 
 export class StorageManager {
@@ -28,6 +31,7 @@ export class StorageManager {
   private graph: DocumentGraph;
   private stateMachine: StateMachine;
   private editor: EditorialEditor | null = null;
+  private gutter: DiscardGutter | null = null;
   private getCameraStates: () => Partial<Record<Phase, { x: number; y: number; zoom: number }>>;
   private getAtmosphereId: () => string | null;
 
@@ -55,6 +59,13 @@ export class StorageManager {
 
   public setEditor(editor: EditorialEditor): void {
     this.editor = editor;
+  }
+
+  public setDiscardGutter(gutter: DiscardGutter): void {
+    this.gutter = gutter;
+    this.gutter.onChange(() => {
+      this.triggerAutosave();
+    });
   }
 
   /**
@@ -177,12 +188,16 @@ export class StorageManager {
         updatedAt: Date.now()
       };
 
-      // 4. Guardado atómico en paralelo en IndexedDB
+      // 4. Extraer Descartes (virutas del margen izquierdo de Cristal)
+      const discards = this.gutter ? this.gutter.getItems() : [];
+
+      // 5. Guardado atómico en paralelo en IndexedDB
       await Promise.all([
         this.db.saveDocument(docRecord),
         this.db.saveNodes(nodes),
         this.db.saveBridges(bridges),
-        this.db.saveWorkspaceState(workspaceRecord)
+        this.db.saveWorkspaceState(workspaceRecord),
+        this.db.saveDiscards(discards)
       ]);
     } catch (e) {
       console.warn('[Aether Storage] Error durante guardado atómico:', e);
@@ -198,21 +213,25 @@ export class StorageManager {
     try {
       await this.db.init();
 
-      const [document, nodes, bridges, state] = await Promise.all([
+      const [document, nodes, bridges, state, discards] = await Promise.all([
         this.db.getDocument('active_document'),
         this.db.getNodes(),
         this.db.getBridges(),
-        this.db.getWorkspaceState()
+        this.db.getWorkspaceState(),
+        this.db.getDiscards()
       ]);
 
-      const hasData = (nodes && nodes.length > 0) || (document && document.bodyText.trim().length > 0);
+      const hasData = (nodes && nodes.length > 0) || 
+                      (document && document.bodyText.trim().length > 0) ||
+                      (discards && discards.length > 0);
 
       return {
         hasData: !!hasData,
         document,
         nodes: nodes || [],
         bridges: bridges || [],
-        state
+        state,
+        discards: discards || []
       };
     } catch (e) {
       console.warn('[Aether Storage] Error al cargar workspace desde IndexedDB:', e);
@@ -221,7 +240,8 @@ export class StorageManager {
         document: null,
         nodes: [],
         bridges: [],
-        state: null
+        state: null,
+        discards: []
       };
     }
   }

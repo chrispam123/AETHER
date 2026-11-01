@@ -7,6 +7,7 @@
  *    - Nodos de Niebla y Fluido con coordenadas duales preservadas.
  *    - Puentes semánticos del Río Narrativo.
  *    - Prosa del Santuario Cristal y título.
+ *    - Descartes podados pero preservados en el margen izquierdo.
  *    - Estado del espacio de trabajo (fase y encuadres de cámara).
  * 2. Formato Markdown Puro .md (Interoperabilidad con Obsidian / Typora):
  *    - YAML Frontmatter con metadatos de condensación.
@@ -14,7 +15,7 @@
  * 3. Importador Bidireccional seguro con validación de esquema.
  */
 
-import { ThoughtNode, ConnectionBridge, Phase } from '../../core/types';
+import { ThoughtNode, ConnectionBridge, Phase, DiscardItem } from '../../core/types';
 
 export interface AetherTopologyBackup {
   version: 1;
@@ -27,6 +28,7 @@ export interface AetherTopologyBackup {
   };
   nodes: ThoughtNode[];
   bridges: ConnectionBridge[];
+  discards?: DiscardItem[];
   workspace: {
     activePhase: Phase;
     cameraStates?: Partial<Record<Phase, { x: number; y: number; zoom: number }>>;
@@ -59,18 +61,20 @@ export class ExportManager {
     const anchor = document.createElement('a');
     anchor.href = url;
     anchor.download = filename;
+    anchor.style.display = 'none';
+
     document.body.appendChild(anchor);
     anchor.click();
     document.body.removeChild(anchor);
 
-    // Liberar memoria del blob
-    window.setTimeout(() => {
+    // Liberar URL tras 100 ms
+    setTimeout(() => {
       URL.revokeObjectURL(url);
-    }, 1000);
+    }, 100);
   }
 
   /**
-   * Exporta la topología viva completa a un archivo .aether (JSON firmado).
+   * Exporta la topología completa a un archivo nativo .aether (JSON enriquecido).
    */
   public static exportToAetherFile(data: {
     title: string;
@@ -78,6 +82,7 @@ export class ExportManager {
     bodyText: string;
     nodes: ThoughtNode[];
     bridges: ConnectionBridge[];
+    discards?: DiscardItem[];
     activePhase: Phase;
     cameraStates?: Partial<Record<Phase, { x: number; y: number; zoom: number }>>;
     atmosphereLandscapeId?: string | null;
@@ -93,6 +98,7 @@ export class ExportManager {
       },
       nodes: data.nodes,
       bridges: data.bridges,
+      discards: data.discards || [],
       workspace: {
         activePhase: data.activePhase,
         cameraStates: data.cameraStates,

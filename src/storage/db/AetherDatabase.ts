@@ -9,10 +9,10 @@
  *   1. 'documents': Título de la obra, prosa de Cristal y metadatos.
  *   2. 'thought_nodes': Chispas de Niebla y barcas de Fluido con posiciones duales.
  *   3. 'connection_bridges': Corrientes del Río Narrativo (A -> B).
- *   4. 'workspace_state': Fase activa, encuadre de cámara y atmósfera acústica.
+ *   4. 'workspace_state': Fase activa, encuadre de cámara, atmósfera acústica y virutas descartadas.
  */
 
-import { ThoughtNode, ConnectionBridge, Phase } from '../../core/types';
+import { ThoughtNode, ConnectionBridge, Phase, DiscardItem } from '../../core/types';
 
 export interface SavedDocument {
   id: string;
@@ -236,6 +236,36 @@ export class AetherDatabase {
     return new Promise((resolve, reject) => {
       const request = store.get('global_state');
       request.onsuccess = () => resolve(request.result ? (request.result as SavedWorkspaceState) : null);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // ==========================================================================
+  // OPERACIONES DE DESCARTES (DISCARD GUTTER / VIRUTAS DEL MARGEN)
+  // ==========================================================================
+
+  public async saveDiscards(discards: DiscardItem[]): Promise<void> {
+    const store = await this.getStore(AetherDatabase.STORE_STATE, 'readwrite');
+    if (!store) return;
+
+    return new Promise((resolve, reject) => {
+      const record = { key: 'discard_items', items: discards, updatedAt: Date.now() };
+      const request = store.put(record);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  public async getDiscards(): Promise<DiscardItem[]> {
+    const store = await this.getStore(AetherDatabase.STORE_STATE, 'readonly');
+    if (!store) return [];
+
+    return new Promise((resolve, reject) => {
+      const request = store.get('discard_items');
+      request.onsuccess = () => {
+        const result = request.result;
+        resolve(result && Array.isArray(result.items) ? result.items : []);
+      };
       request.onerror = () => reject(request.error);
     });
   }

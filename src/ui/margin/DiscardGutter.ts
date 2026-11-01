@@ -6,6 +6,7 @@
  * - Captura frases o párrafos borrados intencionalmente por el usuario.
  * - Los almacena como "virutas de pensamiento" en el canalón lateral izquierdo.
  * - Permite restaurar cualquier idea descartada con un solo clic.
+ * - Persistencia reactiva a través del StorageManager (IndexedDB).
  */
 
 import { DiscardItem } from '../../core/types';
@@ -17,7 +18,9 @@ export class DiscardGutter {
   private container: HTMLDivElement;
   private items: DiscardItem[] = [];
   private restoreCallbacks: Set<RestoreCallback> = new Set();
+  private changeCallbacks: Set<() => void> = new Set();
   private audio: HarmonicSynthesizer;
+  private isVisible: boolean = false;
 
   constructor(audio: HarmonicSynthesizer) {
     this.audio = audio;
@@ -37,6 +40,39 @@ export class DiscardGutter {
       document.body.appendChild(gutter);
     }
     return gutter;
+  }
+
+  /**
+   * Obtiene la copia viva de las virutas de pensamiento en el margen.
+   */
+  public getItems(): DiscardItem[] {
+    return [...this.items];
+  }
+
+  /**
+   * Hidrata el margen desde la base de datos persistida (sin emitir falsas mutaciones).
+   */
+  public hydrate(items: DiscardItem[]): void {
+    if (!Array.isArray(items)) return;
+    this.items = [...items];
+    this.render();
+  }
+
+  /**
+   * Registra un callback que se invoca cuando los descartes cambian (para autosave).
+   */
+  public onChange(callback: () => void): void {
+    this.changeCallbacks.add(callback);
+  }
+
+  private notifyChange(): void {
+    this.changeCallbacks.forEach(fn => {
+      try {
+        fn();
+      } catch (err) {
+        console.warn('[DiscardGutter] Error en observador de cambio:', err);
+      }
+    });
   }
 
   /**
@@ -67,9 +103,9 @@ export class DiscardGutter {
       this.items.pop();
     }
 
-    // Asegura visibilidad del contenedor al recibir un nuevo descarte
-    this.container.style.display = 'flex';
     this.render();
+    this.notifyChange();
+
     // Sonido suave de deslizamiento de papel
     this.audio.play(260, 'sine', 0.35, 0.08);
   }
@@ -97,6 +133,7 @@ export class DiscardGutter {
   public removeDiscard(id: string): void {
     this.items = this.items.filter(it => it.id !== id);
     this.render();
+    this.notifyChange();
   }
 
   /**
@@ -105,6 +142,7 @@ export class DiscardGutter {
   public clear(): void {
     this.items = [];
     this.render();
+    this.notifyChange();
   }
 
   /**
@@ -115,11 +153,17 @@ export class DiscardGutter {
 
     if (this.items.length === 0) {
       this.container.classList.remove('has-items');
+      this.container.style.display = 'none';
       return;
     }
 
-    this.container.style.display = 'flex';
-    this.container.classList.add('has-items');
+    if (this.isVisible) {
+      this.container.style.display = 'flex';
+      this.container.classList.add('has-items');
+    } else {
+      this.container.style.display = 'none';
+      return;
+    }
 
     // Título discreto del canalón
     const header = document.createElement('div');
@@ -167,10 +211,14 @@ export class DiscardGutter {
    * Muestra u oculta el margen según la fase activa del editor.
    */
   public setVisible(visible: boolean): void {
+    this.isVisible = visible;
     if (visible) {
-      this.container.style.display = 'flex';
       if (this.items.length > 0) {
+        this.container.style.display = 'flex';
         this.container.classList.add('has-items');
+      } else {
+        this.container.style.display = 'none';
+        this.container.classList.remove('has-items');
       }
     } else {
       this.container.style.display = 'none';
