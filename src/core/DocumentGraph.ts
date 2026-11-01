@@ -201,7 +201,7 @@ export class DocumentGraph {
       }
     });
 
-    this.riverTopologyChanged = true;
+    this.riverTopologyChanged = false;
     this.notify();
   }
 

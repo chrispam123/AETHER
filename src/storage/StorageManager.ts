@@ -34,6 +34,7 @@ export class StorageManager {
   private autosaveTimer: number | null = null;
   private readonly DEBOUNCE_DELAY_MS = 400;
   private isSaving: boolean = false;
+  private isHydrated: boolean = false;
 
   constructor(
     graph: DocumentGraph,
@@ -54,6 +55,14 @@ export class StorageManager {
 
   public setEditor(editor: EditorialEditor): void {
     this.editor = editor;
+  }
+
+  /**
+   * Marca el almacenamiento como hidratado y listo para autosave.
+   * Impide que el autosave se active durante la carga inicial o sobreescriba datos con el DOM estático.
+   */
+  public markHydrated(): void {
+    this.isHydrated = true;
   }
 
   /**
@@ -113,6 +122,8 @@ export class StorageManager {
    * Programa un guardado automático con debounce (400 ms tras el último cambio).
    */
   public triggerAutosave(): void {
+    if (!this.isHydrated) return;
+
     if (this.autosaveTimer) {
       window.clearTimeout(this.autosaveTimer);
     }
@@ -126,11 +137,17 @@ export class StorageManager {
    * Ejecuta el guardado atómico inmediato en IndexedDB en un hilo secundario asíncrono.
    */
   public async saveImmediately(): Promise<void> {
-    if (this.isSaving) return;
+    if (!this.isHydrated || this.isSaving) return;
     this.isSaving = true;
 
     try {
       await this.db.init();
+
+      // Si estamos en fase Cristal, sincronizamos los bloques del documento con el grafo antes de persistir
+      if (this.stateMachine.getPhase() === 'crystal' && this.editor) {
+        this.editor.syncBlocksWithGraph();
+        this.graph.resetRiverTopologyChanged();
+      }
 
       // 1. Extraer datos de Cristal
       const titleEl = this.editor?.getTitleElement() || document.getElementById('crystal-title');

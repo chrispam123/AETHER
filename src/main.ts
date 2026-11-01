@@ -407,17 +407,31 @@ class AetherApp {
           this.cameraStates = { ...workspace.state.cameraStates };
         }
 
-        // 4. Restaurar Fase Activa (si el usuario ya había salido del Portal)
+        // 4. Bloquear falsos cambios de topología antes de transicionar de fase
+        this.graph.resetRiverTopologyChanged();
+
+        // 5. Restaurar Fase Activa (si el usuario ya había salido del Portal)
         if (workspace.state?.activePhase && workspace.state.activePhase !== 'portal') {
           this.stateMachine.transitionTo(workspace.state.activePhase);
         }
 
-        // 5. Sincronización de Proyecciones DOM y Márgenes
+        // Si la fase activa es Cristal, sincronizar la prosa viva con el grafo
+        if (workspace.state?.activePhase === 'crystal') {
+          this.editor.syncBlocksWithGraph();
+        }
+
+        // Asegurar que la bandera de topología quede en false
+        this.graph.resetRiverTopologyChanged();
+
+        // 6. Sincronización de Proyecciones DOM y Márgenes
         this.bridge.sync();
         this.rawGutter.render();
       }
     } catch (e) {
       console.warn('[Aether] Error al restaurar workspace:', e);
+    } finally {
+      // Marcar el almacenamiento como completamente hidratado y listo para autosave
+      this.storageManager.markHydrated();
     }
   }
 
