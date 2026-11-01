@@ -209,28 +209,28 @@ class AetherApp {
     const crystalTitleEl = document.getElementById('crystal-title');
 
     if (audioBtn && audioLabel) {
-      audioBtn.addEventListener('click', async () => {
-        const title = crystalTitleEl?.innerText.trim() || 'AETHER_ORIGIN';
-        const isPlaying = await this.audio.toggleAtmosphere(title);
+      audioBtn.removeAttribute('title');
 
-        if (isPlaying) {
-          audioLabel.innerText = 'Acústica On';
+      audioBtn.addEventListener('click', async () => {
+        const state = await this.audio.cycleAtmosphere();
+        audioBtn.removeAttribute('title');
+
+        if (state.isPlaying && state.landscape) {
+          audioLabel.innerText = state.landscape.label;
           audioBtn.classList.add('is-playing');
           audioBtn.style.color = '#e5cb7a';
           audioBtn.style.borderColor = 'rgba(212, 175, 55, 0.4)';
-          audioBtn.title = `Firma Sonora viva: "${title}"`;
         } else {
           audioLabel.innerText = 'Acústica';
           audioBtn.classList.remove('is-playing');
           audioBtn.style.color = 'var(--ink-secondary)';
           audioBtn.style.borderColor = 'rgba(255, 255, 255, 0.05)';
-          audioBtn.title = 'Resonancia acústica armónica';
         }
       });
     }
 
     // Reactividad armónica: Si el usuario escribe o altera el título en Cristal,
-    // la atmósfera muta lentamente con un crossfade continuo hacia la nueva firma
+    // la atmósfera muta lentamente sin textos ni leyendas distractoras
     if (crystalTitleEl) {
       let titleDebounceTimer: number | null = null;
       crystalTitleEl.addEventListener('input', () => {
@@ -239,9 +239,6 @@ class AetherApp {
         titleDebounceTimer = window.setTimeout(() => {
           const newTitle = crystalTitleEl.innerText.trim();
           this.audio.updateAtmosphereSeed(newTitle);
-          if (audioBtn) {
-            audioBtn.title = `Firma Sonora viva: "${newTitle || 'AETHER_ORIGIN'}"`;
-          }
         }, 600);
       });
     }
