@@ -350,13 +350,14 @@
   background: rgba(212, 175, 55, 0.45);
 }
 
-/* Hoja de papel real A4 (proporción física 1:1.414) */
+/* Hoja de papel real A4 (proporción física 1:1.414 a escala real 210mm x 297mm) */
 .press-sheet {
-  width: 100%;
-  max-width: 680px;
-  height: 962px;
-  min-height: 962px;
-  max-height: 962px;
+  width: 210mm;
+  min-width: 210mm;
+  max-width: 210mm;
+  height: 297mm;
+  min-height: 297mm;
+  max-height: 297mm;
   flex-shrink: 0;
   background: #ffffff;
   color: #1a1a1a;
@@ -375,27 +376,27 @@
   margin-bottom: 0;
 }
 
-/* Márgenes preconfigurados */
+/* Márgenes preconfigurados en milímetros reales de pliego */
 .press-sheet.margin-monastic {
-  padding: 56px 64px;
+  padding: 24mm 26mm;
 }
 .press-sheet.margin-academic {
-  padding: 44px 48px;
+  padding: 18mm 20mm;
 }
 .press-sheet.margin-compact {
-  padding: 32px 36px;
+  padding: 12mm 14mm;
 }
 
 /* Encabezado / Cornisa de página */
 .press-sheet-header {
   border-bottom: 1px solid #d0d0d0;
-  padding-bottom: 10px;
-  margin-bottom: 34px;
+  padding-bottom: 2.5mm;
+  margin-bottom: 6mm;
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9.5px;
+  font-size: 8.5pt;
   letter-spacing: 0.08em;
   color: #777777;
   text-transform: uppercase;
@@ -408,11 +409,11 @@
 /* Título de la obra en el papel */
 .press-sheet-title {
   font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 26pt;
+  font-size: 24pt;
   font-weight: 500;
   line-height: 1.25;
   color: #111111;
-  margin-bottom: 24px;
+  margin-bottom: 6mm;
   letter-spacing: -0.01em;
 }
 
@@ -427,7 +428,7 @@
 }
 
 .press-sheet-content p {
-  margin: 0 0 1.25em 0;
+  margin: 0 0 1.2em 0;
   text-rendering: optimizeLegibility;
   white-space: pre-line;
 }
@@ -456,12 +457,12 @@
 /* Pie de página con numeración */
 .press-sheet-footer {
   border-top: 1px solid #e0e0e0;
-  padding-top: 12px;
-  margin-top: 40px;
+  padding-top: 2.5mm;
+  margin-top: 6mm;
   display: flex;
   justify-content: space-between;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
+  font-size: 8.5pt;
   color: #888888;
 }
 
@@ -526,7 +527,7 @@
  */
 @media print {
   @page {
-    size: auto;
+    size: A4 portrait;
     margin: 0;
   }
 
@@ -583,16 +584,17 @@
     position: relative !important;
     display: flex !important;
     flex-direction: column !important;
-    width: 680px !important;
-    max-width: 680px !important;
-    height: 962px !important;
-    min-height: 962px !important;
-    max-height: 962px !important;
+    width: 210mm !important;
+    min-width: 210mm !important;
+    max-width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    max-height: 297mm !important;
     page-break-after: always !important;
     break-after: page !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    margin: 20px auto !important;
+    margin: 0 !important;
     box-shadow: none !important;
     border: none !important;
     border-radius: 0 !important;
@@ -607,43 +609,43 @@
   }
 
   .press-sheet.margin-monastic {
-    padding: 56px 64px !important;
+    padding: 24mm 26mm !important;
   }
   .press-sheet.margin-academic {
-    padding: 44px 48px !important;
+    padding: 18mm 20mm !important;
   }
   .press-sheet.margin-compact {
-    padding: 32px 36px !important;
+    padding: 12mm 14mm !important;
   }
 
   .press-sheet-header {
-    border-bottom: 1px solid #d0d0d0 !important;
-    padding-bottom: 10px !important;
-    margin-bottom: 34px !important;
-    color: #777777 !important;
+    border-bottom: 1px solid #999999 !important;
+    padding-bottom: 2.5mm !important;
+    margin-bottom: 6mm !important;
+    color: #555555 !important;
   }
 
   .press-sheet-title {
-    color: #111111 !important;
-    margin-bottom: 24px !important;
+    color: #000000 !important;
+    margin-bottom: 6mm !important;
   }
 
   .press-sheet-content {
     flex: 1 !important;
     min-height: 0 !important;
-    color: #1c1c1c !important;
+    color: #000000 !important;
     overflow: hidden !important;
   }
 
   .press-sheet-content p {
-    margin: 0 0 1.25em 0 !important;
+    margin: 0 0 1.2em 0 !important;
   }
 
   .press-sheet-footer {
-    border-top: 1px solid #e0e0e0 !important;
-    color: #888888 !important;
-    margin-top: 40px !important;
-    padding-top: 12px !important;
+    border-top: 1px solid #999999 !important;
+    color: #666666 !important;
+    margin-top: 6mm !important;
+    padding-top: 2.5mm !important;
   }
 
   /* Si el usuario desactivó encabezado o pie, respetar su ocultación */
