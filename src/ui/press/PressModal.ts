@@ -372,10 +372,17 @@ export class PressModal {
       });
     }
 
-    // Renderizar párrafos respetando saltos
+    // Renderizar párrafos respetando saltos de línea internos y pausas de párrafo
     if (data.paragraphs.length > 0) {
       this.sheetContentEl.innerHTML = data.paragraphs
-        .map((p) => `<p>${p.trim()}</p>`)
+        .map((p) => {
+          const formatted = p
+            .trim()
+            .split('\n')
+            .map((line) => line.trim())
+            .join('<br>');
+          return `<p>${formatted}</p>`;
+        })
         .join('');
     } else {
       this.sheetContentEl.innerHTML = `<p style="font-style: italic; color: #888;">El santuario está en blanco. Escribe primero en Cristal para generar el pliego.</p>`;

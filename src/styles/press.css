@@ -395,8 +395,9 @@
 }
 
 .press-sheet-content p {
-  margin: 0 0 1.15em 0;
+  margin: 0 0 1.25em 0;
   text-rendering: optimizeLegibility;
+  white-space: pre-line;
 }
 
 /* Opciones de Tipografía aplicables */
