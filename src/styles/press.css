@@ -330,23 +330,49 @@
     radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.015) 0%, transparent 80%);
   overflow-y: auto;
   display: flex;
-  justify-content: center;
-  padding: 40px 30px;
+  flex-direction: column;
+  align-items: center;
+  padding: 44px 30px 60px 30px;
 }
 
-/* Hoja de papel real A4 */
+/* Filamento de desplazamiento mineral para el visor de pliegos */
+.press-stage::-webkit-scrollbar {
+  width: 4px;
+}
+.press-stage::-webkit-scrollbar-track {
+  background: transparent;
+}
+.press-stage::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.22);
+  border-radius: 2px;
+}
+.press-stage::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 55, 0.45);
+}
+
+/* Hoja de papel real A4 (proporción física 1:1.414) */
 .press-sheet {
   width: 100%;
   max-width: 680px;
-  min-height: 960px;
+  height: 962px;
+  min-height: 962px;
+  max-height: 962px;
+  flex-shrink: 0;
   background: #ffffff;
   color: #1a1a1a;
   border-radius: 2px;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 1px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 36px;
   transition: padding 0.25s ease, font-size 0.2s ease, line-height 0.2s ease, text-align 0.2s ease;
   box-sizing: border-box;
+}
+
+.press-sheet:last-child {
+  margin-bottom: 0;
 }
 
 /* Márgenes preconfigurados */
@@ -393,6 +419,8 @@
 /* Cuerpo de párrafos */
 .press-sheet-content {
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
   font-family: 'Cormorant Garamond', Georgia, serif;
   color: #1c1c1c;
   font-weight: 400;
@@ -493,12 +521,13 @@
  * ============================================================================
  * Cuando el usuario pulsa Imprimir o Ctrl+P:
  * Desaparece TODO el software de Aether, canvas, cabeceras y controles.
- * Únicamente el pliego físico cobra vida en blanco y negro puro a 300 DPI.
+ * Únicamente las hojas de papel físicas cobran vida en blanco y negro puro a 300 DPI,
+ * respetando el corte de página físico exacto visible en pantalla (WYSIWYG).
  */
 @media print {
   @page {
-    size: A4;
-    margin: 20mm;
+    size: A4 portrait;
+    margin: 0;
   }
 
   html, body {
@@ -506,6 +535,7 @@
     color: #000000 !important;
     overflow: visible !important;
     height: auto !important;
+    min-height: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
   }
@@ -515,34 +545,75 @@
     visibility: hidden !important;
   }
 
-  /* 2. Rescatar y hacer visible ÚNICAMENTE el pliego físico y su contenido */
-  #press-sheet,
-  #press-sheet * {
+  /* 2. Liberar contenedores para que el flujo de impresión fluya página a página */
+  .press-backdrop,
+  .press-modal-container,
+  .press-body,
+  .press-stage {
+    position: static !important;
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+
+  /* 3. Rescatar y hacer visible ÚNICAMENTE las hojas de papel físicas y su contenido */
+  .press-sheet,
+  .press-sheet * {
     visibility: visible !important;
   }
 
-  /* 3. Posicionar el pliego en el vértice superior izquierdo de la página física */
-  #press-sheet {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-height: auto !important;
-    margin: 0 !important;
-    padding: 0 !important; /* El margen real lo suministra @page */
+  .press-sheet {
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    max-width: 210mm !important;
+    min-height: 297mm !important;
+    max-height: 297mm !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin: 0 auto !important;
     box-shadow: none !important;
     border: none !important;
     border-radius: 0 !important;
     background: #ffffff !important;
     color: #000000 !important;
-    page-break-after: avoid;
+    box-sizing: border-box !important;
+  }
+
+  .press-sheet:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+
+  .press-sheet.margin-monastic {
+    padding: 24mm 26mm !important;
+  }
+  .press-sheet.margin-academic {
+    padding: 18mm 20mm !important;
+  }
+  .press-sheet.margin-compact {
+    padding: 12mm 14mm !important;
   }
 
   .press-sheet-header {
     border-bottom: 1px solid #999999 !important;
     color: #555555 !important;
-    margin-bottom: 24px !important;
+    margin-bottom: 18px !important;
   }
 
   .press-sheet-title {
@@ -551,12 +622,13 @@
 
   .press-sheet-content {
     color: #000000 !important;
+    overflow: visible !important;
   }
 
   .press-sheet-footer {
     border-top: 1px solid #999999 !important;
     color: #666666 !important;
-    margin-top: 30px !important;
+    margin-top: 20px !important;
   }
 
   /* Si el usuario desactivó encabezado o pie, respetar su ocultación */

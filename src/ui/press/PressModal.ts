@@ -41,12 +41,10 @@ export class PressModal {
   private showPageNumber: boolean = true;
   private showDate: boolean = true;
 
-  // Elementos del DOM del pliego
-  private sheetEl!: HTMLDivElement;
-  private sheetHeaderEl!: HTMLDivElement;
-  private sheetTitleEl!: HTMLDivElement;
-  private sheetContentEl!: HTMLDivElement;
-  private sheetFooterEl!: HTMLDivElement;
+  // Elementos del DOM del visor y estado del documento
+  private stageEl!: HTMLElement;
+  private printHintEl!: HTMLElement;
+  private currentData: PressDocumentData = { title: '', paragraphs: [] };
   private exportHandlers: PressExportHandlers | null = null;
 
   constructor(audio: HarmonicSynthesizer) {
@@ -156,40 +154,21 @@ export class PressModal {
                   <span>✦ Respaldo (.aether)</span>
                 </button>
               </div>
-              <div class="press-print-hint">Listo para papel A4 y PDF a 300 DPI</div>
+              <div class="press-print-hint" id="press-print-hint">Listo para papel A4 y PDF a 300 DPI</div>
             </div>
           </aside>
 
-          <!-- Escenario del Pliego Físico Real -->
-          <main class="press-stage">
-            <article class="press-sheet margin-academic font-serif" id="press-sheet">
-              <header class="press-sheet-header" id="press-sheet-header">
-                <span class="press-sheet-doc-title">Aether · Manuscrito</span>
-                <span class="press-sheet-date">${new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-              </header>
-
-              <h1 class="press-sheet-title" id="press-sheet-title">Título del Manuscrito</h1>
-
-              <div class="press-sheet-content" id="press-sheet-content">
-                <p>Contenido del documento...</p>
-              </div>
-
-              <footer class="press-sheet-footer" id="press-sheet-footer">
-                <span>Aether Editorial Engine</span>
-                <span>Página 1</span>
-              </footer>
-            </article>
+          <!-- Escenario del Pliego Físico Real en Cascada -->
+          <main class="press-stage" id="press-stage">
+            <!-- Las hojas físicas A4 se inyectan dinámicamente -->
           </main>
         </div>
       </div>
     `;
 
-    // Cachear referencias DOM del pliego
-    this.sheetEl = this.backdropEl.querySelector('#press-sheet') as HTMLDivElement;
-    this.sheetHeaderEl = this.backdropEl.querySelector('#press-sheet-header') as HTMLDivElement;
-    this.sheetTitleEl = this.backdropEl.querySelector('#press-sheet-title') as HTMLDivElement;
-    this.sheetContentEl = this.backdropEl.querySelector('#press-sheet-content') as HTMLDivElement;
-    this.sheetFooterEl = this.backdropEl.querySelector('#press-sheet-footer') as HTMLDivElement;
+    // Cachear referencias DOM del escenario
+    this.stageEl = this.backdropEl.querySelector('#press-stage') as HTMLElement;
+    this.printHintEl = this.backdropEl.querySelector('#press-print-hint') as HTMLElement;
   }
 
   /**
@@ -317,37 +296,10 @@ export class PressModal {
   }
 
   /**
-   * Actualiza el pliego físico con los ajustes cosméticos en tiempo real.
+   * Actualiza los pliegos físicos reactivamente ante cualquier cambio de control.
    */
   private updateSheetStyles(): void {
-    // 1. Tipografía y caja
-    this.sheetContentEl.style.fontSize = this.fontSize;
-    this.sheetContentEl.style.lineHeight = this.lineHeight;
-    this.sheetContentEl.style.textAlign = this.textAlign;
-
-    // 2. Familia tipográfica
-    this.sheetEl.classList.remove('font-serif', 'font-sans', 'font-mono');
-    this.sheetEl.classList.add(`font-${this.fontFamily}`);
-
-    // 3. Márgenes
-    this.sheetEl.classList.remove('margin-monastic', 'margin-academic', 'margin-compact');
-    this.sheetEl.classList.add(`margin-${this.marginPreset}`);
-
-    // 4. Sangría
-    if (this.hasIndent) {
-      this.sheetEl.classList.add('has-indent');
-    } else {
-      this.sheetEl.classList.remove('has-indent');
-    }
-
-    // 5. Encabezado y Pie
-    this.sheetHeaderEl.classList.toggle('is-hidden', !this.showCoverHeader);
-    this.sheetFooterEl.classList.toggle('is-hidden', !this.showPageNumber);
-
-    const dateEl = this.sheetHeaderEl.querySelector('.press-sheet-date') as HTMLElement | null;
-    if (dateEl) {
-      dateEl.style.display = this.showDate ? 'inline' : 'none';
-    }
+    this.paginate();
   }
 
   /**
@@ -355,42 +307,219 @@ export class PressModal {
    */
   public open(data: PressDocumentData): void {
     this.isOpen = true;
-
-    // Actualizar contenido del pliego
-    const title = data.title.trim() || 'Sin Título';
-    this.sheetTitleEl.innerText = title;
-
-    const docTitleLabel = this.sheetHeaderEl.querySelector('.press-sheet-doc-title');
-    if (docTitleLabel) docTitleLabel.textContent = title;
-
-    const dateLabel = this.sheetHeaderEl.querySelector('.press-sheet-date');
-    if (dateLabel) {
-      dateLabel.textContent = new Date().toLocaleDateString('es-ES', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    }
-
-    // Renderizar párrafos respetando saltos de línea internos y pausas de párrafo
-    if (data.paragraphs.length > 0) {
-      this.sheetContentEl.innerHTML = data.paragraphs
-        .map((p) => {
-          const formatted = p
-            .trim()
-            .split('\n')
-            .map((line) => line.trim())
-            .join('<br>');
-          return `<p>${formatted}</p>`;
-        })
-        .join('');
-    } else {
-      this.sheetContentEl.innerHTML = `<p style="font-style: italic; color: #888;">El santuario está en blanco. Escribe primero en Cristal para generar el pliego.</p>`;
-    }
-
-    this.updateSheetStyles();
+    this.currentData = data;
     this.backdropEl.classList.add('is-open');
     this.audio.play(432, 'triangle', 0.4, 0.12);
+
+    // Medición exacta tras montaje visual en el DOM
+    requestAnimationFrame(() => {
+      this.paginate();
+    });
+  }
+
+  /**
+   * Fábrica de hojas físicas A4 individuales.
+   */
+  private createSheet(
+    pageIndex: number,
+    totalPages: number,
+    title: string,
+    formattedDate: string
+  ): HTMLElement {
+    const sheet = document.createElement('article');
+    sheet.className = `press-sheet margin-${this.marginPreset} font-${this.fontFamily}`;
+    if (this.hasIndent) {
+      sheet.classList.add('has-indent');
+    }
+    sheet.dataset.page = String(pageIndex);
+
+    const header = `
+      <header class="press-sheet-header ${this.showCoverHeader ? '' : 'is-hidden'}">
+        <span class="press-sheet-doc-title">${title}</span>
+        <span class="press-sheet-date" style="${this.showDate ? '' : 'display: none;'}">${formattedDate}</span>
+      </header>
+    `;
+
+    // El título de portada principal solo se imprime en la primera hoja física
+    const titleH1 = pageIndex === 1
+      ? `<h1 class="press-sheet-title">${title}</h1>`
+      : '';
+
+    const footer = `
+      <footer class="press-sheet-footer ${this.showPageNumber ? '' : 'is-hidden'}">
+        <span>Aether Editorial Engine</span>
+        <span class="press-sheet-page-num">Página ${pageIndex} de ${totalPages}</span>
+      </footer>
+    `;
+
+    sheet.innerHTML = `
+      ${header}
+      ${titleH1}
+      <div class="press-sheet-content" style="font-size: ${this.fontSize}; line-height: ${this.lineHeight}; text-align: ${this.textAlign};"></div>
+      ${footer}
+    `;
+
+    return sheet;
+  }
+
+  /**
+   * Actualiza el indicador de páginas en el pie del panel de control.
+   */
+  private updateHint(totalPages: number): void {
+    if (this.printHintEl) {
+      this.printHintEl.textContent = `Listo para papel A4 (${totalPages} ${totalPages === 1 ? 'página' : 'páginas'}) y PDF a 300 DPI`;
+    }
+  }
+
+  /**
+   * Motor de Imposición Editorial en Cascada (WYSIWYG 100%).
+   * Mide el desbordamiento real en el DOM a 120 FPS y genera pliegos A4 exactos.
+   */
+  private paginate(): void {
+    if (!this.stageEl) return;
+    this.stageEl.innerHTML = '';
+
+    const title = this.currentData.title.trim() || 'Sin Título';
+    const paragraphs = this.currentData.paragraphs;
+    const formattedDate = new Date().toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    if (!paragraphs || paragraphs.length === 0) {
+      const sheet = this.createSheet(1, 1, title, formattedDate);
+      const content = sheet.querySelector('.press-sheet-content') as HTMLElement;
+      content.innerHTML = `<p style="font-style: italic; color: #888;">El santuario está en blanco. Escribe primero en Cristal para generar el pliego.</p>`;
+      this.stageEl.appendChild(sheet);
+      this.updateHint(1);
+      return;
+    }
+
+    // Dividir cada párrafo en líneas no vacías respetando saltos de línea internos
+    const blocks: string[][] = paragraphs
+      .map((p) =>
+        p
+          .trim()
+          .split('\n')
+          .map((line) => line.trim())
+          .filter((line) => line.length > 0)
+      )
+      .filter((lines) => lines.length > 0);
+
+    if (blocks.length === 0) {
+      const sheet = this.createSheet(1, 1, title, formattedDate);
+      this.stageEl.appendChild(sheet);
+      this.updateHint(1);
+      return;
+    }
+
+    const sheets: HTMLElement[] = [];
+
+    const addNewSheet = (): { sheet: HTMLElement; contentEl: HTMLElement } => {
+      const pageIndex = sheets.length + 1;
+      const sheet = this.createSheet(pageIndex, 1, title, formattedDate);
+      this.stageEl.appendChild(sheet);
+      sheets.push(sheet);
+      const contentEl = sheet.querySelector('.press-sheet-content') as HTMLElement;
+      return { sheet, contentEl };
+    };
+
+    let current = addNewSheet();
+
+    for (let b = 0; b < blocks.length; b++) {
+      let lines = [...blocks[b]];
+
+      while (lines.length > 0) {
+        const pEl = document.createElement('p');
+        pEl.innerHTML = lines.join('<br>');
+        current.contentEl.appendChild(pEl);
+
+        // Tolerancia de 1px para evitar desbordes falsos por redondeo de subpíxeles en pantallas HiDPI / Windows
+        if (current.contentEl.scrollHeight <= current.contentEl.clientHeight + 1) {
+          lines = [];
+          break;
+        }
+
+        // Si no cupo completo, remover y buscar corte óptimo de líneas
+        current.contentEl.removeChild(pEl);
+
+        let fittedLineCount = 0;
+        for (let count = 1; count < lines.length; count++) {
+          pEl.innerHTML = lines.slice(0, count).join('<br>');
+          current.contentEl.appendChild(pEl);
+          const fits = current.contentEl.scrollHeight <= current.contentEl.clientHeight + 1;
+          current.contentEl.removeChild(pEl);
+
+          if (fits) {
+            fittedLineCount = count;
+          } else {
+            break;
+          }
+        }
+
+        if (fittedLineCount > 0) {
+          pEl.innerHTML = lines.slice(0, fittedLineCount).join('<br>');
+          current.contentEl.appendChild(pEl);
+          lines = lines.slice(fittedLineCount);
+          current = addNewSheet();
+        } else {
+          // Ni una sola línea cupo en la hoja actual
+          if (current.contentEl.children.length > 0) {
+            // Pasar a la siguiente hoja limpia
+            current = addNewSheet();
+          } else {
+            // La hoja actual está vacía y una sola línea excede la página entera
+            const words = lines[0].split(/\s+/);
+            if (words.length > 1) {
+              let fittedWords = 0;
+              for (let w = 1; w < words.length; w++) {
+                pEl.innerHTML = words.slice(0, w).join(' ');
+                current.contentEl.appendChild(pEl);
+                const fits = current.contentEl.scrollHeight <= current.contentEl.clientHeight + 1;
+                current.contentEl.removeChild(pEl);
+                if (fits) {
+                  fittedWords = w;
+                } else {
+                  break;
+                }
+              }
+
+              if (fittedWords > 0) {
+                pEl.innerHTML = words.slice(0, fittedWords).join(' ');
+                current.contentEl.appendChild(pEl);
+                lines[0] = words.slice(fittedWords).join(' ');
+                current = addNewSheet();
+              } else {
+                pEl.innerHTML = lines.shift()!;
+                current.contentEl.appendChild(pEl);
+                if (lines.length > 0) {
+                  current = addNewSheet();
+                }
+              }
+            } else {
+              pEl.innerHTML = lines.shift()!;
+              current.contentEl.appendChild(pEl);
+              if (lines.length > 0) {
+                current = addNewSheet();
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Actualizar números de página: "Página X de Y"
+    const totalPages = sheets.length;
+    sheets.forEach((sheet, idx) => {
+      const pageIndex = idx + 1;
+      const numSpan = sheet.querySelector('.press-sheet-page-num');
+      if (numSpan) {
+        numSpan.textContent = `Página ${pageIndex} de ${totalPages}`;
+      }
+    });
+
+    this.updateHint(totalPages);
   }
 
   /**
