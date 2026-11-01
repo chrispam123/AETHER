@@ -29,6 +29,7 @@ export class EditorialEditor {
   private bodyElement: HTMLDivElement;
   private wordCountEl: HTMLSpanElement;
   private readTimeEl: HTMLSpanElement;
+  private pageCountEl: HTMLSpanElement | null;
   private chipsContainer: HTMLDivElement;
   private rawShelf: HTMLDivElement | null;
   private rawToggleBtn: HTMLButtonElement | null;
@@ -66,6 +67,7 @@ export class EditorialEditor {
     this.bodyElement = document.querySelector('.crystal-body') as HTMLDivElement;
     this.wordCountEl = document.getElementById('word-count') as HTMLSpanElement;
     this.readTimeEl = document.getElementById('read-time') as HTMLSpanElement;
+    this.pageCountEl = document.getElementById('page-count') as HTMLSpanElement | null;
     this.chipsContainer = document.getElementById('crystal-chips-container') as HTMLDivElement;
     this.rawShelf = document.getElementById('crystal-raw-shelf') as HTMLDivElement | null;
     this.rawToggleBtn = document.getElementById('raw-shelf-toggle') as HTMLButtonElement | null;
@@ -1078,6 +1080,12 @@ export class EditorialEditor {
 
     const seconds = Math.ceil((words / 200) * 60);
     if (this.readTimeEl) this.readTimeEl.innerText = `Lectura: ${seconds} seg`;
+
+    // Estándar editorial internacional de cuartilla (1 página = 250 palabras)
+    const pages = Math.max(1, Math.ceil(words / 250));
+    if (this.pageCountEl) {
+      this.pageCountEl.innerText = pages === 1 ? '1 página' : `${pages} páginas`;
+    }
   }
 
   /**
