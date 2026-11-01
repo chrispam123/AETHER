@@ -526,8 +526,8 @@
  */
 @media print {
   @page {
-    size: A4 portrait;
-    margin: 14mm 16mm;
+    size: auto;
+    margin: 8mm 12mm;
   }
 
   html, body {
@@ -607,10 +607,10 @@
   }
 
   .press-sheet.margin-monastic {
-    padding: 6mm 8mm !important;
+    padding: 4mm 6mm !important;
   }
   .press-sheet.margin-academic {
-    padding: 3mm 5mm !important;
+    padding: 2mm 4mm !important;
   }
   .press-sheet.margin-compact {
     padding: 0 !important;
@@ -619,12 +619,13 @@
   .press-sheet-header {
     border-bottom: 1px solid #999999 !important;
     color: #555555 !important;
-    margin-bottom: 16px !important;
-    padding-bottom: 6px !important;
+    margin-bottom: 12px !important;
+    padding-bottom: 4px !important;
   }
 
   .press-sheet-title {
     color: #000000 !important;
+    margin-bottom: 16px !important;
   }
 
   .press-sheet-content {
@@ -633,11 +634,15 @@
     overflow: visible !important;
   }
 
+  .press-sheet-content p {
+    margin: 0 0 0.9em 0 !important;
+  }
+
   .press-sheet-footer {
     border-top: 1px solid #999999 !important;
     color: #666666 !important;
-    margin-top: 20px !important;
-    padding-top: 8px !important;
+    margin-top: 14px !important;
+    padding-top: 6px !important;
   }
 
   /* Si el usuario desactivó encabezado o pie, respetar su ocultación */

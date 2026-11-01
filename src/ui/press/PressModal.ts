@@ -441,20 +441,23 @@ export class PressModal {
           break;
         }
 
-        // Si no cupo completo, remover y buscar corte óptimo de líneas
+        // Si no cupo completo, remover y buscar corte óptimo de líneas o palabras
         current.contentEl.removeChild(pEl);
 
+        // 1. Si el párrafo tiene múltiples líneas explícitas (\n), intentar corte por líneas
         let fittedLineCount = 0;
-        for (let count = 1; count < lines.length; count++) {
-          pEl.innerHTML = lines.slice(0, count).join('<br>');
-          current.contentEl.appendChild(pEl);
-          const fits = current.contentEl.scrollHeight <= current.contentEl.clientHeight + 1;
-          current.contentEl.removeChild(pEl);
+        if (lines.length > 1) {
+          for (let count = 1; count < lines.length; count++) {
+            pEl.innerHTML = lines.slice(0, count).join('<br>');
+            current.contentEl.appendChild(pEl);
+            const fits = current.contentEl.scrollHeight <= current.contentEl.clientHeight + 1;
+            current.contentEl.removeChild(pEl);
 
-          if (fits) {
-            fittedLineCount = count;
-          } else {
-            break;
+            if (fits) {
+              fittedLineCount = count;
+            } else {
+              break;
+            }
           }
         }
 
@@ -464,40 +467,43 @@ export class PressModal {
           lines = lines.slice(fittedLineCount);
           current = addNewSheet();
         } else {
-          // Ni una sola línea cupo en la hoja actual
-          if (current.contentEl.children.length > 0) {
-            // Pasar a la siguiente hoja limpia
+          // 2. Si no hay múltiples renglones o ninguna línea entera cupo:
+          // Ajuste de alta fidelidad por palabras (Búsqueda binaria a 120 FPS)
+          const words = lines[0].split(/\s+/);
+          let bestWordCount = 0;
+
+          if (words.length > 3) {
+            let low = 1;
+            let high = words.length - 1;
+
+            while (low <= high) {
+              const mid = Math.floor((low + high) / 2);
+              pEl.innerHTML = words.slice(0, mid).join(' ');
+              current.contentEl.appendChild(pEl);
+              const fits = current.contentEl.scrollHeight <= current.contentEl.clientHeight + 1;
+              current.contentEl.removeChild(pEl);
+
+              if (fits) {
+                bestWordCount = mid;
+                low = mid + 1;
+              } else {
+                high = mid - 1;
+              }
+            }
+          }
+
+          // Se exigen al menos 3 palabras para no dejar palabras huérfanas
+          if (bestWordCount >= 3) {
+            pEl.innerHTML = words.slice(0, bestWordCount).join(' ');
+            current.contentEl.appendChild(pEl);
+            lines[0] = words.slice(bestWordCount).join(' ');
             current = addNewSheet();
           } else {
-            // La hoja actual está vacía y una sola línea excede la página entera
-            const words = lines[0].split(/\s+/);
-            if (words.length > 1) {
-              let fittedWords = 0;
-              for (let w = 1; w < words.length; w++) {
-                pEl.innerHTML = words.slice(0, w).join(' ');
-                current.contentEl.appendChild(pEl);
-                const fits = current.contentEl.scrollHeight <= current.contentEl.clientHeight + 1;
-                current.contentEl.removeChild(pEl);
-                if (fits) {
-                  fittedWords = w;
-                } else {
-                  break;
-                }
-              }
-
-              if (fittedWords > 0) {
-                pEl.innerHTML = words.slice(0, fittedWords).join(' ');
-                current.contentEl.appendChild(pEl);
-                lines[0] = words.slice(fittedWords).join(' ');
-                current = addNewSheet();
-              } else {
-                pEl.innerHTML = lines.shift()!;
-                current.contentEl.appendChild(pEl);
-                if (lines.length > 0) {
-                  current = addNewSheet();
-                }
-              }
+            // El espacio restante en la hoja actual no permite ni una frase corta
+            if (current.contentEl.children.length > 0) {
+              current = addNewSheet();
             } else {
+              // Hoja vacía y ni 3 palabras caben (ej. palabra colosal): forzarla
               pEl.innerHTML = lines.shift()!;
               current.contentEl.appendChild(pEl);
               if (lines.length > 0) {
