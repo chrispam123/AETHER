@@ -198,22 +198,22 @@ export class EditorialEditor {
    * - Saltos de línea simples (Enter simple / renglones contiguos) forman parte de la misma tarjeta/idea.
    * - Solo un salto de línea doble (renglón en blanco / <p><br></p>) separa y da a luz a una nueva tarjeta.
    */
-  public getStructuredBlocks(): { text: string; targetElement: HTMLElement }[] {
+  public getStructuredBlocks(): { text: string; targetElement: HTMLElement; elements: HTMLElement[] }[] {
     if (!this.bodyElement) return [];
 
-    const blocks: { text: string; targetElement: HTMLElement }[] = [];
+    const blocks: { text: string; targetElement: HTMLElement; elements: HTMLElement[] }[] = [];
     const children = Array.from(this.bodyElement.children) as HTMLElement[];
 
     if (children.length === 0) {
       const raw = this.bodyElement.innerText.trim();
       if (raw.length > 0) {
         const rawBlocks = raw.split(/\r?\n\s*\r?\n+/).map((b) => b.trim()).filter((b) => b.length > 0);
-        return rawBlocks.map((b) => ({ text: b, targetElement: this.bodyElement }));
+        return rawBlocks.map((b) => ({ text: b, targetElement: this.bodyElement, elements: [this.bodyElement] }));
       }
       return [];
     }
 
-    let currentGroup: { texts: string[]; primaryElement: HTMLElement } | null = null;
+    let currentGroup: { texts: string[]; primaryElement: HTMLElement; elements: HTMLElement[] } | null = null;
 
     const commitCurrentGroup = () => {
       if (currentGroup && currentGroup.texts.length > 0) {
@@ -221,7 +221,8 @@ export class EditorialEditor {
         if (combinedText.length > 0) {
           blocks.push({
             text: combinedText,
-            targetElement: currentGroup.primaryElement
+            targetElement: currentGroup.primaryElement,
+            elements: currentGroup.elements
           });
         }
       }
@@ -238,11 +239,13 @@ export class EditorialEditor {
         if (!currentGroup) {
           currentGroup = {
             texts: [cleanText],
-            primaryElement: child
+            primaryElement: child,
+            elements: [child]
           };
         } else {
           // Renglón contiguo sin línea en blanco intermedia: pertenece al mismo bloque argumental
           currentGroup.texts.push(cleanText);
+          currentGroup.elements.push(child);
         }
       }
     }
@@ -871,6 +874,9 @@ export class EditorialEditor {
       if (existingNode && !usedNodeIds.has(existingNode.id)) {
         usedNodeIds.add(existingNode.id);
         existingNode.inDocument = true;
+        block.elements.forEach((el) => {
+          el.dataset.nodeId = existingNode!.id;
+        });
         // Actualiza el texto si el autor lo editó en la prosa
         if (existingNode.text.trim() !== cleanText) {
           this.graph.updateNodeText(existingNode.id, cleanText);
@@ -893,7 +899,9 @@ export class EditorialEditor {
         const clearPos = this.graph.findClearPosition(basePos);
 
         const newNode = this.graph.addNode(cleanText, clearPos, tag, true);
-        block.targetElement.dataset.nodeId = newNode.id;
+        block.elements.forEach((el) => {
+          el.dataset.nodeId = newNode.id;
+        });
         usedNodeIds.add(newNode.id);
         linkedNodeIds.push(newNode.id);
       }
@@ -979,16 +987,27 @@ export class EditorialEditor {
       }
     });
 
-    // Preservar cualquier párrafo existente de Cristal que no esté conectado al río (cero pérdida de datos)
+    // Preservar cualquier párrafo existente de Cristal que no esté conectado al río (cero duplicados ni pérdidas)
+    const orderedNodeIds = new Set<string>(orderedNodes.map((n) => n.id));
+
     currentElements.forEach((el) => {
-      if (!usedElements.has(el) && el.innerText.trim().length > 0) {
-        const isDuplicate = reorderedElements.some(
-          (r) => r.dataset.nodeId === el.dataset.nodeId || r.innerText.trim() === el.innerText.trim()
-        );
-        if (!isDuplicate) {
-          reorderedElements.push(el);
-          usedElements.add(el);
-        }
+      if (usedElements.has(el)) return;
+      // Si el elemento ya forma parte de un nodo ordenado, NO duplicarlo
+      if (el.dataset.nodeId && orderedNodeIds.has(el.dataset.nodeId)) return;
+
+      const clean = this.extractElementText(el);
+      if (!clean) return;
+
+      const isSubsumed = reorderedElements.some(
+        (r) =>
+          (r.dataset.nodeId && el.dataset.nodeId && r.dataset.nodeId === el.dataset.nodeId) ||
+          r.innerText.trim() === clean ||
+          r.innerText.includes(clean)
+      );
+
+      if (!isSubsumed) {
+        reorderedElements.push(el);
+        usedElements.add(el);
       }
     });
 
