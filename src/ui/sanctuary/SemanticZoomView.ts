@@ -196,7 +196,6 @@ export class SemanticZoomView {
         <span class="thesis-marker">${block.isManualThesis ? '✨' : '●'}</span>
         <span class="thesis-text">${block.thesisSentence}</span>
       `;
-      thesisEl.title = 'Haz clic para descender a este párrafo en Modo Prosa';
 
       thesisEl.addEventListener('click', () => {
         this.audio.play(528, 'sine', 0.3, 0.1);
@@ -210,7 +209,6 @@ export class SemanticZoomView {
 
       if (secondarySentences.length > 0) {
         secondaryEl.innerText = secondarySentences.join(' ');
-        secondaryEl.title = 'Texto secundario plegado (pasa el ratón para asomarte)';
       } else {
         secondaryEl.style.display = 'none';
       }
