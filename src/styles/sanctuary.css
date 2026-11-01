@@ -473,20 +473,30 @@ body.is-dragging-card * {
   pointer-events: auto;
 }
 
-/* Scrollbar mineral ultra sutil */
+/* Scrollbar mineral ultra sutil (Filamento Aether) */
+#crystal-sanctuary {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(232, 229, 222, 0.15) transparent;
+}
+
 #crystal-sanctuary::-webkit-scrollbar {
-  width: 5px;
+  width: 4px;
+}
+#crystal-sanctuary::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }
 #crystal-sanctuary::-webkit-scrollbar-track {
   background: transparent;
 }
 #crystal-sanctuary::-webkit-scrollbar-thumb {
-  background: rgba(232, 229, 222, 0.08);
-  border-radius: 4px;
+  background: rgba(232, 229, 222, 0.12);
+  border-radius: 999px;
   transition: background 0.3s ease;
 }
 #crystal-sanctuary:hover::-webkit-scrollbar-thumb {
-  background: rgba(232, 229, 222, 0.22);
+  background: rgba(212, 175, 55, 0.38);
 }
 
 .crystal-editor-container {
@@ -1431,6 +1441,33 @@ body.hyperfocus-active .raw-gutter {
   max-height: 260px;
   overflow-y: auto;
   white-space: normal;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.28) transparent;
+  padding-right: 6px;
+}
+
+.thesis-secondary-text::-webkit-scrollbar {
+  width: 3.5px;
+}
+
+.thesis-secondary-text::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.thesis-secondary-text::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thesis-secondary-text::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  transition: background 0.3s ease;
+}
+
+.thesis-secondary-text:hover::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.45);
 }
 
 /* 3. NIVEL 20% (MODO CARTOGRAFÍA · FLUJO MODULAR) */
