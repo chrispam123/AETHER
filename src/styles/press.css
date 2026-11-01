@@ -20,8 +20,8 @@
   justify-content: center;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
-              visibility 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.85s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .press-backdrop.is-open {
@@ -41,11 +41,11 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* Animación noble: Entrada pausada deslizándose desde la derecha */
-  transform: translateX(110px) scale(0.98);
+  /* Animación noble: Entrada majestuosa y pausada desde la derecha */
+  transform: translateX(180px) scale(0.98);
   opacity: 0;
-  transition: transform 0.68s cubic-bezier(0.16, 1, 0.3, 1),
-              opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 1.12s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .press-backdrop.is-open .press-modal-container {
