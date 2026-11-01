@@ -540,12 +540,18 @@
     padding: 0 !important;
   }
 
-  /* 1. Ocultar absolutamente toda la UI de Aether */
-  body * {
-    visibility: hidden !important;
+  /* 1. Remover del flujo de impresión absolutamente todos los elementos ajenos a La Prensa */
+  body > :not(.press-backdrop) {
+    display: none !important;
   }
 
-  /* 2. Liberar contenedores para que el flujo de impresión fluya página a página */
+  /* 2. Ocultar cabecera y barra lateral de controles de La Prensa */
+  .press-header,
+  .press-sidebar {
+    display: none !important;
+  }
+
+  /* 3. Liberar contenedores para que el flujo de impresión fluya página a página desde el inicio */
   .press-backdrop,
   .press-modal-container,
   .press-body,
@@ -567,7 +573,7 @@
     opacity: 1 !important;
   }
 
-  /* 3. Rescatar y hacer visible ÚNICAMENTE las hojas de papel físicas y su contenido */
+  /* 4. Rescatar y hacer visible ÚNICAMENTE las hojas de papel físicas y su contenido */
   .press-sheet,
   .press-sheet * {
     visibility: visible !important;
@@ -578,10 +584,10 @@
     display: flex !important;
     flex-direction: column !important;
     width: 210mm !important;
-    height: 297mm !important;
+    height: 295mm !important;
     max-width: 210mm !important;
-    min-height: 297mm !important;
-    max-height: 297mm !important;
+    min-height: 295mm !important;
+    max-height: 295mm !important;
     page-break-after: always !important;
     break-after: page !important;
     page-break-inside: avoid !important;
