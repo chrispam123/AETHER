@@ -436,6 +436,7 @@ body.is-dragging-card * {
   cursor: text;
   min-height: 26px;
   color: var(--ink-primary);
+  white-space: pre-wrap;
 }
 
 .thought-card-text:empty::before {

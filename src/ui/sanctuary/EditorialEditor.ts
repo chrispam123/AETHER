@@ -181,6 +181,23 @@ export class EditorialEditor {
    * - Saltos de línea simples (Enter) continúan la idea dentro del mismo bloque.
    * - Solo un salto de línea doble (párrafo vacío / Doble Enter explícito) genera un nuevo bloque argumental.
    */
+  /**
+   * Extrae el texto legible de un elemento preservando los saltos de línea internos (<br>).
+   */
+  private extractElementText(el: HTMLElement): string {
+    const clone = el.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+    return (clone.textContent || '')
+      .replace(/[\u200B\u00A0]/g, ' ')
+      .trim();
+  }
+
+  /**
+   * Vía 2: Regla del Doble Enter Explícito y Agrupación de Líneas Contiguas
+   * Extrae los bloques argumentales directamente del DOM:
+   * - Saltos de línea simples (Enter simple / renglones contiguos) forman parte de la misma tarjeta/idea.
+   * - Solo un salto de línea doble (renglón en blanco / <p><br></p>) separa y da a luz a una nueva tarjeta.
+   */
   public getStructuredBlocks(): { text: string; targetElement: HTMLElement }[] {
     if (!this.bodyElement) return [];
 
@@ -196,19 +213,41 @@ export class EditorialEditor {
       return [];
     }
 
-    for (const child of children) {
-      const cleanText = (child.innerText || child.textContent || '')
-        .replace(/[\u200B\u00A0]/g, ' ')
-        .trim();
+    let currentGroup: { texts: string[]; primaryElement: HTMLElement } | null = null;
 
-      if (cleanText.length > 0) {
-        blocks.push({
-          text: cleanText,
-          targetElement: child
-        });
+    const commitCurrentGroup = () => {
+      if (currentGroup && currentGroup.texts.length > 0) {
+        const combinedText = currentGroup.texts.join('\n').trim();
+        if (combinedText.length > 0) {
+          blocks.push({
+            text: combinedText,
+            targetElement: currentGroup.primaryElement
+          });
+        }
+      }
+      currentGroup = null;
+    };
+
+    for (const child of children) {
+      const cleanText = this.extractElementText(child);
+
+      // Si el elemento no tiene texto (es un renglón en blanco / párrafo vacío de Doble Enter)
+      if (cleanText.length === 0) {
+        commitCurrentGroup();
+      } else {
+        if (!currentGroup) {
+          currentGroup = {
+            texts: [cleanText],
+            primaryElement: child
+          };
+        } else {
+          // Renglón contiguo sin línea en blanco intermedia: pertenece al mismo bloque argumental
+          currentGroup.texts.push(cleanText);
+        }
       }
     }
 
+    commitCurrentGroup();
     return blocks;
   }
 
@@ -869,6 +908,16 @@ export class EditorialEditor {
   }
 
   /**
+   * Helper que formatea el texto de un nodo a contenido HTML de párrafo preservando saltos de línea internos (<br>).
+   */
+  private formatNodeTextToHtml(text: string): string {
+    return text
+      .split('\n')
+      .map((line) => line.trim())
+      .join('<br>');
+  }
+
+  /**
    * ==========================================================================
    * SOLIDIFICAR LA CORRIENTE (Fluido / Niebla -> Cristal)
    * ==========================================================================
@@ -910,7 +959,7 @@ export class EditorialEditor {
       if (targetEl) {
         usedElements.add(targetEl);
         if (targetEl.innerText.trim() !== nodeText) {
-          targetEl.innerText = nodeText;
+          targetEl.innerHTML = this.formatNodeTextToHtml(nodeText);
           orderChanged = true;
         }
         targetEl.dataset.nodeId = node.id;
@@ -923,7 +972,7 @@ export class EditorialEditor {
         if (!alreadyIncluded) {
           const newP = document.createElement('p');
           newP.dataset.nodeId = node.id;
-          newP.innerText = nodeText;
+          newP.innerHTML = this.formatNodeTextToHtml(nodeText);
           reorderedElements.push(newP);
           orderChanged = true;
         }
@@ -1018,10 +1067,28 @@ export class EditorialEditor {
   private initDeletionInterceptor(): void {
     if (!this.bodyElement) return;
 
-    // 1. Borrado con teclado de texto seleccionado (Backspace o Supr)
+    // 1. Borrado con teclado de texto seleccionado (Backspace o Supr) y captura de Shift+Enter
     this.bodyElement.addEventListener('keydown', (e) => {
       if (e.key === 'Backspace' || e.key === 'Delete') {
         this.captureSelectionToGutter();
+        return;
+      }
+
+      // Salto de línea suave (Shift + Enter): Inserta un salto de línea dentro del mismo párrafo
+      if (e.key === 'Enter' && e.shiftKey) {
+        e.preventDefault();
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+          const range = sel.getRangeAt(0);
+          range.deleteContents();
+          const br = document.createElement('br');
+          range.insertNode(br);
+          range.setStartAfter(br);
+          range.setEndAfter(br);
+          sel.removeAllRanges();
+          sel.addRange(range);
+          this.bodyElement.dispatchEvent(new Event('input', { bubbles: true }));
+        }
       }
     });
 
