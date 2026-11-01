@@ -54,7 +54,7 @@
   /* --- MEDIDAS Y ERGONOMÍA --- */
   /* Ancho áureo ergonómico para lectura continua (60-70 caracteres por línea) */
   --measure-prose: 680px;
-  --line-height-prose: 1.88;
+  --line-height-prose: 1.58;
 }
 
 /* Conmutación instantánea de atmósfera sin recargas */

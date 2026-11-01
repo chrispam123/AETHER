@@ -542,9 +542,17 @@ body.is-dragging-card * {
 
 .crystal-body p,
 .crystal-body > * {
-  margin: 0 0 0.85em 0;
+  margin: 0 0 0.35em 0;
   line-height: var(--line-height-prose);
   transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Párrafo vacío / separación deliberada de Doble Enter: pausa armónica elegante */
+.crystal-body p:has(br:only-child),
+.crystal-body p:empty {
+  height: 0.9em;
+  margin: 0;
+  pointer-events: none;
 }
 
 .crystal-body p:last-child,
