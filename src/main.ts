@@ -535,8 +535,11 @@ class AetherApp {
 
     // 5. Invocación y Cierre del Archivo de la Memoria (Alt + O / Esc)
     window.addEventListener('keydown', (e: KeyboardEvent) => {
-      // Invocación explícita con Alt + O
+      // Invocación explícita con Alt + O: estrictamente limitada al Santuario de Bienvenida (portal)
       if (e.altKey && (e.key === 'o' || e.key === 'O' || e.code === 'KeyO')) {
+        if (this.stateMachine.getPhase() !== 'portal') {
+          return; // Blindaje cognitivo: nunca interrumpir los flujos de Niebla, Fluido o Cristal
+        }
         e.preventDefault();
         this.archiveDrawer.toggle();
         return;
