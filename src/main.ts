@@ -533,6 +533,7 @@ class AetherApp {
 
     ExportManager.exportToMarkdownFile({
       title: titleEl?.innerText.trim() || 'Sobre la naturaleza del pensamiento',
+      bodyHtml: bodyEl?.innerHTML || '',
       bodyText: bodyEl?.innerText || '',
       nodesCount: this.graph.getAllNodes().length,
       activePhase: this.stateMachine.getPhase()

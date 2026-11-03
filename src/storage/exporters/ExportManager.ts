@@ -16,6 +16,7 @@
  */
 
 import { ThoughtNode, ConnectionBridge, Phase, DiscardItem } from '../../core/types';
+import { HtmlToMarkdown } from './HtmlToMarkdown';
 
 export interface AetherTopologyBackup {
   version: 1;
@@ -114,29 +115,33 @@ export class ExportManager {
   }
 
   /**
-   * Exporta la obra en prosa a un archivo Markdown estándar (.md) con Frontmatter.
+   * Exporta la obra en prosa a un archivo Markdown estándar (.md) con Frontmatter y fidelidad tipográfica.
    */
   public static exportToMarkdownFile(data: {
     title: string;
+    bodyHtml?: string;
     bodyText: string;
-    nodesCount: number;
-    activePhase: Phase;
+    nodesCount?: number;
+    activePhase?: Phase;
   }): void {
-    const nowIso = new Date().toISOString();
+    const nowIso = new Date().toISOString().split('T')[0];
     const cleanTitle = data.title.trim() || 'Sin título';
+
+    // Transpilar con fidelidad semántica real si disponemos de bodyHtml
+    const proseMarkdown = data.bodyHtml
+      ? HtmlToMarkdown.convert(data.bodyHtml)
+      : data.bodyText.trim();
 
     const frontmatter = [
       '---',
       `title: "${cleanTitle.replace(/"/g, '\\"')}"`,
-      `created_at: "${nowIso}"`,
-      `generator: "Aether Cognitive Editor"`,
-      `phase: "${data.activePhase}"`,
-      `ideas_count: ${data.nodesCount}`,
+      `date: "${nowIso}"`,
+      `generator: "Aether"`,
       '---',
       '',
       `# ${cleanTitle}`,
       '',
-      data.bodyText.trim(),
+      proseMarkdown,
       ''
     ].join('\n');
 
