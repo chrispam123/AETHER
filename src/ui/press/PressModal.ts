@@ -66,8 +66,8 @@ export class PressModal {
         <header class="press-header">
           <div class="press-header-title">
             <span class="press-icon-lead">⎙</span>
-            <span>La Prensa Editorial</span>
-            <span class="press-header-tagline">Composición Tipográfica para Sociedad & Empresa</span>
+            <span>Guardar / Imprimir</span>
+            <span class="press-header-tagline">Composición Tipográfica, Exportación y Salida Física</span>
           </div>
           <button class="press-close-btn" id="press-btn-close" title="Cerrar Prensa (Esc)">
             <span>Volver al Santuario</span>
