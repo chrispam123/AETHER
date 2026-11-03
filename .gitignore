@@ -3,10 +3,19 @@ node_modules/
 .pnp
 .pnp.js
 
-# Salida de producción
+# Salida de producción y compilación
 dist/
 dist-ssr/
+build/
 *.local
+
+# Variables de entorno y credenciales sensibles
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
 
 # Caché de herramientas
 .vite/
@@ -14,6 +23,7 @@ dist-ssr/
 *.tsbuildinfo
 
 # Registros y logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -22,6 +32,8 @@ pnpm-debug.log*
 # Archivos del sistema y editores
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 .vscode/*
 !.vscode/extensions.json
 .idea/
