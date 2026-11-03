@@ -207,16 +207,17 @@ export class StorageManager {
         atmosphereLandscapeId: this.getAtmosphereId()
       };
 
-      // 6. Guardado atómico en paralelo en IndexedDB
+      // 6. Guardado atómico en IndexedDB
       await Promise.all([
         this.db.saveDocument(docRecord),
         this.db.saveNodes(nodes),
         this.db.saveBridges(bridges),
         this.db.saveWorkspaceState(workspaceRecord),
-        this.db.saveDiscards(discards),
-        this.db.saveWorkPackage(pkg),
-        this.db.setActiveWorkId(this.currentWorkId)
+        this.db.saveDiscards(discards)
       ]);
+
+      await this.db.saveWorkPackage(pkg);
+      await this.db.setActiveWorkId(this.currentWorkId);
     } catch (e) {
       console.warn('[Aether Storage] Error durante guardado atómico:', e);
     } finally {

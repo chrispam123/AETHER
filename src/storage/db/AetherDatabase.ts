@@ -336,18 +336,10 @@ export class AetherDatabase {
   }
 
   public async saveWorkPackage(pkg: WorkPackage): Promise<void> {
-    const store = await this.getStore(AetherDatabase.STORE_STATE, 'readwrite');
-    if (!store) return;
+    await this.init();
+    if (!this.db) return;
 
-    // 1. Guardar el paquete completo de la obra
-    await new Promise<void>((resolve, reject) => {
-      const record = { key: 'work_pkg_' + pkg.id, package: pkg, updatedAt: Date.now() };
-      const request = store.put(record);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
-
-    // 2. Actualizar el catálogo de obras
+    // 1. Obtener catálogo previo ANTES de abrir la transacción de escritura
     const catalog = await this.getWorksCatalog();
     const cleanTitle = pkg.title.trim() || 'Sobre la naturaleza del pensamiento';
     const preview = pkg.document.bodyText ? pkg.document.bodyText.substring(0, 80).replace(/\s+/g, ' ').trim() : '';
@@ -368,11 +360,20 @@ export class AetherDatabase {
     // Mantiene las 6 obras más recientes
     const trimmed = filtered.slice(0, 6);
 
-    await new Promise<void>((resolve, reject) => {
+    // 2. Abrir la transacción de escritura y persistir el paquete y el catálogo sincrónicamente
+    const store = await this.getStore(AetherDatabase.STORE_STATE, 'readwrite');
+    if (!store) return;
+
+    return new Promise((resolve, reject) => {
+      const record = { key: 'work_pkg_' + pkg.id, package: pkg, updatedAt: Date.now() };
       const catRecord = { key: 'works_catalog', works: trimmed, updatedAt: Date.now() };
-      const request = store.put(catRecord);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+
+      const req1 = store.put(record);
+      req1.onerror = () => reject(req1.error);
+
+      const req2 = store.put(catRecord);
+      req2.onerror = () => reject(req2.error);
+      req2.onsuccess = () => resolve();
     });
   }
 
@@ -391,22 +392,24 @@ export class AetherDatabase {
   }
 
   public async deleteWork(workId: string): Promise<void> {
-    const store = await this.getStore(AetherDatabase.STORE_STATE, 'readwrite');
-    if (!store) return;
+    await this.init();
+    if (!this.db) return;
 
-    await new Promise<void>((resolve) => {
-      const request = store.delete('work_pkg_' + workId);
-      request.onsuccess = () => resolve();
-      request.onerror = () => resolve();
-    });
-
+    // 1. Obtener catálogo previo ANTES de abrir la transacción
     const catalog = await this.getWorksCatalog();
     const filtered = catalog.filter(w => w.id !== workId);
 
-    await new Promise<void>((resolve) => {
-      const request = store.put({ key: 'works_catalog', works: filtered, updatedAt: Date.now() });
-      request.onsuccess = () => resolve();
-      request.onerror = () => resolve();
+    // 2. Abrir la transacción y ejecutar eliminación y actualización
+    const store = await this.getStore(AetherDatabase.STORE_STATE, 'readwrite');
+    if (!store) return;
+
+    return new Promise((resolve, reject) => {
+      const req1 = store.delete('work_pkg_' + workId);
+      req1.onerror = () => reject(req1.error);
+
+      const req2 = store.put({ key: 'works_catalog', works: filtered, updatedAt: Date.now() });
+      req2.onerror = () => reject(req2.error);
+      req2.onsuccess = () => resolve();
     });
   }
 
