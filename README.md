@@ -1,4 +1,4 @@
-# ✧ AETHER
+# AETHER
 ### *El primer editor de pensamiento basado en termodinámica cognitiva*
 
 > *«Escribir no es registrar palabras que ya estaban completas en la mente; escribir es el proceso mediante el cual el caos se condensa en materia legible.»*
