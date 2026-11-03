@@ -329,7 +329,13 @@ export class AetherDatabase {
       const request = store.get('works_catalog');
       request.onsuccess = () => {
         const result = request.result;
-        resolve(result && Array.isArray(result.works) ? result.works : []);
+        const rawWorks: WorkSummary[] = result && Array.isArray(result.works) ? result.works : [];
+        // Normalizar cualquier obra que tuviese 'portal' grabado previamente
+        const normalized = rawWorks.map((w) => ({
+          ...w,
+          activePhase: (w.activePhase && w.activePhase !== 'portal') ? w.activePhase : ('crystal' as Phase)
+        }));
+        resolve(normalized);
       };
       request.onerror = () => resolve([]);
     });
@@ -344,11 +350,19 @@ export class AetherDatabase {
     const cleanTitle = pkg.title.trim() || 'Sobre la naturaleza del pensamiento';
     const preview = pkg.document.bodyText ? pkg.document.bodyText.substring(0, 80).replace(/\s+/g, ' ').trim() : '';
 
+    // Garantizar que la fase guardada sea siempre una densidad de materia válida (Niebla, Fluido, Cristal)
+    const validPhase: Phase =
+      (pkg.activePhase && pkg.activePhase !== 'portal')
+        ? pkg.activePhase
+        : (catalog.find(w => w.id === pkg.id)?.activePhase || 'crystal');
+
+    pkg.activePhase = validPhase;
+
     const summary: WorkSummary = {
       id: pkg.id,
       title: cleanTitle,
       updatedAt: pkg.updatedAt,
-      activePhase: pkg.activePhase,
+      activePhase: validPhase,
       previewText: preview,
       nodesCount: pkg.nodes.length
     };

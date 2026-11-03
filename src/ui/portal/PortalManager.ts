@@ -127,26 +127,26 @@ export class PortalManager {
       orbs.forEach(({ el }) => {
         if (!el) return;
         el.classList.remove('is-awakened', 'is-last-focus');
-        const badge = el.querySelector('.orb-focus-badge') as HTMLElement | null;
-        if (badge) badge.style.display = 'none';
       });
       return;
     }
 
-    // Todos los tres orbes despiertan a la vez
+    // Asegurar que siempre mapee a una fase cognitiva real (Niebla, Fluido o Cristal)
+    const normalizedPhase: Phase =
+      activePhase === 'vapor' || activePhase === 'liquid' || activePhase === 'crystal'
+        ? activePhase
+        : 'crystal';
+
+    // Todos los tres orbes despiertan a la vez indicando continuidad ontológica
     orbs.forEach(({ el, phase }) => {
       if (!el) return;
       el.classList.add('is-awakened');
 
-      const isLastFocus = phase === activePhase;
-      const badge = el.querySelector('.orb-focus-badge') as HTMLElement | null;
-
+      const isLastFocus = phase === normalizedPhase;
       if (isLastFocus) {
         el.classList.add('is-last-focus');
-        if (badge) badge.style.display = 'block';
       } else {
         el.classList.remove('is-last-focus');
-        if (badge) badge.style.display = 'none';
       }
     });
   }

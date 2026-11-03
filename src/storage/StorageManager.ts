@@ -41,6 +41,7 @@ export class StorageManager {
   private isSaving: boolean = false;
   private isHydrated: boolean = false;
   private currentWorkId: string = 'default_work';
+  private lastCognitivePhase: Phase = 'crystal';
 
   constructor(
     graph: DocumentGraph,
@@ -107,7 +108,10 @@ export class StorageManager {
     });
 
     // 2. Reactividad ante cambios de fase (Niebla <-> Fluido <-> Cristal)
-    this.stateMachine.onPhaseChange(() => {
+    this.stateMachine.onPhaseChange((newPhase) => {
+      if (newPhase === 'vapor' || newPhase === 'liquid' || newPhase === 'crystal') {
+        this.lastCognitivePhase = newPhase;
+      }
       this.triggerAutosave();
     });
   }
@@ -182,9 +186,15 @@ export class StorageManager {
       const nodes = this.graph.getAllNodes();
       const bridges = this.graph.getBridges();
 
-      // 3. Extraer estado del Workspace (Fase activa, cámara, atmósfera)
+      // 3. Extraer estado del Workspace (Fase cognitiva activa, cámara, atmósfera)
+      const currentPhase = this.stateMachine.getPhase();
+      const cognitivePhase: Phase =
+        (currentPhase === 'vapor' || currentPhase === 'liquid' || currentPhase === 'crystal')
+          ? currentPhase
+          : this.lastCognitivePhase;
+
       const workspaceRecord: SavedWorkspaceState = {
-        activePhase: this.stateMachine.getPhase(),
+        activePhase: cognitivePhase,
         cameraStates: this.getCameraStates(),
         atmosphereLandscapeId: this.getAtmosphereId(),
         updatedAt: Date.now()
@@ -198,7 +208,7 @@ export class StorageManager {
         id: this.currentWorkId,
         title,
         updatedAt: Date.now(),
-        activePhase: this.stateMachine.getPhase(),
+        activePhase: cognitivePhase,
         document: docRecord,
         nodes,
         bridges,
@@ -239,6 +249,9 @@ export class StorageManager {
       // Intentar cargar la obra empaquetada
       const pkg = await this.db.loadWorkPackage(activeId);
       if (pkg) {
+        if (pkg.activePhase && pkg.activePhase !== 'portal') {
+          this.lastCognitivePhase = pkg.activePhase;
+        }
         return {
           hasData: true,
           document: pkg.document,
@@ -332,6 +345,9 @@ export class StorageManager {
     if (!pkg) return null;
 
     this.currentWorkId = workId;
+    if (pkg.activePhase && pkg.activePhase !== 'portal') {
+      this.lastCognitivePhase = pkg.activePhase;
+    }
     await this.db.setActiveWorkId(workId);
     return pkg;
   }
