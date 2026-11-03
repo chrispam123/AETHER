@@ -345,6 +345,10 @@ export class StorageManager {
     await this.db.hideWorkFromQuickView(workId);
   }
 
+  public async unhideWorkFromQuickView(workId: string): Promise<void> {
+    await this.db.unhideWorkFromQuickView(workId);
+  }
+
   /**
    * Cambia de obra activa guardando previamente la actual.
    */

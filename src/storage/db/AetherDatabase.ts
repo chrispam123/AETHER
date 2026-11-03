@@ -379,6 +379,32 @@ export class AetherDatabase {
     });
   }
 
+  /**
+   * Restaura una obra retirada a la vista rápida del Santuario.
+   */
+  public async unhideWorkFromQuickView(workId: string): Promise<void> {
+    await this.init();
+    if (!this.db) return;
+
+    const catalog = await this.getWorksCatalog();
+    const updated = catalog.map((w) => {
+      if (w.id === workId) {
+        return { ...w, hiddenFromQuickView: false };
+      }
+      return w;
+    });
+
+    const store = await this.getStore(AetherDatabase.STORE_STATE, 'readwrite');
+    if (!store) return;
+
+    return new Promise((resolve, reject) => {
+      const catRecord = { key: 'works_catalog', works: updated, updatedAt: Date.now() };
+      const req = store.put(catRecord);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  }
+
   public async saveWorkPackage(pkg: WorkPackage): Promise<void> {
     await this.init();
     if (!this.db) return;

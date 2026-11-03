@@ -460,7 +460,20 @@ header:hover {
   margin-top: 18px;
   width: 100%;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.portal-shortcut-hint {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--ink-secondary);
+  opacity: 0.45;
+  user-select: none;
+  text-transform: uppercase;
+  margin-top: 2px;
 }
 
 .portal-action-btn {
@@ -2086,6 +2099,397 @@ body.hyperfocus-active .raw-gutter {
   font-size: 42px;
   line-height: 1.2;
   margin-bottom: 34px;
+}
+
+/* ============================================================================
+   CAPA 3: EL ARCHIVO DE LA MEMORIA (CAJÓN LATERAL DE CONDENSACIÓN)
+   ============================================================================ */
+.archive-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 14, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 150;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  display: none;
+}
+.archive-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.archive-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: clamp(390px, 34vw, 500px);
+  background: rgba(16, 18, 25, 0.95);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border-left: 1px solid rgba(229, 203, 122, 0.22);
+  box-shadow: -24px 0 65px -10px rgba(0, 0, 0, 0.75);
+  z-index: 160;
+  display: flex;
+  flex-direction: column;
+  padding: 32px 28px 24px;
+  box-sizing: border-box;
+  user-select: none;
+  
+  /* Física de Condensación de la Materia */
+  transform: translateX(100%);
+  opacity: 0;
+  filter: blur(28px);
+  pointer-events: none;
+  transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.archive-drawer.is-open {
+  transform: translateX(0);
+  opacity: 1;
+  filter: blur(0px); /* Cristalización y nitidez absoluta */
+  pointer-events: auto;
+}
+
+.archive-drawer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+
+.archive-header-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.archive-title {
+  font-family: var(--font-prose, serif);
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--ink-primary);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.archive-subtitle {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+  opacity: 0.6;
+}
+
+.archive-close-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--ink-secondary);
+  font-family: var(--font-mono, monospace);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.archive-close-btn:hover {
+  background: rgba(229, 203, 122, 0.1);
+  border-color: rgba(229, 203, 122, 0.4);
+  color: #e5cb7a;
+}
+
+/* Buscador */
+.archive-search-container {
+  display: flex;
+  align-items: center;
+  position: relative;
+  background: rgba(24, 27, 36, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0 14px;
+  margin-bottom: 16px;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.archive-search-container:focus-within {
+  border-color: rgba(229, 203, 122, 0.5);
+  box-shadow: 0 0 16px rgba(229, 203, 122, 0.12);
+}
+
+.archive-search-icon {
+  font-size: 14px;
+  color: var(--ink-secondary);
+  opacity: 0.6;
+  margin-right: 10px;
+}
+
+.archive-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--ink-primary);
+  font-family: var(--font-sans, sans-serif);
+  font-size: 13.5px;
+  padding: 11px 0;
+}
+.archive-search-input::placeholder {
+  color: var(--ink-secondary);
+  opacity: 0.5;
+  font-style: italic;
+}
+
+.archive-search-clear {
+  background: transparent;
+  border: none;
+  color: var(--ink-secondary);
+  opacity: 0.4;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px;
+  transition: opacity 0.2s ease;
+}
+.archive-search-clear:hover {
+  opacity: 1;
+  color: #fff;
+}
+
+/* Filtros por fase */
+.archive-phase-filters {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.archive-phase-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.archive-filter-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.archive-filter-btn:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--ink-primary);
+}
+.archive-filter-btn.is-active {
+  background: rgba(229, 203, 122, 0.12);
+  border-color: rgba(229, 203, 122, 0.55);
+  color: #e5cb7a;
+  box-shadow: 0 0 10px rgba(229, 203, 122, 0.15);
+}
+
+/* Lista de obras del archivo */
+.archive-works-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+.archive-works-list::-webkit-scrollbar {
+  width: 4px;
+}
+.archive-works-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+
+.archive-work-card {
+  background: rgba(22, 25, 33, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.archive-work-card:hover {
+  background: rgba(30, 34, 46, 0.95);
+  border-color: rgba(229, 203, 122, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.55);
+}
+
+.archive-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.archive-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.archive-card-title {
+  font-family: var(--font-prose, serif);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--ink-primary);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.archive-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.archive-card-time {
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
+  color: var(--ink-secondary);
+  opacity: 0.55;
+}
+
+.archive-card-preview {
+  font-family: var(--font-sans, sans-serif);
+  font-size: 11.5px;
+  color: var(--ink-secondary);
+  opacity: 0.65;
+  margin: 0;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+.archive-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.archive-card-nodes {
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--ink-secondary);
+  opacity: 0.5;
+}
+
+.archive-card-in-quick {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+  opacity: 0.4;
+}
+
+.archive-restore-btn {
+  background: rgba(229, 203, 122, 0.08);
+  border: 1px solid rgba(229, 203, 122, 0.3);
+  border-radius: 4px;
+  padding: 3px 8px;
+  color: #e5cb7a;
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+.archive-restore-btn:hover {
+  background: rgba(229, 203, 122, 0.18);
+  border-color: rgba(229, 203, 122, 0.65);
+  box-shadow: 0 0 10px rgba(229, 203, 122, 0.2);
+}
+
+.archive-eye-icon {
+  display: block;
+}
+
+/* Estado vacío */
+.archive-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  text-align: center;
+  gap: 10px;
+}
+
+.archive-empty-icon {
+  font-size: 26px;
+  color: var(--ink-secondary);
+  opacity: 0.35;
+}
+
+.archive-empty-text {
+  font-family: var(--font-prose, serif);
+  font-size: 15px;
+  color: var(--ink-primary);
+  opacity: 0.8;
+  margin: 0;
+  font-style: italic;
+}
+
+.archive-empty-hint {
+  font-family: var(--font-mono, monospace);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--ink-secondary);
+  opacity: 0.5;
+}
+
+/* Pie del cajón */
+.archive-drawer-footer {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.archive-count {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--ink-secondary);
+  opacity: 0.55;
 }
 
 

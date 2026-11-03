@@ -87,6 +87,9 @@
           <span class="portal-btn-icon">⤒</span>
           <span>Abrir otra obra (.aether)</span>
         </button>
+        <div class="portal-shortcut-hint" id="portal-archive-hint">
+          [ Busca tus Obras &nbsp; Alt + O ]
+        </div>
       </div>
     </div>
   </div>
@@ -161,6 +164,40 @@
       </button>
     </div>
   </div>
+
+  <!-- Capa 3: El Archivo de la Memoria (Cajón Lateral Condensado) -->
+  <div id="archive-backdrop" class="archive-backdrop"></div>
+  <aside id="archive-drawer" class="archive-drawer" aria-hidden="true">
+    <div class="archive-drawer-header">
+      <div class="archive-header-titles">
+        <h2 class="archive-title">El Archivo de la Memoria</h2>
+        <span class="archive-subtitle">Registro completo en el basalto local</span>
+      </div>
+      <button class="archive-close-btn" id="archive-close-btn" aria-label="Cerrar archivo (Esc)" type="button">Esc ✕</button>
+    </div>
+
+    <div class="archive-search-container">
+      <span class="archive-search-icon">⌕</span>
+      <input type="text" id="archive-search-input" class="archive-search-input" placeholder="Filtrar por título o fragmento..." autocomplete="off" spellcheck="false" />
+      <button class="archive-search-clear" id="archive-search-clear" type="button" style="display: none;">✕</button>
+    </div>
+
+    <div class="archive-phase-filters" id="archive-phase-filters">
+      <button class="archive-filter-btn is-active" data-phase-filter="all" type="button">Todas</button>
+      <button class="archive-filter-btn phase-vapor" data-phase-filter="vapor" type="button">Niebla</button>
+      <button class="archive-filter-btn phase-liquid" data-phase-filter="liquid" type="button">Fluido</button>
+      <button class="archive-filter-btn phase-crystal" data-phase-filter="crystal" type="button">Cristal</button>
+      <button class="archive-filter-btn phase-hidden" data-phase-filter="hidden" type="button">Retiradas</button>
+    </div>
+
+    <div class="archive-works-list" id="archive-works-list">
+      <!-- Renderizado dinámico de todas las obras -->
+    </div>
+
+    <footer class="archive-drawer-footer">
+      <span class="archive-count" id="archive-count-label">● 0 obras preservadas en tu navegador</span>
+    </footer>
+  </aside>
 
   <!-- Entrada TypeScript de la Aplicación -->
   <script type="module" src="/src/main.ts"></script>

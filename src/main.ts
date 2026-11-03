@@ -34,6 +34,7 @@ import { Phase } from './core/types';
 import { StorageManager } from './storage/StorageManager';
 import { ExportManager } from './storage/exporters/ExportManager';
 import { PortalManager } from './ui/portal/PortalManager';
+import { ArchiveDrawer } from './ui/archive/ArchiveDrawer';
 
 class AetherApp {
   private graph: DocumentGraph;
@@ -54,6 +55,7 @@ class AetherApp {
   private cameraStates: Partial<Record<Phase, { x: number; y: number; zoom: number }>> = {};
   private storageManager: StorageManager;
   private portalManager: PortalManager;
+  private archiveDrawer: ArchiveDrawer;
 
   constructor() {
     // 1. Inicialización de Capa 1: Modelo puro de datos
@@ -189,6 +191,13 @@ class AetherApp {
       this.audio,
       async (workId, phase) => this.switchActiveWork(workId, phase),
       async (providedFile?: File) => this.importAetherBackup(providedFile)
+    );
+
+    this.archiveDrawer = new ArchiveDrawer(
+      this.storageManager,
+      this.audio,
+      async (workId, phase) => this.switchActiveWork(workId, phase),
+      async () => this.portalManager.refresh()
     );
 
     this.initBrandHomeClick();
@@ -520,6 +529,23 @@ class AetherApp {
       if (e.shiftKey && e.key.toLowerCase() === 'o') {
         e.preventDefault();
         this.importAetherBackup();
+        return;
+      }
+    });
+
+    // 5. Invocación y Cierre del Archivo de la Memoria (Alt + O / Esc)
+    window.addEventListener('keydown', (e: KeyboardEvent) => {
+      // Invocación explícita con Alt + O
+      if (e.altKey && (e.key === 'o' || e.key === 'O' || e.code === 'KeyO')) {
+        e.preventDefault();
+        this.archiveDrawer.toggle();
+        return;
+      }
+
+      // Cierre con Escape si el archivo está abierto
+      if (e.key === 'Escape' && this.archiveDrawer.isDrawerOpen()) {
+        e.preventDefault();
+        this.archiveDrawer.close();
         return;
       }
     });
