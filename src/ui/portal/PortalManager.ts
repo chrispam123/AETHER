@@ -153,12 +153,13 @@ export class PortalManager {
 
   /**
    * Refresca la lista de obras recientes en el Santuario de Bienvenida.
+   * Carga únicamente hasta 5 obras activas en la vista rápida.
    */
   public async refresh(): Promise<void> {
     if (!this.worksListEl || !this.worksContainer) return;
 
     try {
-      this.worksCatalog = await this.storageManager.getWorksCatalog();
+      this.worksCatalog = await this.storageManager.getQuickViewWorks(5);
       this.renderWorks(this.worksCatalog);
 
       // Selección inicial coherente
@@ -220,22 +221,35 @@ export class PortalManager {
         <div class="portal-work-status">
           <span class="portal-work-phase-tag phase-${work.activePhase}">${phaseLabel}</span>
           <span class="portal-work-time">${timeLabel}</span>
-          <button class="portal-work-delete-btn" title="Eliminar obra del registro local" type="button">×</button>
+          <button class="portal-work-hide-btn" aria-label="Retirar obra de la vista rápida" type="button">
+            <svg class="portal-hide-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+              <line x1="1" y1="1" x2="23" y2="23"></line>
+            </svg>
+            <span class="portal-custom-tooltip">Retirar obra de la vista rápida</span>
+          </button>
         </div>
       `;
 
       // Clic simple: Selecciona la obra y despierta los 3 orbes inmediatamente
       itemEl.addEventListener('click', (e) => {
-        const deleteBtn = (e.target as HTMLElement).closest('.portal-work-delete-btn');
-        if (deleteBtn) {
+        const hideBtn = (e.target as HTMLElement).closest('.portal-work-hide-btn');
+        if (hideBtn) {
           e.stopPropagation();
-          const confirmDelete = window.confirm(`¿Eliminar "${title}" de tus obras locales?`);
-          if (confirmDelete) {
-            this.storageManager.deleteWork(work.id).then(() => {
-              this.audio.play(240, 'triangle', 0.2, 0.08);
-              this.refresh();
-            });
-          }
+
+          // 1. Animación suave de disolución sin destruir datos
+          itemEl.style.transition = 'all 0.28s cubic-bezier(0.16, 1, 0.3, 1)';
+          itemEl.style.opacity = '0';
+          itemEl.style.transform = 'translateY(-6px)';
+
+          // 2. Firma acústica de retiro sereno
+          this.audio.play(360, 'sine', 0.25, 0.08);
+
+          // 3. Marca en IndexedDB y subida inmediata del siguiente archivo en la cola
+          setTimeout(async () => {
+            await this.storageManager.hideWorkFromQuickView(work.id);
+            await this.refresh();
+          }, 240);
           return;
         }
 
@@ -244,8 +258,8 @@ export class PortalManager {
 
       // Doble clic: Acceso rápido directo en la fase donde se guardó
       itemEl.addEventListener('dblclick', async (e) => {
-        const deleteBtn = (e.target as HTMLElement).closest('.portal-work-delete-btn');
-        if (deleteBtn) return;
+        const hideBtn = (e.target as HTMLElement).closest('.portal-work-hide-btn');
+        if (hideBtn) return;
 
         this.audio.play(528, 'sine', 0.45, 0.12);
         await this.onSelectWorkCallback(work.id, work.activePhase);

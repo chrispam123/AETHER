@@ -36,6 +36,7 @@ export interface WorkSummary {
   activePhase: Phase;
   previewText: string;
   nodesCount: number;
+  hiddenFromQuickView?: boolean;
 }
 
 export interface WorkPackage {
@@ -330,14 +331,51 @@ export class AetherDatabase {
       request.onsuccess = () => {
         const result = request.result;
         const rawWorks: WorkSummary[] = result && Array.isArray(result.works) ? result.works : [];
-        // Normalizar cualquier obra que tuviese 'portal' grabado previamente
+        // Normalizar cualquier obra que tuviese 'portal' grabado previamente o falte hiddenFromQuickView
         const normalized = rawWorks.map((w) => ({
           ...w,
-          activePhase: (w.activePhase && w.activePhase !== 'portal') ? w.activePhase : ('crystal' as Phase)
+          activePhase: (w.activePhase && w.activePhase !== 'portal') ? w.activePhase : ('crystal' as Phase),
+          hiddenFromQuickView: !!w.hiddenFromQuickView
         }));
         resolve(normalized);
       };
       request.onerror = () => resolve([]);
+    });
+  }
+
+  /**
+   * Obtiene las últimas N obras visibles en la vista rápida del Santuario (por defecto 5).
+   * Excluye las obras que el autor ha decidido retirar de la mesa de trabajo.
+   */
+  public async getQuickViewWorks(limit: number = 5): Promise<WorkSummary[]> {
+    const catalog = await this.getWorksCatalog();
+    return catalog.filter((w) => !w.hiddenFromQuickView).slice(0, limit);
+  }
+
+  /**
+   * Retira una obra de la vista rápida sin destruirla de la base de datos IndexedDB.
+   * Esto permite que la siguiente obra en la cola histórica suba automáticamente a la mesa.
+   */
+  public async hideWorkFromQuickView(workId: string): Promise<void> {
+    await this.init();
+    if (!this.db) return;
+
+    const catalog = await this.getWorksCatalog();
+    const updated = catalog.map((w) => {
+      if (w.id === workId) {
+        return { ...w, hiddenFromQuickView: true };
+      }
+      return w;
+    });
+
+    const store = await this.getStore(AetherDatabase.STORE_STATE, 'readwrite');
+    if (!store) return;
+
+    return new Promise((resolve, reject) => {
+      const catRecord = { key: 'works_catalog', works: updated, updatedAt: Date.now() };
+      const req = store.put(catRecord);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
     });
   }
 
@@ -364,15 +402,16 @@ export class AetherDatabase {
       updatedAt: pkg.updatedAt,
       activePhase: validPhase,
       previewText: preview,
-      nodesCount: pkg.nodes.length
+      nodesCount: pkg.nodes.length,
+      hiddenFromQuickView: false // Al editarse y guardarse, se mantiene o reactiva en la vista rápida
     };
 
     // Actualiza o inserta la obra al inicio
     const filtered = catalog.filter(w => w.id !== pkg.id);
     filtered.unshift(summary);
 
-    // Mantiene las 6 obras más recientes
-    const trimmed = filtered.slice(0, 6);
+    // Mantiene una cola profunda de hasta 50 obras en el archivo histórico local
+    const trimmed = filtered.slice(0, 50);
 
     // 2. Abrir la transacción de escritura y persistir el paquete y el catálogo sincrónicamente
     const store = await this.getStore(AetherDatabase.STORE_STATE, 'readwrite');

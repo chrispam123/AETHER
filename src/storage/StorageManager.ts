@@ -336,6 +336,15 @@ export class StorageManager {
     return this.db.getWorksCatalog();
   }
 
+  public async getQuickViewWorks(limit: number = 5): Promise<WorkSummary[]> {
+    await this.db.init();
+    return this.db.getQuickViewWorks(limit);
+  }
+
+  public async hideWorkFromQuickView(workId: string): Promise<void> {
+    await this.db.hideWorkFromQuickView(workId);
+  }
+
   /**
    * Cambia de obra activa guardando previamente la actual.
    */
