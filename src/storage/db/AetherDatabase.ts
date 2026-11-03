@@ -29,6 +29,28 @@ export interface SavedWorkspaceState {
   updatedAt: number;
 }
 
+export interface WorkSummary {
+  id: string;
+  title: string;
+  updatedAt: number;
+  activePhase: Phase;
+  previewText: string;
+  nodesCount: number;
+}
+
+export interface WorkPackage {
+  id: string;
+  title: string;
+  updatedAt: number;
+  activePhase: Phase;
+  document: SavedDocument;
+  nodes: ThoughtNode[];
+  bridges: ConnectionBridge[];
+  discards: DiscardItem[];
+  cameraStates?: Partial<Record<Phase, { x: number; y: number; zoom: number }>>;
+  atmosphereLandscapeId?: string | null;
+}
+
 export class AetherDatabase {
   private static readonly DB_NAME = 'aether_knowledge_v1';
   private static readonly DB_VERSION = 1;
@@ -267,6 +289,124 @@ export class AetherDatabase {
         resolve(result && Array.isArray(result.items) ? result.items : []);
       };
       request.onerror = () => reject(request.error);
+    });
+  }
+
+  // ==========================================================================
+  // OPERACIONES DE MULTI-OBRAS Y CATÁLOGO DE PROYECTOS (WORKS CATALOG)
+  // ==========================================================================
+
+  public async getActiveWorkId(): Promise<string> {
+    const store = await this.getStore(AetherDatabase.STORE_STATE, 'readonly');
+    if (!store) return 'default_work';
+
+    return new Promise((resolve) => {
+      const request = store.get('active_work_id');
+      request.onsuccess = () => {
+        resolve(request.result?.value || 'default_work');
+      };
+      request.onerror = () => resolve('default_work');
+    });
+  }
+
+  public async setActiveWorkId(workId: string): Promise<void> {
+    const store = await this.getStore(AetherDatabase.STORE_STATE, 'readwrite');
+    if (!store) return;
+
+    return new Promise((resolve, reject) => {
+      const record = { key: 'active_work_id', value: workId, updatedAt: Date.now() };
+      const request = store.put(record);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  public async getWorksCatalog(): Promise<WorkSummary[]> {
+    const store = await this.getStore(AetherDatabase.STORE_STATE, 'readonly');
+    if (!store) return [];
+
+    return new Promise((resolve) => {
+      const request = store.get('works_catalog');
+      request.onsuccess = () => {
+        const result = request.result;
+        resolve(result && Array.isArray(result.works) ? result.works : []);
+      };
+      request.onerror = () => resolve([]);
+    });
+  }
+
+  public async saveWorkPackage(pkg: WorkPackage): Promise<void> {
+    const store = await this.getStore(AetherDatabase.STORE_STATE, 'readwrite');
+    if (!store) return;
+
+    // 1. Guardar el paquete completo de la obra
+    await new Promise<void>((resolve, reject) => {
+      const record = { key: 'work_pkg_' + pkg.id, package: pkg, updatedAt: Date.now() };
+      const request = store.put(record);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+
+    // 2. Actualizar el catálogo de obras
+    const catalog = await this.getWorksCatalog();
+    const cleanTitle = pkg.title.trim() || 'Sobre la naturaleza del pensamiento';
+    const preview = pkg.document.bodyText ? pkg.document.bodyText.substring(0, 80).replace(/\s+/g, ' ').trim() : '';
+
+    const summary: WorkSummary = {
+      id: pkg.id,
+      title: cleanTitle,
+      updatedAt: pkg.updatedAt,
+      activePhase: pkg.activePhase,
+      previewText: preview,
+      nodesCount: pkg.nodes.length
+    };
+
+    // Actualiza o inserta la obra al inicio
+    const filtered = catalog.filter(w => w.id !== pkg.id);
+    filtered.unshift(summary);
+
+    // Mantiene las 6 obras más recientes
+    const trimmed = filtered.slice(0, 6);
+
+    await new Promise<void>((resolve, reject) => {
+      const catRecord = { key: 'works_catalog', works: trimmed, updatedAt: Date.now() };
+      const request = store.put(catRecord);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  public async loadWorkPackage(workId: string): Promise<WorkPackage | null> {
+    const store = await this.getStore(AetherDatabase.STORE_STATE, 'readonly');
+    if (!store) return null;
+
+    return new Promise((resolve) => {
+      const request = store.get('work_pkg_' + workId);
+      request.onsuccess = () => {
+        const result = request.result;
+        resolve(result && result.package ? (result.package as WorkPackage) : null);
+      };
+      request.onerror = () => resolve(null);
+    });
+  }
+
+  public async deleteWork(workId: string): Promise<void> {
+    const store = await this.getStore(AetherDatabase.STORE_STATE, 'readwrite');
+    if (!store) return;
+
+    await new Promise<void>((resolve) => {
+      const request = store.delete('work_pkg_' + workId);
+      request.onsuccess = () => resolve();
+      request.onerror = () => resolve();
+    });
+
+    const catalog = await this.getWorksCatalog();
+    const filtered = catalog.filter(w => w.id !== workId);
+
+    await new Promise<void>((resolve) => {
+      const request = store.put({ key: 'works_catalog', works: filtered, updatedAt: Date.now() });
+      request.onsuccess = () => resolve();
+      request.onerror = () => resolve();
     });
   }
 

@@ -14,8 +14,9 @@ import { DocumentGraph } from '../core/DocumentGraph';
 import { StateMachine } from '../core/StateMachine';
 import { EditorialEditor } from '../ui/sanctuary/EditorialEditor';
 import { DiscardGutter } from '../ui/margin/DiscardGutter';
-import { AetherDatabase, SavedDocument, SavedWorkspaceState } from './db/AetherDatabase';
+import { AetherDatabase, SavedDocument, SavedWorkspaceState, WorkSummary, WorkPackage } from './db/AetherDatabase';
 import { Phase, ThoughtNode, ConnectionBridge, DiscardItem } from '../core/types';
+import { AetherTopologyBackup } from './exporters/ExportManager';
 
 export interface LoadedWorkspace {
   hasData: boolean;
@@ -39,6 +40,7 @@ export class StorageManager {
   private readonly DEBOUNCE_DELAY_MS = 400;
   private isSaving: boolean = false;
   private isHydrated: boolean = false;
+  private currentWorkId: string = 'default_work';
 
   constructor(
     graph: DocumentGraph,
@@ -191,13 +193,29 @@ export class StorageManager {
       // 4. Extraer Descartes (virutas del margen izquierdo de Cristal)
       const discards = this.gutter ? this.gutter.getItems() : [];
 
-      // 5. Guardado atómico en paralelo en IndexedDB
+      // 5. Construir paquete integral de la obra para el catálogo multiobra
+      const pkg: WorkPackage = {
+        id: this.currentWorkId,
+        title,
+        updatedAt: Date.now(),
+        activePhase: this.stateMachine.getPhase(),
+        document: docRecord,
+        nodes,
+        bridges,
+        discards,
+        cameraStates: this.getCameraStates(),
+        atmosphereLandscapeId: this.getAtmosphereId()
+      };
+
+      // 6. Guardado atómico en paralelo en IndexedDB
       await Promise.all([
         this.db.saveDocument(docRecord),
         this.db.saveNodes(nodes),
         this.db.saveBridges(bridges),
         this.db.saveWorkspaceState(workspaceRecord),
-        this.db.saveDiscards(discards)
+        this.db.saveDiscards(discards),
+        this.db.saveWorkPackage(pkg),
+        this.db.setActiveWorkId(this.currentWorkId)
       ]);
     } catch (e) {
       console.warn('[Aether Storage] Error durante guardado atómico:', e);
@@ -213,6 +231,29 @@ export class StorageManager {
     try {
       await this.db.init();
 
+      // Recuperar el identificador de la obra activa
+      const activeId = await this.db.getActiveWorkId();
+      this.currentWorkId = activeId;
+
+      // Intentar cargar la obra empaquetada
+      const pkg = await this.db.loadWorkPackage(activeId);
+      if (pkg) {
+        return {
+          hasData: true,
+          document: pkg.document,
+          nodes: pkg.nodes || [],
+          bridges: pkg.bridges || [],
+          state: {
+            activePhase: pkg.activePhase,
+            cameraStates: pkg.cameraStates || {},
+            atmosphereLandscapeId: pkg.atmosphereLandscapeId,
+            updatedAt: pkg.updatedAt
+          },
+          discards: pkg.discards || []
+        };
+      }
+
+      // Compatibilidad con almacenes legacy previos
       const [document, nodes, bridges, state, discards] = await Promise.all([
         this.db.getDocument('active_document'),
         this.db.getNodes(),
@@ -224,6 +265,28 @@ export class StorageManager {
       const hasData = (nodes && nodes.length > 0) || 
                       (document && document.bodyText.trim().length > 0) ||
                       (discards && discards.length > 0);
+
+      if (hasData) {
+        const initialPkg: WorkPackage = {
+          id: this.currentWorkId,
+          title: document?.title || 'Sobre la naturaleza del pensamiento',
+          updatedAt: document?.updatedAt || Date.now(),
+          activePhase: state?.activePhase || 'crystal',
+          document: document || {
+            id: 'active_document',
+            title: 'Sobre la naturaleza del pensamiento',
+            bodyHtml: '',
+            bodyText: '',
+            updatedAt: Date.now()
+          },
+          nodes: nodes || [],
+          bridges: bridges || [],
+          discards: discards || [],
+          cameraStates: state?.cameraStates || {},
+          atmosphereLandscapeId: state?.atmosphereLandscapeId || null
+        };
+        await this.db.saveWorkPackage(initialPkg);
+      }
 
       return {
         hasData: !!hasData,
@@ -244,6 +307,105 @@ export class StorageManager {
         discards: []
       };
     }
+  }
+
+  // ==========================================================================
+  // GESTIÓN MULTI-OBRA Y SANTUARIO DE BIENVENIDA
+  // ==========================================================================
+
+  public getCurrentWorkId(): string {
+    return this.currentWorkId;
+  }
+
+  public async getWorksCatalog(): Promise<WorkSummary[]> {
+    await this.db.init();
+    return this.db.getWorksCatalog();
+  }
+
+  /**
+   * Cambia de obra activa guardando previamente la actual.
+   */
+  public async switchWork(workId: string): Promise<WorkPackage | null> {
+    await this.saveImmediately();
+    const pkg = await this.db.loadWorkPackage(workId);
+    if (!pkg) return null;
+
+    this.currentWorkId = workId;
+    await this.db.setActiveWorkId(workId);
+    return pkg;
+  }
+
+  /**
+   * Crea una nueva obra virgen en blanco.
+   */
+  public async createNewWork(initialPhase: Phase = 'vapor'): Promise<WorkPackage> {
+    await this.saveImmediately();
+
+    const newId = 'work_' + Date.now();
+    const newPkg: WorkPackage = {
+      id: newId,
+      title: 'Sobre la naturaleza del pensamiento',
+      updatedAt: Date.now(),
+      activePhase: initialPhase,
+      document: {
+        id: newId,
+        title: 'Sobre la naturaleza del pensamiento',
+        bodyHtml: '',
+        bodyText: '',
+        updatedAt: Date.now()
+      },
+      nodes: [],
+      bridges: [],
+      discards: [],
+      cameraStates: {},
+      atmosphereLandscapeId: null
+    };
+
+    this.currentWorkId = newId;
+    await this.db.saveWorkPackage(newPkg);
+    await this.db.setActiveWorkId(newId);
+    return newPkg;
+  }
+
+  /**
+   * Importa un archivo .aether registrándolo como una obra nueva en el catálogo.
+   */
+  public async importWorkPackage(backup: AetherTopologyBackup): Promise<WorkPackage> {
+    await this.saveImmediately();
+
+    const newId = 'work_' + Date.now();
+    const title = backup.document.title?.trim() || 'Obra importada';
+
+    const pkg: WorkPackage = {
+      id: newId,
+      title,
+      updatedAt: Date.now(),
+      activePhase: backup.workspace.activePhase || 'crystal',
+      document: {
+        id: newId,
+        title,
+        bodyHtml: backup.document.bodyHtml || '',
+        bodyText: backup.document.bodyText || '',
+        updatedAt: Date.now()
+      },
+      nodes: backup.nodes || [],
+      bridges: backup.bridges || [],
+      discards: backup.discards || [],
+      cameraStates: backup.workspace.cameraStates || {},
+      atmosphereLandscapeId: backup.workspace.atmosphereLandscapeId || null
+    };
+
+    this.currentWorkId = newId;
+    await this.db.saveWorkPackage(pkg);
+    await this.db.setActiveWorkId(newId);
+    return pkg;
+  }
+
+  /**
+   * Elimina una obra del catálogo.
+   */
+  public async deleteWork(workId: string): Promise<void> {
+    await this.db.deleteWork(workId);
   }
 
   /**

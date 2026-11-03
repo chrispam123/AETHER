@@ -33,6 +33,7 @@ import { ZoomDial } from './ui/dock/ZoomDial';
 import { Phase } from './core/types';
 import { StorageManager } from './storage/StorageManager';
 import { ExportManager } from './storage/exporters/ExportManager';
+import { PortalManager } from './ui/portal/PortalManager';
 
 class AetherApp {
   private graph: DocumentGraph;
@@ -52,6 +53,7 @@ class AetherApp {
   private atmosphereSelector: AtmosphereSelector;
   private cameraStates: Partial<Record<Phase, { x: number; y: number; zoom: number }>> = {};
   private storageManager: StorageManager;
+  private portalManager: PortalManager;
 
   constructor() {
     // 1. Inicialización de Capa 1: Modelo puro de datos
@@ -182,6 +184,15 @@ class AetherApp {
       onExportAether: () => this.exportAetherBackup()
     });
 
+    this.portalManager = new PortalManager(
+      this.storageManager,
+      this.audio,
+      async (workId) => this.switchActiveWork(workId),
+      async (providedFile?: File) => this.importAetherBackup(providedFile)
+    );
+
+    this.initBrandHomeClick();
+    this.initDragAndDrop();
     this.initStorageAutosave();
     this.initStorageShortcuts();
     this.restoreWorkspace();
@@ -301,11 +312,19 @@ class AetherApp {
       }
       previousPhase = phase;
 
-      // 1. Ocultar portal completamente para que no intercepte ningún clic
-      if (portal && phase !== 'portal') {
-        portal.classList.add('hidden');
-        portal.style.display = 'none';
-        portal.style.pointerEvents = 'none';
+      // 1. Mostrar u ocultar portal
+      if (portal) {
+        if (phase === 'portal') {
+          portal.classList.remove('hidden');
+          portal.style.display = 'flex';
+          portal.style.pointerEvents = 'auto';
+          portal.style.opacity = '1';
+          this.portalManager?.refresh();
+        } else {
+          portal.classList.add('hidden');
+          portal.style.display = 'none';
+          portal.style.pointerEvents = 'none';
+        }
       }
 
       // Independencia espacial: restaura la cámara y las posiciones propias de la fase (Niebla vs Fluido)
@@ -439,6 +458,7 @@ class AetherApp {
     } finally {
       // Marcar el almacenamiento como completamente hidratado y listo para autosave
       this.storageManager.markHydrated();
+      await this.portalManager.refresh();
     }
   }
 
@@ -542,41 +562,121 @@ class AetherApp {
   }
 
   /**
-   * Importa y reconstituye en caliente un archivo .aether.
+   * Importa y reconstituye en caliente un archivo .aether registrándolo en el catálogo de obras.
    */
-  public async importAetherBackup(): Promise<void> {
-    const file = await ExportManager.selectFile('.aether');
+  public async importAetherBackup(providedFile?: File): Promise<void> {
+    const file = providedFile || await ExportManager.selectFile('.aether');
     if (!file) return;
 
     try {
       const backup = await ExportManager.parseAetherFile(file);
 
-      // Rehidratar estructuras en memoria
-      this.graph.hydrate(backup.nodes, backup.bridges);
-      this.editor.hydrateDocument(backup.document.title, backup.document.bodyHtml);
+      // 1. Guardar como obra nueva en el catálogo
+      const pkg = await this.storageManager.importWorkPackage(backup);
 
-      if (backup.discards && Array.isArray(backup.discards)) {
-        this.gutter.hydrate(backup.discards);
+      // 2. Rehidratar estructuras en memoria
+      this.graph.hydrate(pkg.nodes, pkg.bridges);
+      this.editor.hydrateDocument(pkg.document.title, pkg.document.bodyHtml);
+
+      if (pkg.discards && Array.isArray(pkg.discards)) {
+        this.gutter.hydrate(pkg.discards);
       }
 
-      if (backup.workspace.cameraStates) {
-        this.cameraStates = { ...backup.workspace.cameraStates };
+      if (pkg.cameraStates) {
+        this.cameraStates = { ...pkg.cameraStates };
       }
 
-      if (backup.workspace.activePhase) {
-        this.stateMachine.transitionTo(backup.workspace.activePhase);
-      }
+      this.graph.resetRiverTopologyChanged();
+      this.stateMachine.transitionTo(pkg.activePhase || 'crystal');
 
       this.bridge.sync();
       this.rawGutter.render();
+      this.gutter.render();
 
-      // Guardar de inmediato en la base de datos local
-      await this.storageManager.saveImmediately();
       this.audio.play(528, 'sine', 0.8, 0.15);
+      await this.portalManager.refresh();
     } catch (err: any) {
       console.error('[Aether Import]:', err);
       alert(err.message || 'Error al importar archivo .aether');
     }
+  }
+
+  /**
+   * Cambia la obra activa cargando el paquete correspondiente desde IndexedDB.
+   */
+  public async switchActiveWork(workId: string): Promise<void> {
+    try {
+      const pkg = await this.storageManager.switchWork(workId);
+      if (!pkg) return;
+
+      this.graph.hydrate(pkg.nodes || [], pkg.bridges || []);
+      this.editor.hydrateDocument(pkg.document.title, pkg.document.bodyHtml);
+      this.gutter.hydrate(pkg.discards || []);
+
+      if (pkg.cameraStates) {
+        this.cameraStates = { ...pkg.cameraStates };
+      }
+
+      this.graph.resetRiverTopologyChanged();
+      this.stateMachine.transitionTo(pkg.activePhase || 'crystal');
+
+      this.bridge.sync();
+      this.rawGutter.render();
+      this.gutter.render();
+
+      this.audio.play(528, 'sine', 0.5, 0.12);
+    } catch (e) {
+      console.warn('[Aether] Error al alternar obra:', e);
+    }
+  }
+
+  /**
+   * Conecta el clic en el logotipo "AETHER" para regresar al Santuario de Bienvenida.
+   */
+  private initBrandHomeClick(): void {
+    const brand = document.querySelector('.brand') as HTMLElement | null;
+    if (!brand) return;
+
+    brand.addEventListener('click', async (e) => {
+      // Si el autor hizo clic en el selector de atmósfera (hijos del brand), no interferir
+      if ((e.target as HTMLElement).closest('.atmosphere-selector')) {
+        return;
+      }
+
+      if (this.stateMachine.getPhase() === 'portal') return;
+
+      // 1. Guardar atómico inmediato de la obra viva
+      await this.storageManager.saveImmediately();
+
+      // 2. Transición al portal
+      this.stateMachine.transitionTo('portal');
+
+      // 3. Firma acústica
+      this.audio.play(432, 'sine', 0.35, 0.1);
+
+      // 4. Refrescar catálogo
+      await this.portalManager.refresh();
+    });
+  }
+
+  /**
+   * Conecta el soporte de arrastrar y soltar (Drag & Drop) universal para archivos .aether.
+   */
+  private initDragAndDrop(): void {
+    window.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+
+    window.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        const file = files[0];
+        if (file.name.endsWith('.aether')) {
+          await this.importAetherBackup(file);
+        }
+      }
+    });
   }
 }
 
