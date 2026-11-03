@@ -45,24 +45,27 @@
   <!-- Capa 3: Portal de Llegada (La Pregunta Ontológica) -->
   <div id="portal-view">
     <h1 class="portal-question">¿En qué estado de la materia está tu mente hoy?</h1>
-    <div class="orbs-row">
+    <div class="orbs-row" id="orbs-row">
       
       <!-- Orbe Niebla -->
-      <div class="orb-card vapor" data-phase="vapor">
+      <div class="orb-card vapor" data-phase="vapor" id="orb-vapor">
+        <div class="orb-focus-badge" style="display: none;">✦ Último foco</div>
         <div class="orb-sphere-anchor" id="anchor-vapor"></div>
         <div class="orb-title">Niebla</div>
         <div class="orb-subtitle">Vapor difuso<br>Chispas, caos y notas libres</div>
       </div>
 
       <!-- Orbe Fluido -->
-      <div class="orb-card liquid" data-phase="liquid">
+      <div class="orb-card liquid" data-phase="liquid" id="orb-liquid">
+        <div class="orb-focus-badge" style="display: none;">✦ Último foco</div>
         <div class="orb-sphere-anchor" id="anchor-liquid"></div>
         <div class="orb-title">Fluido</div>
         <div class="orb-subtitle">Corriente viva<br>Estructura, puentes y flujo</div>
       </div>
 
       <!-- Orbe Cristal -->
-      <div class="orb-card crystal" data-phase="crystal">
+      <div class="orb-card crystal" data-phase="crystal" id="orb-crystal">
+        <div class="orb-focus-badge" style="display: none;">✦ Último foco</div>
         <div class="orb-sphere-anchor" id="anchor-crystal"></div>
         <div class="orb-title">Cristal</div>
         <div class="orb-subtitle">Materia sólida<br>Prosa pulida y foco monástico</div>

@@ -187,7 +187,7 @@ class AetherApp {
     this.portalManager = new PortalManager(
       this.storageManager,
       this.audio,
-      async (workId) => this.switchActiveWork(workId),
+      async (workId, phase) => this.switchActiveWork(workId, phase),
       async (providedFile?: File) => this.importAetherBackup(providedFile)
     );
 
@@ -215,11 +215,12 @@ class AetherApp {
 
   /**
    * Conecta los clics de los 3 orbes del portal de bienvenida.
+   * Permite la elección deliberada de estado (Niebla, Fluido o Cristal) para la obra activa.
    */
   private initPortalCards(): void {
     const portalCards = document.querySelectorAll('.orb-card');
     portalCards.forEach(card => {
-      card.addEventListener('click', (e) => {
+      card.addEventListener('click', async (e) => {
         // Únicamente se permite la selección desde los orbes si estamos en la pantalla inicial de portal
         if (this.stateMachine.getPhase() !== 'portal') {
           e.stopPropagation();
@@ -227,7 +228,8 @@ class AetherApp {
         }
         const phase = card.getAttribute('data-phase') as Phase;
         if (phase) {
-          this.stateMachine.transitionTo(phase);
+          const selectedWorkId = this.portalManager.getSelectedWorkId();
+          await this.openWorkInPhase(selectedWorkId, phase);
         }
       });
     });
@@ -602,23 +604,26 @@ class AetherApp {
   }
 
   /**
-   * Cambia la obra activa cargando el paquete correspondiente desde IndexedDB.
+   * Abre la obra seleccionada directamente en la fase solicitada (Niebla, Fluido o Cristal).
    */
-  public async switchActiveWork(workId: string): Promise<void> {
+  public async openWorkInPhase(workId: string | null, targetPhase: Phase): Promise<void> {
     try {
-      const pkg = await this.storageManager.switchWork(workId);
-      if (!pkg) return;
+      if (workId) {
+        const pkg = await this.storageManager.switchWork(workId);
+        if (pkg) {
+          this.graph.hydrate(pkg.nodes || [], pkg.bridges || []);
+          this.editor.hydrateDocument(pkg.document.title, pkg.document.bodyHtml);
+          this.gutter.hydrate(pkg.discards || []);
 
-      this.graph.hydrate(pkg.nodes || [], pkg.bridges || []);
-      this.editor.hydrateDocument(pkg.document.title, pkg.document.bodyHtml);
-      this.gutter.hydrate(pkg.discards || []);
+          if (pkg.cameraStates) {
+            this.cameraStates = { ...pkg.cameraStates };
+          }
 
-      if (pkg.cameraStates) {
-        this.cameraStates = { ...pkg.cameraStates };
+          this.graph.resetRiverTopologyChanged();
+        }
       }
 
-      this.graph.resetRiverTopologyChanged();
-      this.stateMachine.transitionTo(pkg.activePhase || 'crystal');
+      this.stateMachine.transitionTo(targetPhase);
 
       this.bridge.sync();
       this.rawGutter.render();
@@ -626,8 +631,17 @@ class AetherApp {
 
       this.audio.play(528, 'sine', 0.5, 0.12);
     } catch (e) {
-      console.warn('[Aether] Error al alternar obra:', e);
+      console.warn('[Aether] Error al abrir obra en fase:', e);
     }
+  }
+
+  /**
+   * Cambia la obra activa cargando el paquete correspondiente desde IndexedDB.
+   */
+  public async switchActiveWork(workId: string, phase?: Phase): Promise<void> {
+    const work = this.portalManager.getSelectedWork();
+    const targetPhase = phase || work?.activePhase || 'crystal';
+    await this.openWorkInPhase(workId, targetPhase);
   }
 
   /**

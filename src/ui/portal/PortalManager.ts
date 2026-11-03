@@ -3,10 +3,14 @@
  * CAPA 3: GESTOR DEL SANTUARIO DE BIENVENIDA (PORTAL MANAGER)
  * ============================================================================
  * Orquesta la experiencia de entrada a Aether:
- * - Pregunta ontológica inicial (Orbes: Niebla, Fluido, Cristal).
- * - Catálogo vivo de Obras en Curso (Multidocumento en IndexedDB).
+ * - Pregunta ontológica inicial (Tríptico de Orbes: Niebla, Fluido, Cristal).
+ * - Resonancia viva unificada: Al seleccionar una obra, los 3 orbes despiertan
+ *   simultáneamente (is-awakened), mostrando que la obra vive en los tres estados.
+ * - Marcador de último foco (✦ Último foco): Señala la densidad donde se guardó.
+ * - Elección deliberada de densidad: Clic en cualquiera de los 3 orbes para
+ *   entrar directamente a la obra en ese estado de la materia.
+ * - Catálogo vivo de Obras en Curso (IndexedDB multiobra).
  * - Puerta de importación directa de archivos .aether.
- * - Conmutación fluida entre proyectos a 120 FPS.
  */
 
 import { StorageManager } from '../../storage/StorageManager';
@@ -20,13 +24,16 @@ export class PortalManager {
   private openAetherBtn: HTMLElement | null = null;
   private storageManager: StorageManager;
   private audio: HarmonicSynthesizer;
-  private onSelectWorkCallback: (workId: string) => Promise<void>;
+  private onSelectWorkCallback: (workId: string, phase?: Phase) => Promise<void>;
   private onImportAetherCallback: (file?: File) => Promise<void>;
+
+  private selectedWorkId: string | null = null;
+  private worksCatalog: WorkSummary[] = [];
 
   constructor(
     storageManager: StorageManager,
     audio: HarmonicSynthesizer,
-    onSelectWork: (workId: string) => Promise<void>,
+    onSelectWork: (workId: string, phase?: Phase) => Promise<void>,
     onImportAether: (file?: File) => Promise<void>
   ) {
     this.storageManager = storageManager;
@@ -55,14 +62,119 @@ export class PortalManager {
   }
 
   /**
+   * Obtiene el identificador de la obra actualmente seleccionada en el Santuario.
+   */
+  public getSelectedWorkId(): string | null {
+    return this.selectedWorkId;
+  }
+
+  /**
+   * Obtiene la obra actualmente seleccionada.
+   */
+  public getSelectedWork(): WorkSummary | null {
+    if (!this.selectedWorkId) return null;
+    return this.worksCatalog.find((w) => w.id === this.selectedWorkId) || null;
+  }
+
+  /**
+   * Selecciona una obra en el catálogo:
+   * 1. Resalta la tarjeta en la lista de obras.
+   * 2. Despierta los 3 orbes a la vez (is-awakened) indicando continuidad multidimensional.
+   * 3. Marca el orbe donde se guardó la obra con el distintivo de último foco.
+   */
+  public selectWork(workId: string, playSound: boolean = true): void {
+    const work = this.worksCatalog.find((w) => w.id === workId);
+    if (!work) return;
+
+    this.selectedWorkId = workId;
+
+    // 1. Resaltar en la lista visual
+    if (this.worksListEl) {
+      const allItems = this.worksListEl.querySelectorAll('.portal-work-item');
+      allItems.forEach((el) => {
+        if (el.getAttribute('data-work-id') === workId) {
+          el.classList.add('is-selected');
+        } else {
+          el.classList.remove('is-selected');
+        }
+      });
+    }
+
+    // 2. Despertar los 3 orbes y colocar el marcador de foco
+    this.updateOrbResonance(work.activePhase);
+
+    // 3. Respuesta acústica sutil
+    if (playSound) {
+      this.audio.play(440, 'sine', 0.25, 0.08);
+    }
+  }
+
+  /**
+   * Actualiza la resonancia de los 3 orbes superiores del tríptico.
+   */
+  private updateOrbResonance(activePhase: Phase | null): void {
+    const orbVapor = document.getElementById('orb-vapor');
+    const orbLiquid = document.getElementById('orb-liquid');
+    const orbCrystal = document.getElementById('orb-crystal');
+
+    const orbs: Array<{ el: HTMLElement | null; phase: Phase }> = [
+      { el: orbVapor, phase: 'vapor' },
+      { el: orbLiquid, phase: 'liquid' },
+      { el: orbCrystal, phase: 'crystal' }
+    ];
+
+    if (!activePhase) {
+      orbs.forEach(({ el }) => {
+        if (!el) return;
+        el.classList.remove('is-awakened', 'is-last-focus');
+        const badge = el.querySelector('.orb-focus-badge') as HTMLElement | null;
+        if (badge) badge.style.display = 'none';
+      });
+      return;
+    }
+
+    // Todos los tres orbes despiertan a la vez
+    orbs.forEach(({ el, phase }) => {
+      if (!el) return;
+      el.classList.add('is-awakened');
+
+      const isLastFocus = phase === activePhase;
+      const badge = el.querySelector('.orb-focus-badge') as HTMLElement | null;
+
+      if (isLastFocus) {
+        el.classList.add('is-last-focus');
+        if (badge) badge.style.display = 'block';
+      } else {
+        el.classList.remove('is-last-focus');
+        if (badge) badge.style.display = 'none';
+      }
+    });
+  }
+
+  /**
    * Refresca la lista de obras recientes en el Santuario de Bienvenida.
    */
   public async refresh(): Promise<void> {
     if (!this.worksListEl || !this.worksContainer) return;
 
     try {
-      const works = await this.storageManager.getWorksCatalog();
-      this.renderWorks(works);
+      this.worksCatalog = await this.storageManager.getWorksCatalog();
+      this.renderWorks(this.worksCatalog);
+
+      // Selección inicial coherente
+      if (this.selectedWorkId && this.worksCatalog.some((w) => w.id === this.selectedWorkId)) {
+        this.selectWork(this.selectedWorkId, false);
+      } else {
+        const currentWorkId = this.storageManager.getCurrentWorkId();
+        if (currentWorkId && this.worksCatalog.some((w) => w.id === currentWorkId)) {
+          this.selectWork(currentWorkId, false);
+        } else if (this.worksCatalog.length > 0) {
+          this.selectWork(this.worksCatalog[0].id, false);
+        } else {
+          this.selectedWorkId = null;
+          this.updateOrbResonance(null);
+        }
+      }
     } catch (e) {
       console.warn('[PortalManager] Error al refrescar catálogo de obras:', e);
     }
@@ -88,6 +200,9 @@ export class PortalManager {
       const itemEl = document.createElement('div');
       itemEl.className = 'portal-work-item';
       itemEl.setAttribute('data-work-id', work.id);
+      if (this.selectedWorkId === work.id) {
+        itemEl.classList.add('is-selected');
+      }
 
       const phaseLabel = this.formatPhaseLabel(work.activePhase);
       const timeLabel = this.formatRelativeTime(work.updatedAt);
@@ -109,22 +224,31 @@ export class PortalManager {
         </div>
       `;
 
-      // Clic para abrir la obra
-      itemEl.addEventListener('click', async (e) => {
+      // Clic simple: Selecciona la obra y despierta los 3 orbes inmediatamente
+      itemEl.addEventListener('click', (e) => {
         const deleteBtn = (e.target as HTMLElement).closest('.portal-work-delete-btn');
         if (deleteBtn) {
           e.stopPropagation();
           const confirmDelete = window.confirm(`¿Eliminar "${title}" de tus obras locales?`);
           if (confirmDelete) {
-            await this.storageManager.deleteWork(work.id);
-            this.audio.play(240, 'triangle', 0.2, 0.08);
-            await this.refresh();
+            this.storageManager.deleteWork(work.id).then(() => {
+              this.audio.play(240, 'triangle', 0.2, 0.08);
+              this.refresh();
+            });
           }
           return;
         }
 
-        this.audio.play(528, 'sine', 0.4, 0.12);
-        await this.onSelectWorkCallback(work.id);
+        this.selectWork(work.id, true);
+      });
+
+      // Doble clic: Acceso rápido directo en la fase donde se guardó
+      itemEl.addEventListener('dblclick', async (e) => {
+        const deleteBtn = (e.target as HTMLElement).closest('.portal-work-delete-btn');
+        if (deleteBtn) return;
+
+        this.audio.play(528, 'sine', 0.45, 0.12);
+        await this.onSelectWorkCallback(work.id, work.activePhase);
       });
 
       listEl.appendChild(itemEl);
