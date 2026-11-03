@@ -52,3 +52,16 @@ module "frontend" {
   environment  = var.environment
   aws_region   = var.aws_region
 }
+
+# Módulo de Autenticación OIDC para GitHub Actions (Despliegue Continuo sin claves estáticas)
+module "github_oidc" {
+  source = "./modules/github_oidc"
+
+  project_name                = var.project_name
+  environment                 = var.environment
+  github_repository           = "chrispam123/AETHER"
+  frontend_bucket_arn         = module.frontend.s3_bucket_arn
+  cloudfront_distribution_arn = module.frontend.cloudfront_distribution_arn
+  create_oidc_provider        = false
+}
+

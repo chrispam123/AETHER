@@ -10,6 +10,10 @@ concurrency:
   group: production-deployment
   cancel-in-progress: false
 
+permissions:
+  id-token: write # Requerido para solicitar el token JWT OIDC
+  contents: read  # Requerido para actions/checkout
+
 jobs:
   deploy:
     name: Build & Deploy to AWS Spain (eu-south-2)
@@ -18,6 +22,7 @@ jobs:
       AWS_REGION: eu-south-2
       S3_BUCKET: aether-frontend-eu-south-2-ul1y7l
       CLOUDFRONT_DISTRIBUTION_ID: E2HLFSOOTQQTWX
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN || 'arn:aws:iam::668449743330:role/aether-github-actions-cd-role' }}
 
     steps:
       - name: Checkout Source Code
@@ -35,11 +40,11 @@ jobs:
       - name: Strict Typecheck & Compile Bundle
         run: npm run build
 
-      - name: Configure AWS Credentials
+      - name: Authenticate to AWS via GitHub OIDC (Zero static keys)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          role-session-name: GitHubActions-Aether-Deploy
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Sync Static Bundle to S3 Bucket
@@ -52,7 +57,8 @@ jobs:
 
       - name: Publish Deployment Summary
         run: |
-          echo "### 🚀 Despliegue de Aether Completado con Éxito" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Despliegue de Aether Completado con Éxito (OIDC)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Autenticación:** GitHub OIDC (Sin credenciales estáticas)" >> $GITHUB_STEP_SUMMARY
           echo "- **Región:** \`$AWS_REGION\` (España)" >> $GITHUB_STEP_SUMMARY
           echo "- **S3 Bucket:** \`$S3_BUCKET\`" >> $GITHUB_STEP_SUMMARY
           echo "- **CloudFront ID:** \`$CLOUDFRONT_DISTRIBUTION_ID\`" >> $GITHUB_STEP_SUMMARY
