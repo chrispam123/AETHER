@@ -1,0 +1,59 @@
+name: Aether Continuous Deployment (CD)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build & Deploy to AWS Spain (eu-south-2)
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: eu-south-2
+      S3_BUCKET: aether-frontend-eu-south-2-ul1y7l
+      CLOUDFRONT_DISTRIBUTION_ID: E2HLFSOOTQQTWX
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Strict Typecheck & Compile Bundle
+        run: npm run build
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Sync Static Bundle to S3 Bucket
+        run: |
+          aws s3 sync dist/ s3://$S3_BUCKET --delete --region $AWS_REGION
+
+      - name: Invalidate CloudFront CDN Cache
+        run: |
+          aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --paths "/*"
+
+      - name: Publish Deployment Summary
+        run: |
+          echo "### 🚀 Despliegue de Aether Completado con Éxito" >> $GITHUB_STEP_SUMMARY
+          echo "- **Región:** \`$AWS_REGION\` (España)" >> $GITHUB_STEP_SUMMARY
+          echo "- **S3 Bucket:** \`$S3_BUCKET\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **CloudFront ID:** \`$CLOUDFRONT_DISTRIBUTION_ID\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL en vivo:** [https://d1creuco3vvhk7.cloudfront.net](https://d1creuco3vvhk7.cloudfront.net)" >> $GITHUB_STEP_SUMMARY
