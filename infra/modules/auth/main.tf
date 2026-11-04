@@ -52,6 +52,10 @@ resource "aws_cognito_user_pool" "pool" {
   tags = {
     Name = "${var.project_name}-user-pool"
   }
+
+  lifecycle {
+    ignore_changes = [schema]
+  }
 }
 
 # 2. Dominio de Cognito para los endpoints de OAuth 2.0
