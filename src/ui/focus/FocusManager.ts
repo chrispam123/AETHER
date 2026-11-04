@@ -82,7 +82,13 @@ export class FocusManager {
       this.btnFocusToggle.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
+        this.btnFocusToggle?.blur();
         this.togglePinnedFocus();
+        if (this.activeBlock) {
+          this.activeBlock.focus();
+        } else if (this.trackedElement) {
+          this.trackedElement.focus();
+        }
       });
     }
 
