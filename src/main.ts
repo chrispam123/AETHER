@@ -112,6 +112,8 @@ class AetherApp {
 
     this.stateMachine = new StateMachine(initialPhase);
     document.body.dataset.activePhase = initialPhase;
+    // Liberar inmediatamente el seguro temporal de arranque síncrono del HTML
+    document.documentElement.removeAttribute('data-initial-phase');
 
     // 2. Inicialización de Capa 2: Motor Gráfico Canvas
     const canvasElement = document.getElementById('canvas-layer') as HTMLCanvasElement;
@@ -364,10 +366,12 @@ class AetherApp {
       // 1. Mostrar u ocultar portal
       if (portal) {
         if (phase === 'portal') {
+          document.documentElement.removeAttribute('data-initial-phase');
           portal.classList.remove('hidden');
           portal.style.display = 'flex';
           portal.style.pointerEvents = 'auto';
           portal.style.opacity = '1';
+          portal.style.visibility = 'visible';
           this.portalManager?.refresh();
         } else {
           portal.classList.add('hidden');
@@ -730,10 +734,14 @@ class AetherApp {
 
       if (this.stateMachine.getPhase() === 'portal') return;
 
-      // 1. Guardar atómico inmediato de la obra viva
-      await this.storageManager.saveImmediately();
+      // 1. Guardar atómico inmediato de la obra viva (con tolerancia a fallos)
+      try {
+        await this.storageManager.saveImmediately();
+      } catch (err) {
+        console.warn('[Aether] Advertencia en autoguardado previo al portal:', err);
+      }
 
-      // 2. Transición al portal
+      // 2. Transición inmediata al portal
       this.stateMachine.transitionTo('portal');
 
       // 3. Firma acústica
