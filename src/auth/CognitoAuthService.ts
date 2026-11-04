@@ -237,30 +237,6 @@ export class CognitoAuthService {
     window.location.assign(authorizeUrl);
   }
 
-  /**
-   * Inicia el flujo PKCE general de Cognito (con soporte para correo y contraseña)
-   */
-  public async signInWithCognito(): Promise<void> {
-    const { verifier, challenge } = await this.generatePkcePair();
-    const state = this.generateRandomString(32);
-
-    sessionStorage.setItem(STORAGE_KEYS.VERIFIER, verifier);
-    sessionStorage.setItem(STORAGE_KEYS.STATE, state);
-
-    const params = new URLSearchParams({
-      response_type: 'code',
-      client_id: COGNITO_CONFIG.clientId,
-      redirect_uri: COGNITO_CONFIG.redirectUri,
-      scope: 'email openid profile',
-      state: state,
-      code_challenge: challenge,
-      code_challenge_method: 'S256'
-    });
-
-    const authorizeUrl = `${COGNITO_CONFIG.domain}/oauth2/authorize?${params.toString()}`;
-    window.location.assign(authorizeUrl);
-  }
-
   // ============================================================================
   // RENOVACIÓN DE TOKENS (REFRESH TOKEN)
   // ============================================================================

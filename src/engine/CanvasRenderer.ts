@@ -104,8 +104,10 @@ export class CanvasRenderer {
 
     const phase = this.stateMachine.getPhase();
 
-    // 2. Dibuja los orbes si estamos en el portal de bienvenida
-    if (phase === 'portal') {
+    // 2. Dibuja los orbes si estamos en el portal de bienvenida y el portal no está oculto
+    const portalEl = document.getElementById('portal-view');
+    const isPortalVisible = portalEl ? !portalEl.classList.contains('hidden') && portalEl.style.display !== 'none' : true;
+    if (phase === 'portal' && isPortalVisible) {
       this.orbs.render(this.ctx, this.time);
     }
 

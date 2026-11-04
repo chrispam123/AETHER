@@ -90,11 +90,19 @@ export class AtmosphereSelector {
         this.updateBrandLabel();
       } else {
         this.container.style.display = 'none';
+        if (this.brandTextElement) {
+          this.brandTextElement.innerHTML = 'AETHER';
+        }
       }
     });
 
     const currentPhase = this.stateMachine.getPhase();
     this.container.style.display = currentPhase === 'crystal' ? 'inline-flex' : 'none';
+    if (currentPhase === 'crystal') {
+      this.updateBrandLabel();
+    } else if (this.brandTextElement) {
+      this.brandTextElement.innerHTML = 'AETHER';
+    }
   }
 
   /**

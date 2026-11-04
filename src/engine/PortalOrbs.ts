@@ -108,6 +108,7 @@ export class PortalOrbs {
     const el = document.getElementById(elementId);
     if (!el) return null;
     const rect = el.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return null;
     return {
       x: rect.left + rect.width / 2,
       y: rect.top + rect.height / 2

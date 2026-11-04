@@ -102,8 +102,16 @@ class AetherApp {
       ]
     );
 
-    this.stateMachine = new StateMachine('portal');
-    document.body.dataset.activePhase = 'portal';
+    let initialPhase: Phase = 'portal';
+    try {
+      const savedPhase = localStorage.getItem('aether_active_phase') as Phase | null;
+      if (savedPhase && (savedPhase === 'vapor' || savedPhase === 'liquid' || savedPhase === 'crystal' || savedPhase === 'portal')) {
+        initialPhase = savedPhase;
+      }
+    } catch {}
+
+    this.stateMachine = new StateMachine(initialPhase);
+    document.body.dataset.activePhase = initialPhase;
 
     // 2. Inicialización de Capa 2: Motor Gráfico Canvas
     const canvasElement = document.getElementById('canvas-layer') as HTMLCanvasElement;
@@ -140,10 +148,22 @@ class AetherApp {
     this.rawGutter = new RawGutter(this.graph, this.audio);
     this.editor.setRawGutter(this.rawGutter);
 
-    // Ocultos en el arranque (solo deben despertar al entrar en fase Cristal)
-    this.gutter.setVisible(false);
-    this.rawGutter.setVisible(false);
-    this.editor.setVisible(false);
+    // Visibilidad inicial según la fase síncrona restaurada (evita flash de orbes en F5)
+    const isCrystal = initialPhase === 'crystal';
+    this.gutter.setVisible(isCrystal);
+    this.rawGutter.setVisible(isCrystal);
+    this.editor.setVisible(isCrystal);
+
+    if (initialPhase !== 'portal') {
+      const portal = document.getElementById('portal-view');
+      if (portal) {
+        portal.classList.add('hidden');
+        portal.style.display = 'none';
+        portal.style.pointerEvents = 'none';
+        portal.style.opacity = '0';
+      }
+      this.dock.update(initialPhase);
+    }
 
     // Pilar 2: El Foco Gravitatorio, Hiperfoco Sensorial y Enfoque Monástico (Alt + Z)
     this.focusManager = new FocusManager({ idleDelayMs: 2500 });
@@ -155,18 +175,21 @@ class AetherApp {
     );
     this.editor.setFocusManager(this.focusManager);
 
+    if (isCrystal) {
+      this.focusManager.showPresenceHalo();
+      setTimeout(() => this.focusManager.updatePresencePosition(), 50);
+    }
+
     // Pilar 3: Zoom Semántico (Bret Victor) y Dial de Abstracción
     this.zoomController = new SemanticZoomController(this.stateMachine, this.audio);
     this.zoomDial = new ZoomDial(this.zoomController, this.stateMachine);
     this.editor.setSemanticZoomController(this.zoomController);
 
-    // Sistema de Atmósferas Editoriales: Tríptico de luz en el logo (ATMÓSFERA, AURA, HALO)
+    // Sistema de Atmósferas Editoriales: Tríptico de luz en las métricas de Cristal
     this.atmosphereSelector = new AtmosphereSelector(this.audio, this.stateMachine);
-    const brandContainer = document.querySelector('.brand');
-    const brandDot = document.getElementById('brand-dot');
-    if (brandContainer) {
-      // Si estamos en cristal, el tríptico de 3 perlas sustituye armoniosamente al brand-dot único
-      brandContainer.insertBefore(this.atmosphereSelector.getElement(), brandDot);
+    const metricsSlot = document.getElementById('metrics-triptych-slot');
+    if (metricsSlot) {
+      metricsSlot.appendChild(this.atmosphereSelector.getElement());
     }
 
     this.initPhaseOrchestration();
@@ -334,6 +357,9 @@ class AetherApp {
       }
       previousPhase = phase;
       document.body.dataset.activePhase = phase;
+      try {
+        localStorage.setItem('aether_active_phase', phase);
+      } catch {}
 
       // 1. Mostrar u ocultar portal
       if (portal) {
@@ -462,6 +488,9 @@ class AetherApp {
         // 5. Restaurar Fase Activa (si el usuario ya había salido del Portal)
         if (workspace.state?.activePhase && workspace.state.activePhase !== 'portal') {
           this.stateMachine.transitionTo(workspace.state.activePhase);
+          try {
+            localStorage.setItem('aether_active_phase', workspace.state.activePhase);
+          } catch {}
         }
 
         // Si la fase activa es Cristal, sincronizar la prosa viva con el grafo

@@ -28,12 +28,6 @@ resource "aws_cognito_user_pool" "pool" {
     temporary_password_validity_days = 7
   }
 
-  verification_message_template {
-    default_email_option = "CONFIRM_WITH_CODE"
-    email_subject        = "Código de confirmación — Aether"
-    email_message        = "Tu código de acceso a Aether es {####}"
-  }
-
   account_recovery_setting {
     recovery_mechanism {
       name     = "verified_email"
@@ -93,7 +87,6 @@ resource "aws_cognito_user_pool_client" "client" {
   generate_secret = false
 
   supported_identity_providers = [
-    "COGNITO",
     aws_cognito_identity_provider.google.provider_name
   ]
 
@@ -113,7 +106,6 @@ resource "aws_cognito_user_pool_client" "client" {
 
   prevent_user_existence_errors = "ENABLED"
   explicit_auth_flows = [
-    "ALLOW_USER_SRP_AUTH",
     "ALLOW_REFRESH_TOKEN_AUTH"
   ]
 

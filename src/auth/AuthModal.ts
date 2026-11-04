@@ -66,14 +66,6 @@ export class AuthModalController {
           <span>Continuar con Google</span>
         </button>
 
-        <div class="auth-modal-divider">
-          <span>o bien</span>
-        </div>
-
-        <button class="btn-cognito-email" id="btn-cognito-login">
-          <span>Acceder con Correo o Código Temporal</span>
-        </button>
-
         <div class="auth-modal-footer">
           <button class="auth-modal-local-btn" id="btn-auth-local">
             Permanecer en modo local anónimo (sin cuenta)
@@ -160,11 +152,6 @@ export class AuthModalController {
         btn.innerText = 'Conectando con Google...';
       }
       await cognitoAuth.signInWithGoogle();
-    });
-
-    // Login alternativo con Cognito
-    document.getElementById('btn-cognito-login')?.addEventListener('click', async () => {
-      await cognitoAuth.signInWithCognito();
     });
 
     // Cerrar sesión
