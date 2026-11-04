@@ -1,0 +1,433 @@
+/* ==============================================================================
+ * AETHER — ESTILOS LITÚRGICOS DE IDENTIDAD Y BÓVEDA (AWS COGNITO + GOOGLE)
+ * ============================================================================== */
+
+/* Botón de la Bóveda en la cabecera (#header-right-controls) — Puro texto tipográfico sin cápsula */
+.vault-btn {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  outline: none;
+  padding: 4px 6px;
+  color: var(--ink-secondary, #7a828e);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: color 0.25s ease, opacity 0.25s ease;
+  font-family: var(--font-mono, monospace);
+  user-select: none;
+  position: relative;
+}
+
+.vault-btn:hover {
+  background: transparent;
+  color: #e5cb7a;
+}
+
+.vault-btn .vault-icon {
+  font-size: 13px;
+  line-height: 1;
+  color: inherit;
+  transition: color 0.25s ease;
+}
+
+.vault-btn .vault-label {
+  font-weight: 500;
+  color: inherit;
+}
+
+.vault-btn .vault-sync-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #58606c;
+  transition: all 0.3s ease;
+  display: inline-block;
+}
+
+.vault-btn:hover .vault-sync-dot {
+  background: #9c8e65;
+}
+
+/* Estado autenticado */
+.vault-btn.is-authenticated {
+  color: #e8e5de;
+}
+
+.vault-btn.is-authenticated:hover {
+  color: #f3e6c0;
+}
+
+.vault-btn.is-authenticated .vault-sync-dot {
+  background: #5eb3a9;
+  box-shadow: 0 0 8px rgba(94, 179, 169, 0.7);
+}
+
+.vault-btn .vault-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(229, 180, 86, 0.4);
+}
+
+.vault-btn .vault-avatar-fallback {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(229, 180, 86, 0.15);
+  color: #e5cb7a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9.5px;
+  font-weight: 600;
+  border: 1px solid rgba(229, 180, 86, 0.3);
+}
+
+/* ==============================================================================
+ * MODAL LITÚRGICO DE LA BÓVEDA (#auth-modal-backdrop)
+ * ============================================================================== */
+
+.auth-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(9, 10, 13, 0.82);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.auth-modal-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.auth-modal-container {
+  width: 100%;
+  max-width: 440px;
+  margin: 16px;
+  background: #131418;
+  border: 1px solid rgba(229, 180, 86, 0.18);
+  border-radius: 16px;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.8), 0 0 32px rgba(229, 180, 86, 0.05);
+  padding: 36px 32px;
+  color: #e8e5de;
+  position: relative;
+  box-sizing: border-box;
+
+  /* Física de Condensación de la Materia: Entrada desde la izquierda, lenta y desenfocada */
+  transform: translateX(-180px) scale(0.96);
+  filter: blur(32px);
+  opacity: 0;
+  will-change: transform, filter, opacity;
+  transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.auth-modal-backdrop.is-open .auth-modal-container {
+  /* Cristalización y nitidez absoluta al posarse en el centro */
+  transform: translateX(0) scale(1);
+  filter: blur(0px);
+  opacity: 1;
+}
+
+.auth-modal-close-btn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  background: transparent;
+  border: none;
+  color: #6a6862;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  border-radius: 50%;
+  transition: color 0.2s ease;
+}
+
+.auth-modal-close-btn:hover {
+  color: #e8e5de;
+}
+
+/* Header del Modal */
+.auth-modal-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.auth-modal-triad {
+  display: inline-flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.auth-triad-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.auth-triad-dot.vapor { background: #85a0b8; box-shadow: 0 0 8px rgba(133, 160, 184, 0.5); }
+.auth-triad-dot.liquid { background: #5eb3a9; box-shadow: 0 0 8px rgba(94, 179, 169, 0.5); }
+.auth-triad-dot.crystal { background: #e5b456; box-shadow: 0 0 8px rgba(229, 180, 86, 0.5); }
+
+.auth-modal-title {
+  font-family: var(--font-serif, 'Newsreader', serif);
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  margin: 0 0 8px 0;
+  color: #f2eee6;
+}
+
+.auth-modal-subtitle {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #928f87;
+  margin: 0;
+  font-family: var(--font-sans, 'Inter', sans-serif);
+}
+
+.auth-modal-badge {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 10.5px;
+  font-family: var(--font-mono, monospace);
+  background: rgba(94, 179, 169, 0.08);
+  border: 1px solid rgba(94, 179, 169, 0.2);
+  color: #8ed6cd;
+  letter-spacing: 0.04em;
+}
+
+/* Botón Principal: Continuar con Google */
+.btn-google-auth {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 13px 20px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  color: #ffffff;
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
+}
+
+.btn-google-auth:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(229, 180, 86, 0.45);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.btn-google-auth svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Separador litúrgico */
+.auth-modal-divider {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+  color: #55534e;
+  font-size: 11px;
+  font-family: var(--font-mono, monospace);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.auth-modal-divider::before,
+.auth-modal-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.auth-modal-divider span {
+  padding: 0 12px;
+}
+
+/* Acciones secundarias */
+.btn-cognito-email {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 16px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  color: #adaba4;
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.btn-cognito-email:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: #e8e5de;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* Pie: Modo Local-First */
+.auth-modal-footer {
+  margin-top: 24px;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 16px;
+}
+
+.auth-modal-local-btn {
+  background: none;
+  border: none;
+  color: #6a6862;
+  font-size: 11.5px;
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color 0.2s ease;
+}
+
+.auth-modal-local-btn:hover {
+  color: #9c9990;
+  text-decoration: underline;
+}
+
+/* ==============================================================================
+ * POPOVER DE AUTOR AUTENTICADO (#author-popover)
+ * ============================================================================== */
+
+.author-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 280px;
+  background: #14151a;
+  border: 1px solid rgba(229, 180, 86, 0.22);
+  border-radius: 12px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.7);
+  padding: 16px;
+  box-sizing: border-box;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 9990;
+}
+
+.author-popover.is-open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.popover-author-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.popover-author-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(229, 180, 86, 0.4);
+}
+
+.popover-author-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.popover-author-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #f2eee6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.popover-author-email {
+  font-size: 11px;
+  color: #7d7a73;
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.popover-meta {
+  padding: 10px 0;
+  font-size: 10.5px;
+  color: #8ed6cd;
+  font-family: var(--font-mono, monospace);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.popover-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.popover-action-btn {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #c9c6be;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.popover-action-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border-color: rgba(229, 180, 86, 0.3);
+}
+
+.popover-action-btn.logout:hover {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.08);
+}

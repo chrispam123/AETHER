@@ -35,6 +35,7 @@ import { StorageManager } from './storage/StorageManager';
 import { ExportManager } from './storage/exporters/ExportManager';
 import { PortalManager } from './ui/portal/PortalManager';
 import { ArchiveDrawer } from './ui/archive/ArchiveDrawer';
+import { cognitoAuth, authModal } from './auth';
 
 class AetherApp {
   private graph: DocumentGraph;
@@ -102,6 +103,7 @@ class AetherApp {
     );
 
     this.stateMachine = new StateMachine('portal');
+    document.body.dataset.activePhase = 'portal';
 
     // 2. Inicialización de Capa 2: Motor Gráfico Canvas
     const canvasElement = document.getElementById('canvas-layer') as HTMLCanvasElement;
@@ -205,6 +207,7 @@ class AetherApp {
     this.initStorageAutosave();
     this.initStorageShortcuts();
     this.restoreWorkspace();
+    this.initAuth();
 
     // Arranca el bucle a 120 FPS
     this.renderer.start();
@@ -247,6 +250,15 @@ class AetherApp {
   /**
    * Conecta el botón de activación de audio sintético y la firma sonora procedural.
    */
+  /**
+   * Conecta el motor de autenticación AWS Cognito con Google OAuth (PKCE)
+   * y monta el botón de la Bóveda en la cabecera del editor.
+   */
+  private async initAuth(): Promise<void> {
+    await cognitoAuth.init();
+    authModal.mountVaultButton();
+  }
+
   private initAudioButton(): void {
     const audioBtn = document.getElementById('audio-btn');
     const audioLabel = document.getElementById('audio-label');
@@ -254,6 +266,7 @@ class AetherApp {
 
     if (audioBtn && audioLabel) {
       audioBtn.removeAttribute('title');
+      audioBtn.setAttribute('data-aether-tooltip', 'SONIDOS AMBIENTALES');
 
       audioBtn.addEventListener('click', async () => {
         const state = await this.audio.cycleAtmosphere();
@@ -262,13 +275,11 @@ class AetherApp {
         if (state.isPlaying && state.landscape) {
           audioLabel.innerText = state.landscape.label;
           audioBtn.classList.add('is-playing');
-          audioBtn.style.color = '#e5cb7a';
-          audioBtn.style.borderColor = 'rgba(212, 175, 55, 0.4)';
+          audioBtn.setAttribute('data-aether-tooltip', `ATMÓSFERA: ${state.landscape.label.toUpperCase()}`);
         } else {
           audioLabel.innerText = 'Acústica';
           audioBtn.classList.remove('is-playing');
-          audioBtn.style.color = 'var(--ink-secondary)';
-          audioBtn.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+          audioBtn.setAttribute('data-aether-tooltip', 'SONIDOS AMBIENTALES');
         }
       });
     }
@@ -322,6 +333,7 @@ class AetherApp {
         }
       }
       previousPhase = phase;
+      document.body.dataset.activePhase = phase;
 
       // 1. Mostrar u ocultar portal
       if (portal) {
@@ -368,6 +380,7 @@ class AetherApp {
         setTimeout(() => this.focusManager.updatePresencePosition(), 50);
       } else {
         this.focusManager.hidePresenceHalo();
+        this.focusManager.exitPinnedFocus();
       }
 
       // 3. Modulación de atmósfera según la fase (Pureza y Cero Ruido Visual)

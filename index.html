@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="/src/styles/sanctuary.css">
   <link rel="stylesheet" href="/src/styles/press.css">
   <link rel="stylesheet" href="/src/styles/atmospheres.css">
+  <link rel="stylesheet" href="/src/styles/auth.css">
 
   <!-- CSS Crítico: Fondo basalto instantáneo antes de cargar JS -->
   <style>
@@ -97,19 +98,24 @@
   <!-- Capa 3: Interfaz Superior y Controles -->
   <div id="ui-layer">
     <header id="app-header">
-      <div class="brand" id="brand-home-trigger" title="Volver al Portal (Santuario de Bienvenida)">
+      <div class="brand" id="brand-home-trigger" >
         <div class="brand-dot" id="brand-dot"></div>
         <span id="brand-text">AETHER</span>
       </div>
-      <div class="header-right-controls" id="header-right-controls" style="display: flex; align-items: center; gap: 16px;">
-        <button class="press-header-trigger" id="btn-press-open" title="Guardar / Imprimir (Ctrl+P)" style="display: none;">
+      <div class="header-right-controls" id="header-right-controls" style="display: flex; align-items: center; gap: 18px;">
+        <button class="press-header-trigger" id="btn-press-open" style="display: none;">
           <span class="press-trigger-icon">⎙</span>
           <span class="press-trigger-label">Guardar / Imprimir</span>
           <span class="press-trigger-kbd">Ctrl+P</span>
         </button>
-        <button class="audio-toggle" id="audio-btn">
+        <button class="audio-toggle" id="audio-btn" data-aether-tooltip="SONIDOS AMBIENTALES">
           <span id="audio-icon">♪</span>
           <span id="audio-label">Acústica</span>
+        </button>
+        <button class="vault-btn" id="vault-btn" data-aether-tooltip="SINCRONIZA TU NUBE">
+          <span class="vault-icon">☁</span>
+          <span class="vault-label">Bóveda</span>
+          <span class="vault-sync-dot"></span>
         </button>
       </div>
     </header>
@@ -137,7 +143,7 @@
           <span>·</span>
           <span id="page-count">1 página</span>
           <span>·</span>
-          <button id="btn-focus-toggle" class="metric-btn-focus" title="Alternar Enfoque Monástico (Alt + Z)">
+          <button id="btn-focus-toggle" class="metric-btn-focus" >
             <span class="focus-icon">◎</span>
             <span class="focus-text">Enfoque</span>
             <kbd class="focus-kbd">Alt+Z</kbd>

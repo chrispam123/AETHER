@@ -22,3 +22,24 @@ output "github_actions_role_arn" {
   value       = module.github_oidc.role_arn
 }
 
+# --- Autenticación (Cognito + Google OAuth) ---
+
+output "cognito_user_pool_id" {
+  description = "ID del Cognito User Pool en España (eu-south-2)"
+  value       = module.auth.user_pool_id
+}
+
+output "cognito_client_id" {
+  description = "ID del cliente SPA de Cognito para el frontend de Aether"
+  value       = module.auth.user_pool_client_id
+}
+
+output "cognito_domain" {
+  description = "Dominio base de Cognito para los flujos OAuth 2.0"
+  value       = module.auth.cognito_domain
+}
+
+output "google_authorized_redirect_uri" {
+  description = "URI autorizada de redirección que debe añadirse en Google Cloud Console"
+  value       = module.auth.google_idp_callback_url
+}
