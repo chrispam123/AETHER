@@ -26,6 +26,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.4"
+    }
   }
 }
 
@@ -75,4 +79,17 @@ module "auth" {
   google_client_id     = var.google_client_id
   google_client_secret = var.google_client_secret
   frontend_url         = "https://${module.frontend.cloudfront_domain_name}"
+}
+
+
+# Módulo de Bóveda y Almacenamiento Privado (DynamoDB + S3 + API Gateway + Lambda)
+module "vault" {
+  source = "./modules/vault"
+
+  project_name         = var.project_name
+  environment          = var.environment
+  aws_region           = var.aws_region
+  cognito_user_pool_id = module.auth.user_pool_id
+  cognito_client_id    = module.auth.user_pool_client_id
+  frontend_domain      = module.frontend.cloudfront_domain_name
 }

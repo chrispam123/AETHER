@@ -44,3 +44,18 @@ jobs:
           name: aether-dist
           path: dist/
           retention-days: 7
+
+  terraform-lint:
+    name: Terraform Format Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform Core
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.0
+
+      - name: Check Terraform Formatting
+        run: terraform -chdir=infra fmt -check

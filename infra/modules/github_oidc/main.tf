@@ -1,13 +1,13 @@
 # ==============================================================================
-# MÓDULO GITHUB ACTIONS OIDC FEDERATION — AETHER
+# MODULO GITHUB ACTIONS OIDC FEDERATION — AETHER
 # ==============================================================================
-# Permite a GitHub Actions autenticarse mediante tokens efímeros JWT (OIDC)
-# sin necesidad de guardar Access Keys estáticas en el repositorio.
+# Permite a GitHub Actions autenticarse mediante tokens efimeros JWT (OIDC)
+# sin necesidad de guardar Access Keys estaticas en el repositorio.
 # ==============================================================================
 
 data "aws_caller_identity" "current" {}
 
-# Creación opcional del proveedor si no existiera
+# Creacion opcional del proveedor si no existiera
 resource "aws_iam_openid_connect_provider" "github" {
   count = var.create_oidc_provider ? 1 : 0
 
@@ -27,7 +27,7 @@ locals {
   oidc_provider_arn = var.create_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
 }
 
-# Política de confianza (Trust Policy) vinculada estrictamente al repositorio de GitHub
+# Politica de confianza (Trust Policy) vinculada estrictamente al repositorio de GitHub
 data "aws_iam_policy_document" "github_assume_role" {
   statement {
     effect  = "Allow"
@@ -68,34 +68,171 @@ resource "aws_iam_role" "github_actions" {
   }
 }
 
-# Política de permisos de mínimo privilegio para CI/CD
+# Politica de permisos de infraestructura y despliegue para GitOps (Aether)
 data "aws_iam_policy_document" "github_actions_permissions" {
-  # Permisos en el bucket S3 del frontend
+  # 1. S3: Frontend, Vault y Terraform State
   statement {
-    sid    = "S3FrontendDeployPermissions"
+    sid    = "S3AetherManagement"
     effect = "Allow"
     actions = [
-      "s3:PutObject",
+      "s3:CreateBucket",
+      "s3:DeleteBucket",
+      "s3:ListBucket",
+      "s3:GetBucketLocation",
+      "s3:GetBucketPolicy",
+      "s3:PutBucketPolicy",
+      "s3:DeleteBucketPolicy",
+      "s3:GetBucketAcl",
+      "s3:PutBucketAcl",
+      "s3:GetBucketCors",
+      "s3:PutBucketCors",
+      "s3:GetBucketVersioning",
+      "s3:PutBucketVersioning",
+      "s3:GetEncryptionConfiguration",
+      "s3:PutEncryptionConfiguration",
+      "s3:GetBucketPublicAccessBlock",
+      "s3:PutBucketPublicAccessBlock",
       "s3:GetObject",
-      "s3:DeleteObject",
-      "s3:ListBucket"
+      "s3:PutObject",
+      "s3:DeleteObject"
     ]
     resources = [
-      var.frontend_bucket_arn,
-      "${var.frontend_bucket_arn}/*"
+      "arn:aws:s3:::aether-*",
+      "arn:aws:s3:::aether-*/*"
     ]
   }
 
-  # Permisos para invalidar la caché de CloudFront
+  # 2. DynamoDB: Catalogo de Obras
   statement {
-    sid    = "CloudFrontInvalidationPermissions"
+    sid    = "DynamoDBAetherManagement"
+    effect = "Allow"
+    actions = [
+      "dynamodb:CreateTable",
+      "dynamodb:DeleteTable",
+      "dynamodb:DescribeTable",
+      "dynamodb:DescribeContinuousBackups",
+      "dynamodb:UpdateContinuousBackups",
+      "dynamodb:DescribeTimeToLive",
+      "dynamodb:UpdateTimeToLive",
+      "dynamodb:ListTagsOfResource",
+      "dynamodb:TagResource",
+      "dynamodb:UntagResource",
+      "dynamodb:UpdateTable"
+    ]
+    resources = [
+      "arn:aws:dynamodb:*:*:table/aether-*"
+    ]
+  }
+
+  # 3. AWS Lambda: Boveda y Funciones Backend
+  statement {
+    sid    = "LambdaAetherManagement"
+    effect = "Allow"
+    actions = [
+      "lambda:CreateFunction",
+      "lambda:DeleteFunction",
+      "lambda:GetFunction",
+      "lambda:GetFunctionCodeSigningConfig",
+      "lambda:GetFunctionConfiguration",
+      "lambda:UpdateFunctionCode",
+      "lambda:UpdateFunctionConfiguration",
+      "lambda:AddPermission",
+      "lambda:RemovePermission",
+      "lambda:GetPolicy",
+      "lambda:ListVersionsByFunction",
+      "lambda:ListTags",
+      "lambda:TagResource",
+      "lambda:UntagResource"
+    ]
+    resources = [
+      "arn:aws:lambda:*:*:function:aether-*"
+    ]
+  }
+
+  # 4. API Gateway v2: HTTP API de Sincronizacion
+  statement {
+    sid    = "ApiGatewayAetherManagement"
+    effect = "Allow"
+    actions = [
+      "apigateway:*"
+    ]
+    resources = [
+      "*"
+    ]
+  }
+
+  # 5. IAM: Gobernanza del rol de Lambda
+  statement {
+    sid    = "IAMAetherManagement"
+    effect = "Allow"
+    actions = [
+      "iam:CreateRole",
+      "iam:DeleteRole",
+      "iam:GetRole",
+      "iam:GetRolePolicy",
+      "iam:PutRolePolicy",
+      "iam:DeleteRolePolicy",
+      "iam:PassRole",
+      "iam:TagRole",
+      "iam:UntagRole",
+      "iam:ListRolePolicies",
+      "iam:ListAttachedRolePolicies"
+    ]
+    resources = [
+      "arn:aws:iam::*:role/aether-*"
+    ]
+  }
+
+  # 6. CloudFront: Distribucion e Invalidaciones
+  statement {
+    sid    = "CloudFrontAetherManagement"
     effect = "Allow"
     actions = [
       "cloudfront:CreateInvalidation",
-      "cloudfront:GetInvalidation"
+      "cloudfront:GetInvalidation",
+      "cloudfront:GetDistribution",
+      "cloudfront:GetDistributionConfig",
+      "cloudfront:UpdateDistribution",
+      "cloudfront:ListTagsForResource",
+      "cloudfront:TagResource"
     ]
     resources = [
-      var.cloudfront_distribution_arn
+      "*"
+    ]
+  }
+
+  # 7. Cognito: Autorizador y Autenticacion
+  statement {
+    sid    = "CognitoAetherManagement"
+    effect = "Allow"
+    actions = [
+      "cognito-idp:DescribeUserPool",
+      "cognito-idp:DescribeUserPoolClient",
+      "cognito-idp:DescribeIdentityProvider",
+      "cognito-idp:DescribeUserPoolDomain",
+      "cognito-idp:GetUserPoolMfaConfig",
+      "cognito-idp:UpdateUserPool",
+      "cognito-idp:UpdateUserPoolClient",
+      "cognito-idp:TagResource"
+    ]
+    resources = [
+      "arn:aws:cognito-idp:*:*:userpool/*"
+    ]
+  }
+
+  # 8. CloudWatch Logs: Logs de la Lambda
+  statement {
+    sid    = "LogsAetherManagement"
+    effect = "Allow"
+    actions = [
+      "logs:DescribeLogGroups",
+      "logs:CreateLogGroup",
+      "logs:DeleteLogGroup",
+      "logs:ListTagsLogGroup",
+      "logs:PutRetentionPolicy"
+    ]
+    resources = [
+      "arn:aws:logs:*:*:log-group:/aws/lambda/aether-*"
     ]
   }
 }

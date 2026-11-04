@@ -1,4 +1,4 @@
-name: Aether Continuous Deployment (CD)
+name: Aether Continuous Deployment (CD & GitOps)
 
 on:
   push:
@@ -15,15 +15,70 @@ permissions:
   contents: read  # Requerido para actions/checkout
 
 jobs:
-  deploy:
-    name: Build & Deploy to AWS Spain (eu-south-2)
+  # ============================================================================
+  # 1. INFRAESTRUCTURA COMO CÓDIGO (GITOPS - TERRAFORM)
+  # ============================================================================
+  infra:
+    name: Terraform GitOps Apply (AWS Spain eu-south-2)
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: eu-south-2
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN || 'arn:aws:iam::668449743330:role/aether-github-actions-cd-role' }}
+      TF_VAR_google_client_id: ${{ secrets.GOOGLE_CLIENT_ID }}
+      TF_VAR_google_client_secret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+    outputs:
+      vault_api_endpoint: ${{ steps.tf_outputs.outputs.vault_api_endpoint }}
+      vault_dynamodb_table: ${{ steps.tf_outputs.outputs.vault_dynamodb_table }}
+      vault_s3_bucket: ${{ steps.tf_outputs.outputs.vault_s3_bucket }}
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform Core
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.0
+          terraform_wrapper: false
+
+      - name: Authenticate to AWS via GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          role-session-name: GitHubActions-Aether-Infra
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify Terraform Format
+        run: terraform -chdir=infra fmt -check
+
+      - name: Initialize Terraform Backend (S3 Artesanal)
+        run: terraform -chdir=infra init
+
+      - name: Apply Infrastructure Changes
+        run: terraform -chdir=infra apply -auto-approve -input=false
+
+      - name: Extract Terraform Outputs
+        id: tf_outputs
+        run: |
+          API_URL=$(terraform -chdir=infra output -raw vault_api_endpoint 2>/dev/null || echo "")
+          DDB_TABLE=$(terraform -chdir=infra output -raw vault_dynamodb_table 2>/dev/null || echo "")
+          S3_BUCKET=$(terraform -chdir=infra output -raw vault_s3_bucket 2>/dev/null || echo "")
+          echo "vault_api_endpoint=$API_URL" >> "$GITHUB_OUTPUT"
+          echo "vault_dynamodb_table=$DDB_TABLE" >> "$GITHUB_OUTPUT"
+          echo "vault_s3_bucket=$S3_BUCKET" >> "$GITHUB_OUTPUT"
+
+  # ============================================================================
+  # 2. DESPLIEGUE CONTINUO DEL FRONTEND (VITE SPA)
+  # ============================================================================
+  frontend:
+    name: Build & Deploy Frontend to AWS CloudFront
+    needs: [infra]
     runs-on: ubuntu-latest
     env:
       AWS_REGION: eu-south-2
       S3_BUCKET: aether-frontend-eu-south-2-ul1y7l
       CLOUDFRONT_DISTRIBUTION_ID: E2HLFSOOTQQTWX
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN || 'arn:aws:iam::668449743330:role/aether-github-actions-cd-role' }}
-
+      VITE_VAULT_API_URL: ${{ needs.infra.outputs.vault_api_endpoint }}
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -39,6 +94,8 @@ jobs:
 
       - name: Strict Typecheck & Compile Bundle
         run: npm run build
+        env:
+          VITE_VAULT_API_URL: ${{ needs.infra.outputs.vault_api_endpoint }}
 
       - name: Authenticate to AWS via GitHub OIDC (Zero static keys)
         uses: aws-actions/configure-aws-credentials@v4
@@ -57,9 +114,11 @@ jobs:
 
       - name: Publish Deployment Summary
         run: |
-          echo "### 🚀 Despliegue de Aether Completado con Éxito (OIDC)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Autenticación:** GitHub OIDC (Sin credenciales estáticas)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Región:** \`$AWS_REGION\` (España)" >> $GITHUB_STEP_SUMMARY
-          echo "- **S3 Bucket:** \`$S3_BUCKET\`" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Despliegue de Aether Completado con Éxito (GitOps + OIDC)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Infraestructura:** Terraform Aprovisionado y Sincronizado en AWS España (\`$AWS_REGION\`)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Vault API Gateway:** \`${{ needs.infra.outputs.vault_api_endpoint }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **DynamoDB:** \`${{ needs.infra.outputs.vault_dynamodb_table }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **S3 Vault:** \`${{ needs.infra.outputs.vault_s3_bucket }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Frontend S3:** \`$S3_BUCKET\`" >> $GITHUB_STEP_SUMMARY
           echo "- **CloudFront ID:** \`$CLOUDFRONT_DISTRIBUTION_ID\`" >> $GITHUB_STEP_SUMMARY
           echo "- **URL en vivo:** [https://d1creuco3vvhk7.cloudfront.net](https://d1creuco3vvhk7.cloudfront.net)" >> $GITHUB_STEP_SUMMARY
