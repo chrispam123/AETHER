@@ -58,52 +58,60 @@ header,
 }
 
 /* ============================================================================
-   TRÍPTICO DE LUZ EN EL LOGO (BRAND ATMOSPHERE TRIPTYCH)
+   TRÍPTICO DE LUZ EN LAS MÉTRICAS (METRICS ATMOSPHERE TRIPTYCH)
    ============================================================================ */
+.metrics-triptych-slot {
+  display: inline-flex;
+  align-items: center;
+}
+
 .brand-triptych {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
+  gap: 7px;
+  padding: 3px 8px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   transition: all 0.3s ease;
   user-select: none;
+  line-height: 1;
+  cursor: default;
 }
 
 .brand-triptych:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .triptych-bead {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--bead-color, var(--ink-ghost));
-  opacity: 0.28;
+  opacity: 0.32;
   cursor: pointer;
   transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: none;
+  display: inline-block;
 }
 
 .triptych-bead:hover {
-  opacity: 0.75;
+  opacity: 0.85;
   transform: scale(1.3);
 }
 
 .triptych-bead.active {
   opacity: 1;
-  transform: scale(1.25);
+  transform: scale(1.28);
   box-shadow: 0 0 10px var(--bead-color), 0 0 4px var(--bead-color);
 }
 
-/* Etiqueta de atmósfera con la misma voz tipográfica de AETHER */
+/* Etiqueta de atmósfera en la cabecera (texto puro según Imagen 3) */
 .brand-atmosphere-tag {
   color: var(--crystal-accent);
-  opacity: 0.85;
+  opacity: 0.92;
   letter-spacing: 0.28em;
-  font-weight: 400;
+  font-weight: 500;
   transition: color 0.4s ease, opacity 0.4s ease;
 }

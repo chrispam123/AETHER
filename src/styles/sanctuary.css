@@ -56,6 +56,11 @@ header:hover {
   transition: background 0.6s ease, box-shadow 0.6s ease;
 }
 
+/* En Modo Cristal: el punto gris se oculta para exhibir texto puro: AETHER · ATMÓSFERA */
+body[data-active-phase="crystal"] #brand-dot {
+  display: none !important;
+}
+
 /* Disparador de Acústica en la cabecera (Puro texto tipográfico, sin bordes ni cápsula) */
 .audio-toggle {
   background: transparent;
@@ -164,8 +169,14 @@ header:hover {
   display: none;
 }
 
-#portal-view.hidden {
-  opacity: 0;
+#portal-view.hidden,
+html[data-initial-phase="crystal"] #portal-view,
+html[data-initial-phase="liquid"] #portal-view,
+html[data-initial-phase="vapor"] #portal-view,
+body[data-active-phase="crystal"] #portal-view,
+body[data-active-phase="liquid"] #portal-view,
+body[data-active-phase="vapor"] #portal-view {
+  opacity: 0 !important;
   transform: scale(1.05);
   pointer-events: none !important;
   visibility: hidden !important;

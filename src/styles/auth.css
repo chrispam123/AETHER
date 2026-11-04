@@ -247,54 +247,6 @@
 }
 
 /* Separador litúrgico */
-.auth-modal-divider {
-  display: flex;
-  align-items: center;
-  margin: 20px 0;
-  color: #55534e;
-  font-size: 11px;
-  font-family: var(--font-mono, monospace);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-.auth-modal-divider::before,
-.auth-modal-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.auth-modal-divider span {
-  padding: 0 12px;
-}
-
-/* Acciones secundarias */
-.btn-cognito-email {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 11px 16px;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  color: #adaba4;
-  font-family: var(--font-sans, 'Inter', sans-serif);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-sizing: border-box;
-}
-
-.btn-cognito-email:hover {
-  background: rgba(255, 255, 255, 0.03);
-  color: #e8e5de;
-  border-color: rgba(255, 255, 255, 0.16);
-}
-
 /* Pie: Modo Local-First */
 .auth-modal-footer {
   margin-top: 24px;
