@@ -47,6 +47,8 @@ header:hover {
   display: flex;
   align-items: center;
   gap: 12px;
+  cursor: pointer;
+  user-select: none;
 }
 .brand-dot {
   width: 5px;
@@ -170,9 +172,6 @@ body[data-active-phase="crystal"] #brand-dot {
 }
 
 #portal-view.hidden,
-html[data-initial-phase="crystal"] #portal-view,
-html[data-initial-phase="liquid"] #portal-view,
-html[data-initial-phase="vapor"] #portal-view,
 body[data-active-phase="crystal"] #portal-view,
 body[data-active-phase="liquid"] #portal-view,
 body[data-active-phase="vapor"] #portal-view {
@@ -181,6 +180,14 @@ body[data-active-phase="vapor"] #portal-view {
   pointer-events: none !important;
   visibility: hidden !important;
   display: none !important;
+}
+
+body[data-active-phase="portal"] #portal-view {
+  opacity: 1 !important;
+  transform: scale(1) !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  display: flex !important;
 }
 
 #portal-view.hidden * {
