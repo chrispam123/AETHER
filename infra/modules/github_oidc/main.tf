@@ -72,29 +72,10 @@ resource "aws_iam_role" "github_actions" {
 data "aws_iam_policy_document" "github_actions_permissions" {
   # 1. S3: Frontend, Vault y Terraform State
   statement {
-    sid    = "S3AetherManagement"
+    sid    = "S3Management"
     effect = "Allow"
     actions = [
-      "s3:CreateBucket",
-      "s3:DeleteBucket",
-      "s3:ListBucket",
-      "s3:GetBucketLocation",
-      "s3:GetBucketPolicy",
-      "s3:PutBucketPolicy",
-      "s3:DeleteBucketPolicy",
-      "s3:GetBucketAcl",
-      "s3:PutBucketAcl",
-      "s3:GetBucketCors",
-      "s3:PutBucketCors",
-      "s3:GetBucketVersioning",
-      "s3:PutBucketVersioning",
-      "s3:GetEncryptionConfiguration",
-      "s3:PutEncryptionConfiguration",
-      "s3:GetBucketPublicAccessBlock",
-      "s3:PutBucketPublicAccessBlock",
-      "s3:GetObject",
-      "s3:PutObject",
-      "s3:DeleteObject"
+      "s3:*"
     ]
     resources = [
       "arn:aws:s3:::aether-*",
@@ -102,68 +83,72 @@ data "aws_iam_policy_document" "github_actions_permissions" {
     ]
   }
 
-  # 2. DynamoDB: Catalogo de Obras
   statement {
-    sid    = "DynamoDBAetherManagement"
+    sid    = "S3GlobalReads"
     effect = "Allow"
     actions = [
-      "dynamodb:CreateTable",
-      "dynamodb:DeleteTable",
-      "dynamodb:DescribeTable",
-      "dynamodb:DescribeContinuousBackups",
-      "dynamodb:UpdateContinuousBackups",
-      "dynamodb:DescribeTimeToLive",
-      "dynamodb:UpdateTimeToLive",
-      "dynamodb:ListTagsOfResource",
-      "dynamodb:TagResource",
-      "dynamodb:UntagResource",
-      "dynamodb:UpdateTable"
+      "s3:ListAllMyBuckets",
+      "s3:GetAccountPublicAccessBlock"
+    ]
+    resources = ["*"]
+  }
+
+  # 2. DynamoDB: Catalogo de Obras
+  statement {
+    sid    = "DynamoDBManagement"
+    effect = "Allow"
+    actions = [
+      "dynamodb:*"
     ]
     resources = [
-      "arn:aws:dynamodb:*:*:table/aether-*"
+      "arn:aws:dynamodb:*:*:table/aether-*",
+      "arn:aws:dynamodb:*:*:table/aether-*/*"
     ]
   }
 
   # 3. AWS Lambda: Boveda y Funciones Backend
   statement {
-    sid    = "LambdaAetherManagement"
+    sid    = "LambdaManagement"
     effect = "Allow"
     actions = [
-      "lambda:CreateFunction",
-      "lambda:DeleteFunction",
-      "lambda:GetFunction",
-      "lambda:GetFunctionCodeSigningConfig",
-      "lambda:GetFunctionConfiguration",
-      "lambda:UpdateFunctionCode",
-      "lambda:UpdateFunctionConfiguration",
-      "lambda:AddPermission",
-      "lambda:RemovePermission",
-      "lambda:GetPolicy",
-      "lambda:ListVersionsByFunction",
-      "lambda:ListTags",
-      "lambda:TagResource",
-      "lambda:UntagResource"
+      "lambda:*"
     ]
-    resources = [
-      "arn:aws:lambda:*:*:function:aether-*"
-    ]
+    resources = ["*"]
   }
 
   # 4. API Gateway v2: HTTP API de Sincronizacion
   statement {
-    sid    = "ApiGatewayAetherManagement"
+    sid    = "ApiGatewayManagement"
     effect = "Allow"
     actions = [
       "apigateway:*"
     ]
-    resources = [
-      "*"
-    ]
+    resources = ["*"]
   }
 
-  # 5. IAM: Gobernanza del rol de Lambda
+  # 5. CloudFront: Distribucion, OAC e Invalidaciones
   statement {
-    sid    = "IAMAetherManagement"
+    sid    = "CloudFrontManagement"
+    effect = "Allow"
+    actions = [
+      "cloudfront:*"
+    ]
+    resources = ["*"]
+  }
+
+  # 6. Cognito: Identity Provider, User Pools y Dominios
+  statement {
+    sid    = "CognitoManagement"
+    effect = "Allow"
+    actions = [
+      "cognito-idp:*"
+    ]
+    resources = ["*"]
+  }
+
+  # 7. IAM: Gobernanza y delegacion de roles del proyecto
+  statement {
+    sid    = "IAMManagement"
     effect = "Allow"
     actions = [
       "iam:CreateRole",
@@ -176,64 +161,24 @@ data "aws_iam_policy_document" "github_actions_permissions" {
       "iam:TagRole",
       "iam:UntagRole",
       "iam:ListRolePolicies",
-      "iam:ListAttachedRolePolicies"
+      "iam:ListAttachedRolePolicies",
+      "iam:AttachRolePolicy",
+      "iam:DetachRolePolicy"
     ]
     resources = [
-      "arn:aws:iam::*:role/aether-*"
-    ]
-  }
-
-  # 6. CloudFront: Distribucion e Invalidaciones
-  statement {
-    sid    = "CloudFrontAetherManagement"
-    effect = "Allow"
-    actions = [
-      "cloudfront:CreateInvalidation",
-      "cloudfront:GetInvalidation",
-      "cloudfront:GetDistribution",
-      "cloudfront:GetDistributionConfig",
-      "cloudfront:UpdateDistribution",
-      "cloudfront:ListTagsForResource",
-      "cloudfront:TagResource"
-    ]
-    resources = [
-      "*"
-    ]
-  }
-
-  # 7. Cognito: Autorizador y Autenticacion
-  statement {
-    sid    = "CognitoAetherManagement"
-    effect = "Allow"
-    actions = [
-      "cognito-idp:DescribeUserPool",
-      "cognito-idp:DescribeUserPoolClient",
-      "cognito-idp:DescribeIdentityProvider",
-      "cognito-idp:DescribeUserPoolDomain",
-      "cognito-idp:GetUserPoolMfaConfig",
-      "cognito-idp:UpdateUserPool",
-      "cognito-idp:UpdateUserPoolClient",
-      "cognito-idp:TagResource"
-    ]
-    resources = [
-      "arn:aws:cognito-idp:*:*:userpool/*"
+      "arn:aws:iam::*:role/aether-*",
+      "arn:aws:iam::*:policy/aether-*"
     ]
   }
 
   # 8. CloudWatch Logs: Logs de la Lambda
   statement {
-    sid    = "LogsAetherManagement"
+    sid    = "LogsManagement"
     effect = "Allow"
     actions = [
-      "logs:DescribeLogGroups",
-      "logs:CreateLogGroup",
-      "logs:DeleteLogGroup",
-      "logs:ListTagsLogGroup",
-      "logs:PutRetentionPolicy"
+      "logs:*"
     ]
-    resources = [
-      "arn:aws:logs:*:*:log-group:/aws/lambda/aether-*"
-    ]
+    resources = ["*"]
   }
 }
 
