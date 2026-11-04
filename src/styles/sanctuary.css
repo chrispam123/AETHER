@@ -56,41 +56,87 @@ header:hover {
   transition: background 0.6s ease, box-shadow 0.6s ease;
 }
 
+/* Disparador de Acústica en la cabecera (Puro texto tipográfico, sin bordes ni cápsula) */
 .audio-toggle {
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  color: var(--ink-secondary);
-  padding: 7px 16px;
-  border-radius: 30px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  outline: none;
+  padding: 4px 6px;
+  color: var(--ink-secondary, #7a828e);
   font-size: 11px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  transition: all 0.3s ease;
-  font-family: var(--font-mono);
+  gap: 7px;
+  transition: color 0.25s ease, opacity 0.25s ease;
+  font-family: var(--font-mono, monospace);
+  user-select: none;
+  position: relative;
 }
+
 .audio-toggle:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--ink-primary);
+  background: transparent;
+  color: #e5cb7a;
 }
 
 .audio-toggle.is-playing {
-  background: rgba(212, 175, 55, 0.08) !important;
+  background: transparent !important;
   color: #f3e6c0 !important;
-  box-shadow: 0 0 16px rgba(212, 175, 55, 0.25);
-  animation: audioPillBreathe 4s infinite ease-in-out;
+  border: none !important;
+  box-shadow: none !important;
 }
 
-@keyframes audioPillBreathe {
-  0%, 100% {
-    border-color: rgba(212, 175, 55, 0.3);
-  }
-  50% {
-    border-color: rgba(212, 175, 55, 0.65);
-    box-shadow: 0 0 20px rgba(212, 175, 55, 0.35);
-  }
+.audio-toggle.is-playing #audio-icon {
+  color: #e5cb7a;
+  text-shadow: 0 0 10px rgba(229, 203, 122, 0.8);
+  animation: audioGlyphBreathe 3s infinite ease-in-out;
+}
+
+@keyframes audioGlyphBreathe {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* ==============================================================================
+ * AVISO ETÉREO PURAMENTE TIPOGRÁFICO DE CABECERA (CERO CAJAS, CERO BORDES, PURO VAPOR)
+ * Idéntico al aviso "USA CTRL + SCROLL PARA MODULAR LA ESCALA" del tacómetro central
+ * ============================================================================== */
+[data-aether-tooltip] {
+  position: relative;
+}
+
+[data-aether-tooltip]::after {
+  content: attr(data-aether-tooltip);
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  transform: translateY(-2px);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  color: var(--ink-secondary, #7a828e);
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  z-index: 30;
+  padding: 0 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+[data-aether-tooltip]:hover::after {
+  opacity: 0.75;
+  transform: translateY(0);
 }
 
 /* --- PORTAL DE LLEGADA (PREGUNTA ONTOLÓGICA) --- */
@@ -1273,8 +1319,13 @@ header, #phase-dock, .crystal-raw-shelf, .crystal-metrics, #canvas-hint {
 }
 
 .discard-gutter.has-items {
-  opacity: 1;
+  opacity: 0.22;
   transform: translateX(0);
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.discard-gutter:hover {
+  opacity: 0.95;
 }
 
 .discard-gutter-header {
@@ -1291,17 +1342,17 @@ header, #phase-dock, .crystal-raw-shelf, .crystal-metrics, #canvas-hint {
 }
 
 .discard-chip {
-  background: rgba(22, 24, 30, 0.65);
-  backdrop-filter: blur(20px);
+  background: rgba(18, 20, 24, 0.35);
+  backdrop-filter: blur(16px);
   border-radius: 12px;
   padding: 10px 14px;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 8px;
-  box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: none;
+  border: 1px solid rgba(255, 255, 255, 0.035);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   animation: slideIntoGutter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -1317,11 +1368,17 @@ header, #phase-dock, .crystal-raw-shelf, .crystal-metrics, #canvas-hint {
   font-size: 13px;
   font-style: italic;
   line-height: 1.45;
-  color: var(--ink-secondary);
+  color: var(--ink-secondary, #7a828e);
   cursor: pointer;
   flex: 1;
-  transition: color 0.2s ease;
+  opacity: 0.65;
+  transition: color 0.2s ease, opacity 0.2s ease;
   word-break: break-word;
+}
+
+.discard-chip:hover .discard-chip-text {
+  color: var(--ink-primary, #e8e5de);
+  opacity: 0.95;
 }
 
 .discard-chip:hover .discard-chip-text {
@@ -1378,15 +1435,15 @@ body.hyperfocus-active .discard-gutter {
   max-height: calc(100vh - 220px);
   overflow-y: auto;
   overflow-x: hidden;
-  display: none; /* Oculto por defecto; solo se activa en modo Cristal */
+  display: none;
   flex-direction: column;
   gap: 12px;
   z-index: 50;
   pointer-events: auto;
   scrollbar-width: none;
-  opacity: 0.15;
-  transform: translateX(12px);
-  transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  opacity: 0.22;
+  transform: translateX(0);
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .raw-gutter::-webkit-scrollbar {
@@ -1395,7 +1452,7 @@ body.hyperfocus-active .discard-gutter {
 
 /* Al acercarse con el ratón, despierta con nitidez cristalina al 100% */
 .raw-gutter:hover {
-  opacity: 1;
+  opacity: 0.95;
   transform: translateX(0);
 }
 
@@ -1421,20 +1478,26 @@ body.hyperfocus-active .raw-gutter {
 }
 
 .raw-chip {
-  background: rgba(22, 24, 30, 0.72);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(226, 215, 195, 0.12);
+  background: rgba(18, 20, 24, 0.35);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.035);
   border-radius: 12px;
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 6px;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: none;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
   user-select: none;
+}
+
+.raw-chip:hover {
+  background: rgba(26, 29, 36, 0.85);
+  border-color: rgba(229, 203, 122, 0.25);
+  transform: translateY(-2px);
 }
 
 .raw-chip:hover {
@@ -1446,21 +1509,33 @@ body.hyperfocus-active .raw-gutter {
 
 .raw-chip-badge {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 8.5px;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: #e2d7c3;
-  opacity: 0.75;
+  color: #7a828e;
+  opacity: 0.55;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.raw-chip:hover .raw-chip-badge {
+  color: #e5cb7a;
+  opacity: 0.9;
 }
 
 .raw-chip-text {
   font-family: var(--font-prose);
-  font-size: 13.5px;
+  font-size: 13px;
   line-height: 1.45;
-  color: var(--ink-primary);
-  opacity: 0.88;
+  color: var(--ink-secondary, #7a828e);
+  opacity: 0.65;
   word-break: break-word;
   overflow-wrap: anywhere;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.raw-chip:hover .raw-chip-text {
+  color: var(--ink-primary, #e8e5de);
+  opacity: 0.95;
 }
 
 .raw-chip-footer {
@@ -2493,3 +2568,114 @@ body.hyperfocus-active .raw-gutter {
 }
 
 
+
+
+/* ==============================================================================
+ * MODO CRISTAL: DOCK EN PENUMBRA PERMANENTE (CERO EFECTO FAROLA AL PENSAR)
+ * En reposo editorial, descansa al 22% sin sombra dura. Solo despierta al bajar el ratón.
+ * Niebla, Fluido y Portal permanecen 100% intactos.
+ * ============================================================================== */
+body[data-active-phase="crystal"] #phase-dock.visible {
+  opacity: 0.22;
+  background: rgba(14, 16, 20, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.035);
+  box-shadow: none;
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), 
+              background 0.5s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body[data-active-phase="crystal"] #phase-dock.visible:hover {
+  opacity: 1;
+  background: rgba(20, 22, 28, 0.85);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.6);
+}
+
+/* Suavizar la píldora activa de Cristal en reposo */
+body[data-active-phase="crystal"] #phase-dock.visible:not(:hover) .phase-pill.active.crystal {
+  background: rgba(229, 180, 86, 0.08);
+  color: #9c8e65;
+  box-shadow: none;
+}
+
+/* ==============================================================================
+ * MODO CRISTAL: MÉTRICAS EN PENUMBRA EDITORIAL REPOSADA
+ * Descansa al 22% en armonía con el dock inferior; despierta al posar el cursor.
+ * ============================================================================== */
+body[data-active-phase="crystal"] .crystal-metrics {
+  opacity: 0.22;
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body[data-active-phase="crystal"] .crystal-metrics:hover {
+  opacity: 0.95;
+}
+
+
+/* ==============================================================================
+ * MODO CRISTAL: CABECERA TENUE EN REPOSO (SUAVE Y NO INVASIVA)
+ * En reposo editorial, descansa al 22%; despierta al 95% al posar el cursor.
+ * Niebla, Fluido y Portal permanecen 100% intactos.
+ * ============================================================================== */
+body[data-active-phase="crystal"]:not(.monastic-focus-active) header {
+  opacity: 0.22;
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body[data-active-phase="crystal"]:not(.monastic-focus-active) header:hover {
+  opacity: 0.95;
+}
+
+/* ==============================================================================
+ * MODO ENFOQUE MONÁSTICO ANCLADO (ALT + Z) - CONCENTRACIÓN PURA
+ * Todo el santuario periférico se desvanece por completo.
+ * Permanece la marca [●●● AETHER] arriba a la izquierda.
+ * El texto central: Párrafo activo brilla al 100%; los demás descansan tenues al 15%.
+ * ============================================================================== */
+body.monastic-focus-active #header-right-controls,
+body.monastic-focus-active #semantic-zoom-dial,
+body.monastic-focus-active .discard-gutter,
+body.monastic-focus-active .raw-gutter,
+body.monastic-focus-active .crystal-metrics,
+body.monastic-focus-active #phase-dock,
+body.monastic-focus-active #canvas-hint,
+body.monastic-focus-active .crystal-thesis-view,
+body.monastic-focus-active .crystal-map-view,
+body.monastic-focus-active .crystal-thesis-toast {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(6px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+body.monastic-focus-active header {
+  background: transparent !important;
+  border-bottom: 1px solid transparent !important;
+  box-shadow: none !important;
+  pointer-events: none !important;
+  opacity: 1 !important;
+}
+
+body.monastic-focus-active .brand {
+  opacity: 0.45 !important;
+  pointer-events: auto !important;
+  transition: opacity 0.4s ease;
+}
+
+body.monastic-focus-active .brand:hover {
+  opacity: 0.95 !important;
+}
+
+body.monastic-focus-active #crystal-sanctuary .crystal-title,
+body.monastic-focus-active #crystal-sanctuary .crystal-body > * {
+  opacity: 0.15 !important;
+  transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.monastic-focus-active #crystal-sanctuary .crystal-title.is-active-focus,
+body.monastic-focus-active #crystal-sanctuary .crystal-body > *.is-active-focus {
+  opacity: 1 !important;
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.2);
+}

@@ -86,10 +86,11 @@ export class FocusManager {
       });
     }
 
-    // 3. Atajo global Alt + Z
+    // 3. Atajo global Alt + Z (exclusivo para Modo Enfoque, nunca Ctrl+Z)
     window.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.altKey && (e.key === 'z' || e.key === 'Z' || e.code === 'KeyZ')) {
+      if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'z' || e.key === 'Z' || e.code === 'KeyZ')) {
         e.preventDefault();
+        e.stopPropagation();
         this.togglePinnedFocus();
       }
     });
@@ -228,17 +229,34 @@ export class FocusManager {
     }
 
     if (this.isPinned) {
-      // Activar foco fijo
+      // Activar Enfoque Monástico Puro (Alt + Z)
+      document.body.classList.add('monastic-focus-active');
       this.scrollContainer?.classList.add('focus-dim-mode');
       this.updateActiveParagraph();
       this.triggerTypewriterScroll(true);
       this.audio?.play(540, 'sine', 0.25, 0.12);
     } else {
-      // Apagar anclaje: si no estamos tecleando en ese instante, relajamos el dimming
+      // Desactivar Enfoque Monástico Puro
+      document.body.classList.remove('monastic-focus-active');
       if (!this.isAutoDimActive) {
         this.scrollContainer?.classList.remove('focus-dim-mode');
       }
       this.audio?.play(360, 'sine', 0.2, 0.08);
+    }
+  }
+
+  /**
+   * Sale forzosamente del modo de Enfoque Monástico (ej. al cambiar de fase)
+   */
+  public exitPinnedFocus(): void {
+    if (!this.isPinned) return;
+    this.isPinned = false;
+    document.body.classList.remove('monastic-focus-active');
+    if (this.btnFocusToggle) {
+      this.btnFocusToggle.classList.remove('active');
+    }
+    if (!this.isAutoDimActive) {
+      this.scrollContainer?.classList.remove('focus-dim-mode');
     }
   }
 

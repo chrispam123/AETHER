@@ -19,3 +19,14 @@ variable "environment" {
   type        = string
   default     = "production"
 }
+
+variable "google_client_id" {
+  description = "Client ID obtenido en Google Cloud Console para OAuth 2.0"
+  type        = string
+}
+
+variable "google_client_secret" {
+  description = "Client Secret obtenido en Google Cloud Console para OAuth 2.0"
+  type        = string
+  sensitive   = true
+}

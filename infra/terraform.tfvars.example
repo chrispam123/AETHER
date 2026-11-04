@@ -1,0 +1,10 @@
+# ==============================================================================
+# CONFIGURACIÓN LOCAL DE VARIABLES PRIVADAS (TERRAFORM)
+# ==============================================================================
+# Copia este archivo como `terraform.tfvars` en la carpeta `infra/`
+# e introduce tus claves de Google OAuth 2.0.
+# (Este archivo está 100% excluido de Git por .gitignore)
+# ==============================================================================
+
+google_client_id     = "TU_CLIENT_ID_DE_GOOGLE.apps.googleusercontent.com"
+google_client_secret = "TU_CLIENT_SECRET_DE_GOOGLE"

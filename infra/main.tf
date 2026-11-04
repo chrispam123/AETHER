@@ -65,3 +65,14 @@ module "github_oidc" {
   create_oidc_provider        = false
 }
 
+# Módulo de Identidad y Autenticación de Autores (AWS Cognito + Google OAuth 2.0)
+module "auth" {
+  source = "./modules/auth"
+
+  project_name         = var.project_name
+  environment          = var.environment
+  aws_region           = var.aws_region
+  google_client_id     = var.google_client_id
+  google_client_secret = var.google_client_secret
+  frontend_url         = "https://${module.frontend.cloudfront_domain_name}"
+}
