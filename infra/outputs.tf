@@ -43,3 +43,25 @@ output "google_authorized_redirect_uri" {
   description = "URI autorizada de redirección que debe añadirse en Google Cloud Console"
   value       = module.auth.google_idp_callback_url
 }
+
+# --- Bóveda de Almacenamiento (DynamoDB + S3 + API Gateway + Lambda) ---
+
+output "vault_dynamodb_table" {
+  description = "Tabla DynamoDB para el catálogo de obras del autor"
+  value       = module.vault.dynamodb_table_name
+}
+
+output "vault_s3_bucket" {
+  description = "Bucket S3 privado de la Bóveda de Aether"
+  value       = module.vault.s3_vault_bucket_name
+}
+
+output "vault_api_endpoint" {
+  description = "Endpoint base de API Gateway para la sincronización de la Bóveda"
+  value       = module.vault.api_gateway_endpoint
+}
+
+output "vault_lambda_name" {
+  description = "Nombre de la función Lambda de sincronización"
+  value       = module.vault.lambda_function_name
+}
