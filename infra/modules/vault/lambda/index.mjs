@@ -45,8 +45,8 @@ export async function handler(event) {
   }
 
   const method = event.requestContext?.http?.method;
-  console.log(`[Aether Vault Lambda] ${method} ${rawPath} - User: ${userId}`);
   const rawPath = (event.rawPath || event.requestContext?.http?.path || '').replace(/\/$/, '') || '/';
+  console.log(`[Aether Vault Lambda] ${method} ${rawPath} - User: ${userId}`);
 
   try {
     // ------------------------------------------------------------------------
