@@ -196,7 +196,7 @@ resource "aws_apigatewayv2_api" "vault_api" {
 
   cors_configuration {
     allow_credentials = false
-    allow_headers     = ["Authorization", "Content-Type", "x-amz-date"]
+    allow_headers     = ["*"]
     allow_methods     = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     allow_origins     = ["*"]
     max_age           = 3600

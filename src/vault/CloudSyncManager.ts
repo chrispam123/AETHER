@@ -377,9 +377,7 @@ export class CloudSyncManager {
       const res = await fetch(`${this.apiUrl}/vault/works?_t=${Date.now()}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${idToken}`,
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+          'Authorization': `Bearer ${idToken}`
         },
         cache: 'no-store'
       });
@@ -409,9 +407,7 @@ export class CloudSyncManager {
       const res = await fetch(`${this.apiUrl}/vault/works/${encodeURIComponent(workId)}/download?_t=${Date.now()}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${idToken}`,
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+          'Authorization': `Bearer ${idToken}`
         },
         cache: 'no-store'
       });
@@ -424,11 +420,7 @@ export class CloudSyncManager {
       if (!data.downloadUrl) return null;
 
       const fileRes = await fetch(data.downloadUrl, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
+        cache: 'no-store'
       });
       if (!fileRes.ok) {
         throw new Error(`HTTP ${fileRes.status} al descargar archivo desde S3`);
