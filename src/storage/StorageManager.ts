@@ -43,6 +43,9 @@ export class StorageManager {
   private currentWorkId: string = 'default_work';
   private lastCognitivePhase: Phase = 'crystal';
   private hasUserEdits: boolean = false;
+  private isDirty: boolean = false;
+  private isHydrating: boolean = false;
+  private currentWorkUpdatedAt: number = Date.now();
 
   constructor(
     graph: DocumentGraph,
@@ -112,8 +115,14 @@ export class StorageManager {
     this.stateMachine.onPhaseChange((newPhase) => {
       if (newPhase === 'vapor' || newPhase === 'liquid' || newPhase === 'crystal') {
         this.lastCognitivePhase = newPhase;
+        // Guardar el estado de la fase en IndexedDB sin ensuciar la fecha de la obra ni marcar dirty
+        this.db.saveWorkspaceState({
+          activePhase: newPhase,
+          cameraStates: this.getCameraStates(),
+          atmosphereLandscapeId: this.getAtmosphereId(),
+          updatedAt: Date.now()
+        }).catch(() => {});
       }
-      this.triggerAutosave();
     });
   }
 
@@ -136,12 +145,28 @@ export class StorageManager {
     });
   }
 
+  public setHydrating(hydrating: boolean): void {
+    this.isHydrating = hydrating;
+    if (hydrating) {
+      this.cancelAutosave();
+    }
+  }
+
+  public cancelAutosave(): void {
+    if (this.autosaveTimer) {
+      window.clearTimeout(this.autosaveTimer);
+      this.autosaveTimer = null;
+    }
+  }
+
   /**
    * Programa un guardado automático con debounce (400 ms tras el último cambio).
    */
   public triggerAutosave(): void {
-    if (!this.isHydrated) return;
+    if (!this.isHydrated || this.isHydrating) return;
+    this.isDirty = true;
     this.hasUserEdits = true;
+    this.currentWorkUpdatedAt = Date.now();
 
     if (this.autosaveTimer) {
       window.clearTimeout(this.autosaveTimer);
@@ -181,7 +206,7 @@ export class StorageManager {
         title,
         bodyHtml,
         bodyText,
-        updatedAt: Date.now(),
+        updatedAt: this.currentWorkUpdatedAt,
         hasUserEdits: this.hasUserEdits
       };
 
@@ -210,7 +235,7 @@ export class StorageManager {
       const pkg: WorkPackage = {
         id: this.currentWorkId,
         title,
-        updatedAt: Date.now(),
+        updatedAt: this.currentWorkUpdatedAt,
         activePhase: cognitivePhase,
         document: docRecord,
         nodes,
@@ -253,7 +278,9 @@ export class StorageManager {
       // Intentar cargar la obra empaquetada
       const pkg = await this.db.loadWorkPackage(activeId);
       if (pkg) {
+        this.currentWorkUpdatedAt = pkg.updatedAt || Date.now();
         this.hasUserEdits = !!pkg.hasUserEdits;
+        this.isDirty = false;
         if (pkg.activePhase && pkg.activePhase !== 'portal') {
           this.lastCognitivePhase = pkg.activePhase;
         }
@@ -304,7 +331,15 @@ export class StorageManager {
           cameraStates: state?.cameraStates || {},
           atmosphereLandscapeId: state?.atmosphereLandscapeId || null
         };
+        this.currentWorkUpdatedAt = initialPkg.updatedAt;
+        this.hasUserEdits = !this.isVirginStarterWork(initialPkg);
+        this.isDirty = false;
+        initialPkg.hasUserEdits = this.hasUserEdits;
         await this.db.saveWorkPackage(initialPkg);
+      } else {
+        this.currentWorkUpdatedAt = 0;
+        this.hasUserEdits = false;
+        this.isDirty = false;
       }
 
       return {
@@ -388,7 +423,9 @@ export class StorageManager {
 
     if (isActive || pkg.id === this.currentWorkId) {
       this.currentWorkId = pkg.id;
+      this.currentWorkUpdatedAt = pkg.updatedAt || Date.now();
       this.hasUserEdits = true;
+      this.isDirty = false;
       if (pkg.activePhase && pkg.activePhase !== 'portal') {
         this.lastCognitivePhase = pkg.activePhase;
       }
@@ -400,6 +437,20 @@ export class StorageManager {
         this.db.setActiveWorkId(pkg.id)
       ]);
     }
+  }
+
+  public getIsDirty(): boolean {
+    return this.isDirty;
+  }
+
+  public markClean(): void {
+    this.isDirty = false;
+  }
+
+  public markDirty(): void {
+    this.isDirty = true;
+    this.hasUserEdits = true;
+    this.currentWorkUpdatedAt = Date.now();
   }
 
   public async getWorksCatalog(): Promise<WorkSummary[]> {

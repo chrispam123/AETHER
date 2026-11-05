@@ -141,6 +141,9 @@ export class CloudSyncManager {
       const activeLocalPkg = await this.storageManager.getActiveWorkPackage();
       const currentWorkId = this.storageManager.getCurrentWorkId();
       const localScreenIsVirgin = this.storageManager.isVirginStarterWork(activeLocalPkg);
+      const isLocalDirty = this.storageManager.getIsDirty();
+
+      console.log(`[Aether Vault] 📊 Estado local: dirty=${isLocalDirty}, virgin=${localScreenIsVirgin}, currentWorkId=${currentWorkId}`);
 
       // 5. Comparar obras y resolver sincronización
       if (remoteWorks.length > 0) {
@@ -150,15 +153,18 @@ export class CloudSyncManager {
         for (const remote of sortedRemote) {
           const localPkg = await this.storageManager.getWorkPackage(remote.workId);
           const localIsVirgin = this.storageManager.isVirginStarterWork(localPkg);
+          const localChecksum = (localPkg as any)?.checksum;
+          const checksumDiffers = Boolean(remote.checksum && localChecksum && remote.checksum !== localChecksum);
 
-          // Criterios estrictos para descargar:
-          // a) La obra no existe en local.
-          // b) La obra local es la plantilla virgen estática.
-          // c) La obra remota tiene una marca de tiempo mayor Y diferente checksum.
+          // REGLA MAESTRA DE CONFLICTOS BIDIRECCIONALES:
+          // 1. Si el cliente local no está dirty (!isLocalDirty), NUNCA sobreescribe la nube.
+          // 2. Si !isLocalDirty y la nube difiere en checksum o tiene fecha más reciente o local es virgen: DESCARGA.
+          // 3. Si la nube es estrictamente más reciente y el checksum difiere: DESCARGA.
           const needsDownload =
             !localPkg ||
             localIsVirgin ||
-            (remote.updatedAt > (localPkg.updatedAt || 0) && remote.checksum !== localPkg.checksum);
+            (!isLocalDirty && (checksumDiffers || (remote.updatedAt || 0) > (localPkg.updatedAt || 0))) ||
+            (remote.updatedAt > (localPkg.updatedAt || 0) && (checksumDiffers || !isLocalDirty));
 
           if (needsDownload) {
             console.log(`[Aether Vault] ⤓ Descargando versión más reciente de "${remote.title}" (${remote.workId})...`);
@@ -176,17 +182,18 @@ export class CloudSyncManager {
                 console.log(`[Aether Vault] ✦ Rehidratando pantalla activa con "${downloaded.title}"...`);
                 this.onWorkHydratedCallback(downloaded);
               }
+              this.storageManager.markClean();
             }
-          } else if (localPkg && localPkg.hasUserEdits && (localPkg.updatedAt || 0) > remote.updatedAt) {
-            // Local tiene ediciones reales del autor y es más reciente: subir los cambios más frescos
+          } else if (localPkg && isLocalDirty && localPkg.hasUserEdits && (localPkg.updatedAt || 0) > remote.updatedAt) {
+            // SÓLO si el autor realmente editó en este equipo (isLocalDirty === true), tiene ediciones reales y es más reciente:
             console.log(`[Aether Vault] ⇪ Subiendo cambios locales más frescos de "${localPkg.title}"...`);
             await this.uploadWorkPackage(localPkg, idToken);
           }
         }
 
-        // Si la obra activa local no existe en la nube y tiene ediciones reales, subirla a la Bóveda
+        // Si la obra activa local no existe en la nube y el autor escribió en ella (isLocalDirty):
         if (activeLocalPkg && !remoteWorks.some((rw) => rw.workId === activeLocalPkg.id)) {
-          if (!this.storageManager.isVirginStarterWork(activeLocalPkg)) {
+          if (isLocalDirty && !this.storageManager.isVirginStarterWork(activeLocalPkg)) {
             console.log(`[Aether Vault] ⇪ Subiendo nueva obra local activa "${activeLocalPkg.title}"...`);
             await this.uploadWorkPackage(activeLocalPkg, idToken);
           }
@@ -263,6 +270,7 @@ export class CloudSyncManager {
         if (this.onWorkHydratedCallback) {
           this.onWorkHydratedCallback(downloaded);
         }
+        this.storageManager.markClean();
         this.lastSyncedAt = Date.now();
         this.lastError = null;
         this.setStatus('synced', `Obra "${downloaded.title}" restaurada desde la Bóveda`);
@@ -345,6 +353,7 @@ export class CloudSyncManager {
     // 3. Persistir localmente la marca de sincronización
     if (this.storageManager) {
       await this.storageManager.applyWorkPackageFromCloud(pkg, false);
+      this.storageManager.markClean();
     }
 
     console.log(`[Aether Vault] ✓ Obra "${pkg.title}" depositada con éxito en la Bóveda.`);
@@ -365,11 +374,14 @@ export class CloudSyncManager {
       const idToken = cognitoAuth.getIdToken();
       if (!idToken) return [];
 
-      const res = await fetch(`${this.apiUrl}/vault/works`, {
+      const res = await fetch(`${this.apiUrl}/vault/works?_t=${Date.now()}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+          'Authorization': `Bearer ${idToken}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
+        cache: 'no-store'
       });
 
       if (!res.ok) {
@@ -394,11 +406,14 @@ export class CloudSyncManager {
       const idToken = cognitoAuth.getIdToken();
       if (!idToken) return null;
 
-      const res = await fetch(`${this.apiUrl}/vault/works/${encodeURIComponent(workId)}/download`, {
+      const res = await fetch(`${this.apiUrl}/vault/works/${encodeURIComponent(workId)}/download?_t=${Date.now()}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+          'Authorization': `Bearer ${idToken}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
+        cache: 'no-store'
       });
 
       if (!res.ok) {
@@ -408,7 +423,13 @@ export class CloudSyncManager {
       const data: SyncDownloadResponse = await res.json();
       if (!data.downloadUrl) return null;
 
-      const fileRes = await fetch(data.downloadUrl);
+      const fileRes = await fetch(data.downloadUrl, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
       if (!fileRes.ok) {
         throw new Error(`HTTP ${fileRes.status} al descargar archivo desde S3`);
       }
