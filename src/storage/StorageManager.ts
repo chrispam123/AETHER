@@ -42,6 +42,7 @@ export class StorageManager {
   private isHydrated: boolean = false;
   private currentWorkId: string = 'default_work';
   private lastCognitivePhase: Phase = 'crystal';
+  private hasUserEdits: boolean = false;
 
   constructor(
     graph: DocumentGraph,
@@ -140,6 +141,7 @@ export class StorageManager {
    */
   public triggerAutosave(): void {
     if (!this.isHydrated) return;
+    this.hasUserEdits = true;
 
     if (this.autosaveTimer) {
       window.clearTimeout(this.autosaveTimer);
@@ -179,7 +181,8 @@ export class StorageManager {
         title,
         bodyHtml,
         bodyText,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        hasUserEdits: this.hasUserEdits
       };
 
       // 2. Extraer datos del Grafo (Nodos y Puentes con coordenadas independientes)
@@ -214,7 +217,8 @@ export class StorageManager {
         bridges,
         discards,
         cameraStates: this.getCameraStates(),
-        atmosphereLandscapeId: this.getAtmosphereId()
+        atmosphereLandscapeId: this.getAtmosphereId(),
+        hasUserEdits: this.hasUserEdits
       };
 
       // 6. Guardado atómico en IndexedDB
@@ -249,6 +253,7 @@ export class StorageManager {
       // Intentar cargar la obra empaquetada
       const pkg = await this.db.loadWorkPackage(activeId);
       if (pkg) {
+        this.hasUserEdits = !!pkg.hasUserEdits;
         if (pkg.activePhase && pkg.activePhase !== 'portal') {
           this.lastCognitivePhase = pkg.activePhase;
         }
@@ -353,11 +358,24 @@ export class StorageManager {
    */
   public isVirginStarterWork(pkg: WorkPackage | null): boolean {
     if (!pkg) return true;
-    const text = (pkg.document?.bodyText || '').trim();
+    if (pkg.hasUserEdits === false) return true;
+
     const title = (pkg.document?.title || '').trim();
+    const text = (pkg.document?.bodyText || '').trim();
     const isDefaultTitle = title === 'Sobre la naturaleza del pensamiento' || title === 'Sin título' || title === '';
-    const isDefaultBody = text.length === 0 || text === 'Escribir no es registrar palabras que ya estaban completas en la mente; escribir es el proceso mediante el cual el caos se condensa en materia legible.';
-    return isDefaultTitle && isDefaultBody;
+
+    if (text.length === 0) return true;
+
+    // Firmas de los párrafos iniciales de index.html
+    const hasP1 = text.includes('Escribir no es registrar palabras que ya estaban completas en la mente');
+    const hasP2 = text.includes('Cuando retiramos la tiranía del cursor mecánico');
+    const hasP3 = text.includes('Si el pensamiento pasa de vapor a líquido y a cristal');
+
+    if (isDefaultTitle && (hasP1 || hasP2 || hasP3) && text.length < 550) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -370,6 +388,7 @@ export class StorageManager {
 
     if (isActive || pkg.id === this.currentWorkId) {
       this.currentWorkId = pkg.id;
+      this.hasUserEdits = true;
       if (pkg.activePhase && pkg.activePhase !== 'portal') {
         this.lastCognitivePhase = pkg.activePhase;
       }
