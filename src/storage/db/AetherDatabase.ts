@@ -37,6 +37,7 @@ export interface WorkSummary {
   activePhase: Phase;
   previewText: string;
   nodesCount: number;
+  wordCount?: number;
   hiddenFromQuickView?: boolean;
 }
 
@@ -416,7 +417,9 @@ export class AetherDatabase {
     // 1. Obtener catálogo previo ANTES de abrir la transacción de escritura
     const catalog = await this.getWorksCatalog();
     const cleanTitle = pkg.title.trim() || 'Sobre la naturaleza del pensamiento';
-    const preview = pkg.document.bodyText ? pkg.document.bodyText.substring(0, 80).replace(/\s+/g, ' ').trim() : '';
+    const text = (pkg.document?.bodyText || '').trim();
+    const wordCount = text ? text.split(/\s+/).length : 0;
+    const preview = text ? text.substring(0, 100).replace(/\s+/g, ' ').trim() : '';
 
     // Garantizar que la fase guardada sea siempre una densidad de materia válida (Niebla, Fluido, Cristal)
     const validPhase: Phase =
@@ -433,6 +436,7 @@ export class AetherDatabase {
       activePhase: validPhase,
       previewText: preview,
       nodesCount: pkg.nodes.length,
+      wordCount,
       hiddenFromQuickView: false // Al editarse y guardarse, se mantiene o reactiva en la vista rápida
     };
 

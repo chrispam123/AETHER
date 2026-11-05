@@ -165,21 +165,21 @@ export class CloudSyncManager {
           const localPkg = await this.storageManager.getWorkPackage(remote.workId);
           const localIsVirgin = this.storageManager.isVirginStarterWork(localPkg);
           const localChecksum = (localPkg as any)?.checksum;
-          const checksumDiffers = Boolean(remote.checksum && localChecksum && remote.checksum !== localChecksum);
+          const isChecksumEqual = Boolean(localChecksum && remote.checksum && localChecksum === remote.checksum);
 
-          // REGLA MAESTRA DE CONFLICTOS BIDIRECCIONALES:
-          // 1. Si el cliente local no está dirty (!isLocalDirty), NUNCA sobreescribe la nube.
-          // 2. Si !isLocalDirty y la nube difiere en checksum o tiene fecha más reciente o local es virgen: DESCARGA.
-          // 3. Si la nube es estrictamente más reciente y el checksum difiere: DESCARGA.
+          // REGLA MAESTRA DE CONFLICTOS BIDIRECCIONALES BASADA EN CHECKSUM Y ESTADO DIRTY:
+          // 1. Si no existe localmente o es virgen: DESCARGA.
+          // 2. Si el cliente local está limpio (!isLocalDirty) y el checksum difiere de la nube: DESCARGA.
+          // 3. Si la nube tiene una fecha más reciente y el checksum difiere: DESCARGA.
           const needsDownload =
             !localPkg ||
             localIsVirgin ||
-            (!isLocalDirty && (checksumDiffers || (remote.updatedAt || 0) > (localPkg.updatedAt || 0))) ||
-            (remote.updatedAt > (localPkg.updatedAt || 0) && (checksumDiffers || !isLocalDirty));
+            (!isLocalDirty && !isChecksumEqual) ||
+            (!isChecksumEqual && (remote.updatedAt || 0) > (localPkg.updatedAt || 0));
 
           if (needsDownload) {
             this.log(`[Aether Vault] ⤓ Descargando versión más reciente de "${remote.title}" (${remote.workId})...`);
-            const downloaded = await this.downloadRemoteWork(remote.workId);
+            const downloaded = await this.downloadRemoteWork(remote.workId, remote.checksum);
 
             if (downloaded) {
               const isActive =
@@ -195,8 +195,8 @@ export class CloudSyncManager {
               }
               this.storageManager.markClean();
             }
-          } else if (localPkg && isLocalDirty && localPkg.hasUserEdits && (localPkg.updatedAt || 0) > remote.updatedAt) {
-            // SÓLO si el autor realmente editó en este equipo (isLocalDirty === true), tiene ediciones reales y es más reciente:
+          } else if (localPkg && isLocalDirty && localPkg.hasUserEdits && !isChecksumEqual) {
+            // SÓLO si el autor realmente editó en este equipo (isLocalDirty === true) y su contenido difiere:
             this.log(`[Aether Vault] ⇪ Subiendo cambios locales más frescos de "${localPkg.title}"...`);
             await this.uploadWorkPackage(localPkg, idToken);
           }
@@ -274,7 +274,7 @@ export class CloudSyncManager {
       const targetWork = sorted[0];
 
       this.log(`[Aether Vault] ⤓ Descargando obra seleccionada: "${targetWork.title}" (ID: ${targetWork.workId})...`);
-      const downloaded = await this.downloadRemoteWork(targetWork.workId);
+      const downloaded = await this.downloadRemoteWork(targetWork.workId, targetWork.checksum);
 
       if (downloaded) {
         await this.storageManager.applyWorkPackageFromCloud(downloaded, true);
@@ -408,7 +408,7 @@ export class CloudSyncManager {
   /**
    * Descarga una obra desde la Bóveda y la devuelve como WorkPackage para ser importada.
    */
-  public async downloadRemoteWork(workId: string): Promise<WorkPackage | null> {
+  public async downloadRemoteWork(workId: string, remoteChecksum?: string): Promise<WorkPackage | null> {
     if (!cognitoAuth.isAuthenticated()) return null;
 
     try {
@@ -438,6 +438,9 @@ export class CloudSyncManager {
       }
 
       const pkg: WorkPackage = await fileRes.json();
+      if (remoteChecksum) {
+        pkg.checksum = remoteChecksum;
+      }
       return pkg;
     } catch (err) {
       console.error('[Aether Vault] Error al descargar obra remota:', err);
