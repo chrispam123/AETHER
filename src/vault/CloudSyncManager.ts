@@ -44,6 +44,17 @@ export class CloudSyncManager {
 
   private constructor() {}
 
+  /**
+   * Log de depuración condicional: Silencioso por defecto en producción.
+   * Se activa únicamente si el desarrollador escribe en consola:
+   * localStorage.setItem('aether_debug', 'true')
+   */
+  private log(...args: any[]): void {
+    if (typeof window !== 'undefined' && window.localStorage?.getItem('aether_debug') === 'true') {
+      console.log(...args);
+    }
+  }
+
   public static getInstance(): CloudSyncManager {
     if (!CloudSyncManager.instance) {
       CloudSyncManager.instance = new CloudSyncManager();
@@ -71,7 +82,7 @@ export class CloudSyncManager {
         if (this.status === 'offline') {
           this.setStatus('idle');
         }
-        console.log('[Aether Vault] 🔑 Autor autenticado detectado. Iniciando sincronización de Bóveda...');
+        this.log('[Aether Vault] 🔑 Autor autenticado detectado. Iniciando sincronización de Bóveda...');
         this.syncVault();
       } else if (authState.status === 'unauthenticated') {
         this.setStatus('offline');
@@ -81,7 +92,7 @@ export class CloudSyncManager {
     // Si ya está autenticado al inicializar, pasar a idle y sincronizar
     if (cognitoAuth.isAuthenticated()) {
       this.setStatus('idle');
-      console.log('[Aether Vault] ⚡ Sesión activa restaurada. Comprobando Bóveda...');
+      this.log('[Aether Vault] ⚡ Sesión activa restaurada. Comprobando Bóveda...');
       this.syncVault();
     }
   }
@@ -113,7 +124,7 @@ export class CloudSyncManager {
     }
 
     this.setStatus('syncing', 'Sincronizando con AWS España (eu-south-2)...');
-    console.log('[Aether Vault] 📡 Iniciando sincronización bidireccional...');
+    this.log('[Aether Vault] 📡 Iniciando sincronización bidireccional...');
 
     try {
       // 1. Obtener token JWT de Cognito (renovar silenciosamente si es necesario)
@@ -133,9 +144,9 @@ export class CloudSyncManager {
       await this.storageManager.saveImmediately();
 
       // 3. Consultar el catálogo remoto de la Bóveda en DynamoDB
-      console.log('[Aether Vault] 🔍 Consultando catálogo en DynamoDB...');
+      this.log('[Aether Vault] 🔍 Consultando catálogo en DynamoDB...');
       const remoteWorks = await this.listRemoteWorks();
-      console.log(`[Aether Vault] 📚 Obras encontradas en la Bóveda: ${remoteWorks.length}`);
+      this.log(`[Aether Vault] 📚 Obras encontradas en la Bóveda: ${remoteWorks.length}`);
 
       // 4. Obtener obra activa local
       const activeLocalPkg = await this.storageManager.getActiveWorkPackage();
@@ -143,7 +154,7 @@ export class CloudSyncManager {
       const localScreenIsVirgin = this.storageManager.isVirginStarterWork(activeLocalPkg);
       const isLocalDirty = this.storageManager.getIsDirty();
 
-      console.log(`[Aether Vault] 📊 Estado local: dirty=${isLocalDirty}, virgin=${localScreenIsVirgin}, currentWorkId=${currentWorkId}`);
+      this.log(`[Aether Vault] 📊 Estado local: dirty=${isLocalDirty}, virgin=${localScreenIsVirgin}, currentWorkId=${currentWorkId}`);
 
       // 5. Comparar obras y resolver sincronización
       if (remoteWorks.length > 0) {
@@ -167,7 +178,7 @@ export class CloudSyncManager {
             (remote.updatedAt > (localPkg.updatedAt || 0) && (checksumDiffers || !isLocalDirty));
 
           if (needsDownload) {
-            console.log(`[Aether Vault] ⤓ Descargando versión más reciente de "${remote.title}" (${remote.workId})...`);
+            this.log(`[Aether Vault] ⤓ Descargando versión más reciente de "${remote.title}" (${remote.workId})...`);
             const downloaded = await this.downloadRemoteWork(remote.workId);
 
             if (downloaded) {
@@ -179,14 +190,14 @@ export class CloudSyncManager {
               await this.storageManager.applyWorkPackageFromCloud(downloaded, isActive);
 
               if (isActive && this.onWorkHydratedCallback) {
-                console.log(`[Aether Vault] ✦ Rehidratando pantalla activa con "${downloaded.title}"...`);
+                this.log(`[Aether Vault] ✦ Rehidratando pantalla activa con "${downloaded.title}"...`);
                 this.onWorkHydratedCallback(downloaded);
               }
               this.storageManager.markClean();
             }
           } else if (localPkg && isLocalDirty && localPkg.hasUserEdits && (localPkg.updatedAt || 0) > remote.updatedAt) {
             // SÓLO si el autor realmente editó en este equipo (isLocalDirty === true), tiene ediciones reales y es más reciente:
-            console.log(`[Aether Vault] ⇪ Subiendo cambios locales más frescos de "${localPkg.title}"...`);
+            this.log(`[Aether Vault] ⇪ Subiendo cambios locales más frescos de "${localPkg.title}"...`);
             await this.uploadWorkPackage(localPkg, idToken);
           }
         }
@@ -194,14 +205,14 @@ export class CloudSyncManager {
         // Si la obra activa local no existe en la nube y el autor escribió en ella (isLocalDirty):
         if (activeLocalPkg && !remoteWorks.some((rw) => rw.workId === activeLocalPkg.id)) {
           if (isLocalDirty && !this.storageManager.isVirginStarterWork(activeLocalPkg)) {
-            console.log(`[Aether Vault] ⇪ Subiendo nueva obra local activa "${activeLocalPkg.title}"...`);
+            this.log(`[Aether Vault] ⇪ Subiendo nueva obra local activa "${activeLocalPkg.title}"...`);
             await this.uploadWorkPackage(activeLocalPkg, idToken);
           }
         }
       } else {
         // La Bóveda está vacía: si tenemos obra activa con contenido real, la subimos
         if (activeLocalPkg && !this.storageManager.isVirginStarterWork(activeLocalPkg)) {
-          console.log(`[Aether Vault] ⇪ Bóveda vacía. Registrando primera obra del autor "${activeLocalPkg.title}"...`);
+          this.log(`[Aether Vault] ⇪ Bóveda vacía. Registrando primera obra del autor "${activeLocalPkg.title}"...`);
           await this.uploadWorkPackage(activeLocalPkg, idToken);
         }
       }
@@ -210,7 +221,7 @@ export class CloudSyncManager {
       this.lastSyncedAt = Date.now();
       this.lastError = null;
       this.setStatus('synced', 'Bóveda sincronizada (eu-south-2)');
-      console.log('[Aether Vault] ✓ Sincronización bidireccional completada con éxito.');
+      this.log('[Aether Vault] ✓ Sincronización bidireccional completada con éxito.');
 
       // Firma sonora litúrgica: Campana armónica a 528 Hz (Tono sagrado de transformación)
       if (this.audio) {
@@ -248,7 +259,7 @@ export class CloudSyncManager {
     if (!this.storageManager) return false;
 
     this.setStatus('syncing', 'Descargando obra desde la Bóveda en AWS España...');
-    console.log('[Aether Vault] ⤓ Forzando descarga manual desde la Bóveda...');
+    this.log('[Aether Vault] ⤓ Forzando descarga manual desde la Bóveda...');
 
     try {
       const remoteWorks = await this.listRemoteWorks();
@@ -262,7 +273,7 @@ export class CloudSyncManager {
       const sorted = [...remoteWorks].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
       const targetWork = sorted[0];
 
-      console.log(`[Aether Vault] ⤓ Descargando obra seleccionada: "${targetWork.title}" (ID: ${targetWork.workId})...`);
+      this.log(`[Aether Vault] ⤓ Descargando obra seleccionada: "${targetWork.title}" (ID: ${targetWork.workId})...`);
       const downloaded = await this.downloadRemoteWork(targetWork.workId);
 
       if (downloaded) {
@@ -306,7 +317,7 @@ export class CloudSyncManager {
 
     const wordCount = this.countWords(pkg.document?.bodyText || '');
 
-    console.log(`[Aether Vault] ⇪ Solicitando Presigned URL para "${pkg.title}" (${sizeBytes} bytes, checksum: ${checksum.slice(0, 8)}...)...`);
+    this.log(`[Aether Vault] ⇪ Solicitando Presigned URL para "${pkg.title}" (${sizeBytes} bytes, checksum: ${checksum.slice(0, 8)}...)...`);
 
     // 1. Inicialización en API Gateway y DynamoDB
     const initResponse = await fetch(`${this.apiUrl}/vault/sync/init`, {
@@ -337,7 +348,7 @@ export class CloudSyncManager {
     }
 
     // 2. Subida directa a S3 vía Presigned PUT
-    console.log('[Aether Vault] ⇪ Subiendo paquete cifrado directamente a S3 en España...');
+    this.log('[Aether Vault] ⇪ Subiendo paquete cifrado directamente a S3 en España...');
     const s3UploadResponse = await fetch(initData.uploadUrl, {
       method: 'PUT',
       headers: {
@@ -356,7 +367,7 @@ export class CloudSyncManager {
       this.storageManager.markClean();
     }
 
-    console.log(`[Aether Vault] ✓ Obra "${pkg.title}" depositada con éxito en la Bóveda.`);
+    this.log(`[Aether Vault] ✓ Obra "${pkg.title}" depositada con éxito en la Bóveda.`);
     return true;
   }
 
