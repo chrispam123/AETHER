@@ -36,6 +36,7 @@ import { ExportManager } from './storage/exporters/ExportManager';
 import { PortalManager } from './ui/portal/PortalManager';
 import { ArchiveDrawer } from './ui/archive/ArchiveDrawer';
 import { cognitoAuth, authModal } from './auth';
+import { cloudSync } from './vault';
 
 class AetherApp {
   private graph: DocumentGraph;
@@ -281,6 +282,7 @@ class AetherApp {
    */
   private async initAuth(): Promise<void> {
     await cognitoAuth.init();
+    cloudSync.init(this.storageManager, this.audio);
     authModal.mountVaultButton();
   }
 
