@@ -165,40 +165,74 @@ export class CloudSyncManager {
           const localPkg = await this.storageManager.getWorkPackage(remote.workId);
           const localIsVirgin = this.storageManager.isVirginStarterWork(localPkg);
           const localChecksum = (localPkg as any)?.checksum;
+          const localSyncedChecksum = (localPkg as any)?.syncedChecksum;
           const isChecksumEqual = Boolean(localChecksum && remote.checksum && localChecksum === remote.checksum);
+          const isItemDirty = (localPkg?.id === currentWorkId ? isLocalDirty : false) || Boolean((localPkg as any)?.isDirty);
 
-          // REGLA MAESTRA DE CONFLICTOS BIDIRECCIONALES BASADA EN CHECKSUM Y ESTADO DIRTY:
-          // 1. Si no existe localmente o es virgen: DESCARGA.
-          // 2. Si el cliente local está limpio (!isLocalDirty) y el checksum difiere de la nube: DESCARGA.
-          // 3. Si la nube tiene una fecha más reciente y el checksum difiere: DESCARGA.
-          const needsDownload =
-            !localPkg ||
-            localIsVirgin ||
-            (!isLocalDirty && !isChecksumEqual) ||
-            (!isChecksumEqual && (remote.updatedAt || 0) > (localPkg.updatedAt || 0));
+          // Si el archivo local y el remoto ya tienen el mismo checksum, están en total armonía
+          if (isChecksumEqual) {
+            continue;
+          }
 
-          if (needsDownload) {
-            this.log(`[Aether Vault] ⤓ Descargando versión más reciente de "${remote.title}" (${remote.workId})...`);
+          // 1. Si no existe en este dispositivo o es la plantilla virgen inicial: DESCARGA obligatoria
+          if (!localPkg || localIsVirgin) {
+            this.log(`[Aether Vault] ⤓ Descargando obra por primera vez: "${remote.title}" (${remote.workId})...`);
             const downloaded = await this.downloadRemoteWork(remote.workId, remote.checksum);
-
             if (downloaded) {
               const isActive =
                 downloaded.id === currentWorkId ||
                 localScreenIsVirgin ||
                 (currentWorkId === 'default_work' && remote.workId === 'default_work');
-
               await this.storageManager.applyWorkPackageFromCloud(downloaded, isActive);
-
               if (isActive && this.onWorkHydratedCallback) {
-                this.log(`[Aether Vault] ✦ Rehidratando pantalla activa con "${downloaded.title}"...`);
                 this.onWorkHydratedCallback(downloaded);
               }
               this.storageManager.markClean();
             }
-          } else if (localPkg && isLocalDirty && localPkg.hasUserEdits && !isChecksumEqual) {
-            // SÓLO si el autor realmente editó en este equipo (isLocalDirty === true) y su contenido difiere:
-            this.log(`[Aether Vault] ⇪ Subiendo cambios locales más frescos de "${localPkg.title}"...`);
-            await this.uploadWorkPackage(localPkg, idToken);
+            continue;
+          }
+
+          // 2. Si el autor tiene ediciones locales pendientes en este equipo (isItemDirty === true):
+          if (isItemDirty) {
+            // NUNCA sobreescribir lo que el autor escribió en este equipo si es más reciente o igual a la nube:
+            if ((localPkg.updatedAt || 0) >= (remote.updatedAt || 0)) {
+              this.log(`[Aether Vault] ⇪ Preservando ediciones locales y subiendo cambios frescos de "${localPkg.title}"...`);
+              await this.uploadWorkPackage(localPkg, idToken);
+            } else {
+              // Conflicto raro: la nube fue actualizada desde otro equipo con fecha estrictamente posterior
+              this.log(`[Aether Vault] ⚠ Conflicto detectado en "${remote.title}": la versión remota es más reciente que las ediciones locales.`);
+              const downloaded = await this.downloadRemoteWork(remote.workId, remote.checksum);
+              if (downloaded) {
+                const isActive = downloaded.id === currentWorkId;
+                await this.storageManager.applyWorkPackageFromCloud(downloaded, isActive);
+                if (isActive && this.onWorkHydratedCallback) {
+                  this.onWorkHydratedCallback(downloaded);
+                }
+                this.storageManager.markClean();
+              }
+            }
+            continue;
+          }
+
+          // 3. Si el cliente local NO tiene ediciones pendientes (!isItemDirty):
+          // Este cliente no ha tocado nada localmente. Si la nube difiere de lo último sincronizado o es más reciente: DESCARGA
+          const remoteIsNewer = (remote.updatedAt || 0) > (localPkg.updatedAt || 0);
+          const remoteDiffersFromSynced = Boolean(remote.checksum && remote.checksum !== localSyncedChecksum);
+
+          if (remoteIsNewer || remoteDiffersFromSynced || !localChecksum) {
+            this.log(`[Aether Vault] ⤓ Descargando versión más reciente de "${remote.title}" (${remote.workId})...`);
+            const downloaded = await this.downloadRemoteWork(remote.workId, remote.checksum);
+            if (downloaded) {
+              const isActive =
+                downloaded.id === currentWorkId ||
+                localScreenIsVirgin ||
+                (currentWorkId === 'default_work' && remote.workId === 'default_work');
+              await this.storageManager.applyWorkPackageFromCloud(downloaded, isActive);
+              if (isActive && this.onWorkHydratedCallback) {
+                this.onWorkHydratedCallback(downloaded);
+              }
+              this.storageManager.markClean();
+            }
           }
         }
 

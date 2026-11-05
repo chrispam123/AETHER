@@ -46,6 +46,7 @@ export class StorageManager {
   private isDirty: boolean = false;
   private isHydrating: boolean = false;
   private currentWorkUpdatedAt: number = Date.now();
+  private currentWorkSyncedChecksum: string | null = null;
 
   constructor(
     graph: DocumentGraph,
@@ -243,7 +244,9 @@ export class StorageManager {
         discards,
         cameraStates: this.getCameraStates(),
         atmosphereLandscapeId: this.getAtmosphereId(),
-        hasUserEdits: this.hasUserEdits
+        hasUserEdits: this.hasUserEdits,
+        isDirty: this.isDirty,
+        syncedChecksum: this.currentWorkSyncedChecksum || undefined
       };
 
       // 6. Guardado atómico en IndexedDB
@@ -280,7 +283,8 @@ export class StorageManager {
       if (pkg) {
         this.currentWorkUpdatedAt = pkg.updatedAt || Date.now();
         this.hasUserEdits = !!pkg.hasUserEdits;
-        this.isDirty = false;
+        this.isDirty = pkg.isDirty ?? false;
+        this.currentWorkSyncedChecksum = pkg.syncedChecksum || null;
         if (pkg.activePhase && pkg.activePhase !== 'portal') {
           this.lastCognitivePhase = pkg.activePhase;
         }
@@ -419,6 +423,10 @@ export class StorageManager {
    */
   public async applyWorkPackageFromCloud(pkg: WorkPackage, isActive: boolean = false): Promise<void> {
     await this.db.init();
+    pkg.isDirty = false;
+    if (pkg.checksum) {
+      pkg.syncedChecksum = pkg.checksum;
+    }
     await this.db.saveWorkPackage(pkg);
 
     if (isActive || pkg.id === this.currentWorkId) {
@@ -426,6 +434,7 @@ export class StorageManager {
       this.currentWorkUpdatedAt = pkg.updatedAt || Date.now();
       this.hasUserEdits = true;
       this.isDirty = false;
+      this.currentWorkSyncedChecksum = pkg.syncedChecksum || null;
       if (pkg.activePhase && pkg.activePhase !== 'portal') {
         this.lastCognitivePhase = pkg.activePhase;
       }
@@ -445,6 +454,14 @@ export class StorageManager {
 
   public markClean(): void {
     this.isDirty = false;
+    this.db.getActiveWorkId().then((activeId) => {
+      this.db.loadWorkPackage(activeId).then((pkg) => {
+        if (pkg && pkg.isDirty) {
+          pkg.isDirty = false;
+          this.db.saveWorkPackage(pkg);
+        }
+      });
+    }).catch(() => {});
   }
 
   public markDirty(): void {
