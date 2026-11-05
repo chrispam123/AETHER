@@ -85,10 +85,7 @@ resource "aws_s3_bucket_cors_configuration" "vault" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["PUT", "GET", "HEAD"]
-    allowed_origins = [
-      "https://${var.frontend_domain}",
-      "http://localhost:5173"
-    ]
+    allowed_origins = ["*"]
     expose_headers  = ["ETag"]
     max_age_seconds = 3600
   }
@@ -201,11 +198,8 @@ resource "aws_apigatewayv2_api" "vault_api" {
     allow_credentials = false
     allow_headers     = ["Authorization", "Content-Type", "x-amz-date"]
     allow_methods     = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    allow_origins = [
-      "https://${var.frontend_domain}",
-      "http://localhost:5173"
-    ]
-    max_age = 3600
+    allow_origins     = ["*"]
+    max_age           = 3600
   }
 }
 

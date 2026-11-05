@@ -50,6 +50,8 @@ export interface WorkPackage {
   discards: DiscardItem[];
   cameraStates?: Partial<Record<Phase, { x: number; y: number; zoom: number }>>;
   atmosphereLandscapeId?: string | null;
+  syncedAt?: number;
+  checksum?: string;
 }
 
 export class AetherDatabase {
