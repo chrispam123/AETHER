@@ -23,7 +23,7 @@ export async function handler(event) {
   const corsHeaders = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Headers': 'Authorization,Content-Type,x-amz-date',
+    'Access-Control-Allow-Headers': '*',
     'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
   };
 
@@ -45,6 +45,7 @@ export async function handler(event) {
   }
 
   const method = event.requestContext?.http?.method;
+  console.log(`[Aether Vault Lambda] ${method} ${rawPath} - User: ${userId}`);
   const rawPath = (event.rawPath || event.requestContext?.http?.path || '').replace(/\/$/, '') || '/';
 
   try {
