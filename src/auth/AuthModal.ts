@@ -101,6 +101,10 @@ export class AuthModalController {
           <span>⟳</span>
           <span>Sincronizar Bóveda</span>
         </button>
+        <button class="popover-action-btn" id="btn-pull-vault">
+          <span>⤓</span>
+          <span>Traer de la Bóveda</span>
+        </button>
         <button class="popover-action-btn logout" id="btn-logout">
           <span>⎋</span>
           <span>Cerrar Sesión</span>
@@ -163,9 +167,14 @@ export class AuthModalController {
       cognitoAuth.logout();
     });
 
-    // Sincronizar Bóveda
+    // Sincronizar Bóveda (Bidireccional)
     document.getElementById('btn-sync-vault')?.addEventListener('click', async () => {
-      await cloudSync.syncActiveWork();
+      await cloudSync.syncVault();
+    });
+
+    // Traer de la Bóveda (Descarga forzada y rehidratación)
+    document.getElementById('btn-pull-vault')?.addEventListener('click', async () => {
+      await cloudSync.pullFromVault();
     });
 
     // Clic fuera del popover para cerrarlo
@@ -293,6 +302,12 @@ export class AuthModalController {
       }
     }
 
+    // 2b. Actualizar botón de descarga forzada (#btn-pull-vault)
+    const pullBtn = document.getElementById('btn-pull-vault') as HTMLButtonElement | null;
+    if (pullBtn) {
+      pullBtn.disabled = status === 'syncing';
+    }
+
     // 3. Actualizar texto de metadatos del popover (#popover-meta-sync)
     const metaContainer = document.getElementById('popover-meta-sync');
     if (metaContainer) {
@@ -301,7 +316,7 @@ export class AuthModalController {
 
       if (status === 'syncing') {
         if (dot) dot.style.color = '#d9ba85';
-        if (text) text.innerText = 'Sincronizando con AWS España (eu-south-2)...';
+        if (text) text.innerText = detail || 'Sincronizando con AWS España (eu-south-2)...';
       } else if (status === 'error') {
         if (dot) dot.style.color = '#e57373';
         if (text) text.innerText = detail || 'Error en sincronización';
@@ -309,7 +324,9 @@ export class AuthModalController {
         const lastSync = cloudSync.getLastSyncedAt();
         if (dot) dot.style.color = '#5eb3a9';
         if (text) {
-          if (lastSync) {
+          if (detail) {
+            text.innerText = detail;
+          } else if (lastSync) {
             text.innerText = 'Sincronizado: hace unos momentos (eu-south-2)';
           } else {
             text.innerText = 'Bóveda activa en España (eu-south-2)';

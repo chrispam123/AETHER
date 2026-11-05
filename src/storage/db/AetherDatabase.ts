@@ -20,6 +20,7 @@ export interface SavedDocument {
   bodyHtml: string;
   bodyText: string;
   updatedAt: number;
+  hasUserEdits?: boolean;
 }
 
 export interface SavedWorkspaceState {
@@ -52,6 +53,7 @@ export interface WorkPackage {
   atmosphereLandscapeId?: string | null;
   syncedAt?: number;
   checksum?: string;
+  hasUserEdits?: boolean;
 }
 
 export class AetherDatabase {
