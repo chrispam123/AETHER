@@ -719,30 +719,37 @@ class AetherApp {
    * Rehidrata en vivo la obra activa en pantalla cuando llega una versión actualizada de la Bóveda.
    */
   public hydrateActiveWork(pkg: any): void {
-    if (pkg.nodes) {
-      this.graph.hydrate(pkg.nodes, pkg.bridges || []);
-    }
-    if (pkg.document) {
-      this.editor.hydrateDocument(pkg.document.title, pkg.document.bodyHtml);
-    }
-    if (pkg.discards && Array.isArray(pkg.discards)) {
-      this.gutter.hydrate(pkg.discards);
-    }
-    if (pkg.cameraStates) {
-      this.cameraStates = { ...pkg.cameraStates };
-    }
+    try {
+      this.storageManager.setHydrating(true);
 
-    this.graph.resetRiverTopologyChanged();
-    this.bridge.sync();
-    this.rawGutter.render();
-    this.gutter.render();
+      if (pkg.nodes) {
+        this.graph.hydrate(pkg.nodes, pkg.bridges || []);
+      }
+      if (pkg.document) {
+        this.editor.hydrateDocument(pkg.document.title, pkg.document.bodyHtml);
+      }
+      if (pkg.discards && Array.isArray(pkg.discards)) {
+        this.gutter.hydrate(pkg.discards);
+      }
+      if (pkg.cameraStates) {
+        this.cameraStates = { ...pkg.cameraStates };
+      }
 
-    if (pkg.activePhase && pkg.activePhase !== 'portal') {
-      this.stateMachine.transitionTo(pkg.activePhase);
+      this.graph.resetRiverTopologyChanged();
+      this.bridge.sync();
+      this.rawGutter.render();
+      this.gutter.render();
+
+      if (pkg.activePhase && pkg.activePhase !== 'portal') {
+        this.stateMachine.transitionTo(pkg.activePhase);
+      }
+
+      this.portalManager.refresh();
+      this.audio.play(528, 'sine', 0.6, 0.1);
+    } finally {
+      this.storageManager.setHydrating(false);
+      this.storageManager.markClean();
     }
-
-    this.portalManager.refresh();
-    this.audio.play(528, 'sine', 0.6, 0.1);
   }
 
   /**
