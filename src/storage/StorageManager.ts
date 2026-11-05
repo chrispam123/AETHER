@@ -340,6 +340,49 @@ export class StorageManager {
     return this.db.loadWorkPackage(this.currentWorkId);
   }
 
+  /**
+   * Obtiene un paquete de obra por su identificador único.
+   */
+  public async getWorkPackage(workId: string): Promise<WorkPackage | null> {
+    await this.db.init();
+    return this.db.loadWorkPackage(workId);
+  }
+
+  /**
+   * Determina si una obra es la plantilla virgen por defecto (sin escritura del autor).
+   */
+  public isVirginStarterWork(pkg: WorkPackage | null): boolean {
+    if (!pkg) return true;
+    const text = (pkg.document?.bodyText || '').trim();
+    const title = (pkg.document?.title || '').trim();
+    const isDefaultTitle = title === 'Sobre la naturaleza del pensamiento' || title === 'Sin título' || title === '';
+    const isDefaultBody = text.length === 0 || text === 'Escribir no es registrar palabras que ya estaban completas en la mente; escribir es el proceso mediante el cual el caos se condensa en materia legible.';
+    return isDefaultTitle && isDefaultBody;
+  }
+
+  /**
+   * Aplica un WorkPackage descargado de la Bóveda en la base de datos local
+   * y, si coincide con la obra activa, actualiza los almacenes primarios.
+   */
+  public async applyWorkPackageFromCloud(pkg: WorkPackage, isActive: boolean = false): Promise<void> {
+    await this.db.init();
+    await this.db.saveWorkPackage(pkg);
+
+    if (isActive || pkg.id === this.currentWorkId) {
+      this.currentWorkId = pkg.id;
+      if (pkg.activePhase && pkg.activePhase !== 'portal') {
+        this.lastCognitivePhase = pkg.activePhase;
+      }
+      await Promise.all([
+        this.db.saveDocument(pkg.document),
+        this.db.saveNodes(pkg.nodes || []),
+        this.db.saveBridges(pkg.bridges || []),
+        this.db.saveDiscards(pkg.discards || []),
+        this.db.setActiveWorkId(pkg.id)
+      ]);
+    }
+  }
+
   public async getWorksCatalog(): Promise<WorkSummary[]> {
     await this.db.init();
     return this.db.getWorksCatalog();

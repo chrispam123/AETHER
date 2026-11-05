@@ -45,7 +45,7 @@ export async function handler(event) {
   }
 
   const method = event.requestContext?.http?.method;
-  const rawPath = event.rawPath || event.requestContext?.http?.path;
+  const rawPath = (event.rawPath || event.requestContext?.http?.path || '').replace(/\/$/, '') || '/';
 
   try {
     // ------------------------------------------------------------------------
