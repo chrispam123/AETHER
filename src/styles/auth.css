@@ -67,6 +67,55 @@
   box-shadow: 0 0 8px rgba(94, 179, 169, 0.7);
 }
 
+/* ==============================================================================
+ * ANIMACIONES LITÚRGICAS DE SINCRONIZACIÓN DE BÓVEDA
+ * ============================================================================== */
+
+@keyframes vault-pulse {
+  0%, 100% {
+    transform: scale(0.9);
+    opacity: 0.5;
+    box-shadow: 0 0 2px rgba(217, 186, 133, 0.3);
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 1;
+    box-shadow: 0 0 10px rgba(217, 186, 133, 0.9);
+  }
+}
+
+@keyframes vault-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Estado: Sincronizando (Ámbar pulsante + giro sutil de icono) */
+.vault-btn.is-syncing .vault-sync-dot {
+  background: #d9ba85 !important;
+  animation: vault-pulse 1.2s ease-in-out infinite !important;
+}
+
+.vault-btn.is-syncing .vault-icon {
+  display: inline-block;
+  animation: vault-spin 1.2s linear infinite;
+}
+
+/* Estado: Sincronizado (Verde esmeralda con resplandor) */
+.vault-btn.is-synced .vault-sync-dot {
+  background: #5eb3a9 !important;
+  box-shadow: 0 0 10px rgba(94, 179, 169, 0.85) !important;
+}
+
+/* Estado: Error en sincronización (Rojo sutil de advertencia) */
+.vault-btn.is-error .vault-sync-dot {
+  background: #e57373 !important;
+  box-shadow: 0 0 8px rgba(229, 115, 115, 0.7) !important;
+}
+
 .vault-btn .vault-avatar {
   width: 18px;
   height: 18px;
@@ -382,4 +431,36 @@
   border-color: rgba(239, 68, 68, 0.4);
   color: #fca5a5;
   background: rgba(239, 68, 68, 0.08);
+}
+
+.popover-action-btn.is-syncing {
+  opacity: 0.8;
+  cursor: wait;
+  border-color: rgba(217, 186, 133, 0.45);
+  color: #e5cb7a;
+}
+
+.popover-action-btn.is-syncing .vault-sync-spin-icon {
+  display: inline-block;
+  animation: vault-spin 1.2s linear infinite;
+}
+
+.popover-action-btn.is-synced {
+  border-color: rgba(94, 179, 169, 0.45);
+  color: #8ed6cd;
+}
+
+.popover-action-btn.is-synced .vault-sync-check-icon {
+  color: #5eb3a9;
+  font-weight: 600;
+}
+
+.popover-action-btn.is-error {
+  border-color: rgba(229, 115, 115, 0.45);
+  color: #fca5a5;
+}
+
+.popover-action-btn.is-error .vault-sync-warn-icon {
+  color: #e57373;
+  font-weight: bold;
 }

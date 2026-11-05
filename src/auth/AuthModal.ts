@@ -6,6 +6,8 @@
  */
 import { cognitoAuth } from './CognitoAuthService';
 import type { AuthState } from './types';
+import { cloudSync } from '../vault/CloudSyncManager';
+import type { SyncStatus } from '../vault/types';
 
 export class AuthModalController {
   private static instance: AuthModalController;
@@ -19,6 +21,7 @@ export class AuthModalController {
     this.createDomElements();
     this.bindEvents();
     this.subscribeToAuth();
+    this.subscribeToSync();
   }
 
   public static getInstance(): AuthModalController {
@@ -89,9 +92,9 @@ export class AuthModalController {
           <div class="popover-author-email" id="popover-author-email">...</div>
         </div>
       </div>
-      <div class="popover-meta">
-        <span>●</span>
-        <span>Bóveda activa en España (eu-south-2)</span>
+      <div class="popover-meta" id="popover-meta-sync">
+        <span class="popover-meta-dot">●</span>
+        <span class="popover-meta-text">Bóveda activa en España (eu-south-2)</span>
       </div>
       <div class="popover-actions">
         <button class="popover-action-btn" id="btn-sync-vault">
@@ -161,14 +164,8 @@ export class AuthModalController {
     });
 
     // Sincronizar Bóveda
-    document.getElementById('btn-sync-vault')?.addEventListener('click', () => {
-      const syncBtn = document.getElementById('btn-sync-vault');
-      if (syncBtn) {
-        syncBtn.innerText = 'Bóveda sincronizada ✓';
-        setTimeout(() => {
-          if (syncBtn) syncBtn.innerHTML = '<span>⟳</span><span>Sincronizar Bóveda</span>';
-        }, 2000);
-      }
+    document.getElementById('btn-sync-vault')?.addEventListener('click', async () => {
+      await cloudSync.syncActiveWork();
     });
 
     // Clic fuera del popover para cerrarlo
@@ -227,6 +224,101 @@ export class AuthModalController {
     });
   }
 
+  private subscribeToSync(): void {
+    cloudSync.onSyncStatusChange((status, detail) => {
+      this.renderSyncStatus(status, detail);
+    });
+  }
+
+  private renderSyncStatus(status: SyncStatus, detail?: string | null): void {
+    const authState = cognitoAuth.getState();
+    const isAuth = authState.status === 'authenticated' && !!authState.author;
+    const authorName = (authState.author?.name || 'Autor').toUpperCase();
+
+    // 1. Actualizar botón del header (#vault-btn)
+    if (this.vaultBtn) {
+      this.vaultBtn.classList.remove('is-syncing', 'is-synced', 'is-error');
+
+      if (!isAuth) {
+        this.vaultBtn.setAttribute('data-aether-tooltip', 'SINCRONIZA TU NUBE');
+      } else {
+        switch (status) {
+          case 'syncing':
+            this.vaultBtn.classList.add('is-syncing');
+            this.vaultBtn.setAttribute('data-aether-tooltip', 'SINCRONIZANDO CON LA BÓVEDA...');
+            break;
+          case 'synced':
+            this.vaultBtn.classList.add('is-synced');
+            this.vaultBtn.setAttribute('data-aether-tooltip', `BÓVEDA DE ${authorName} · SINCRONIZADA`);
+            break;
+          case 'error':
+            this.vaultBtn.classList.add('is-error');
+            this.vaultBtn.setAttribute('data-aether-tooltip', `ERROR DE BÓVEDA: ${(detail || 'REINTENTAR').toUpperCase()}`);
+            break;
+          case 'idle':
+          default:
+            this.vaultBtn.classList.add('is-synced');
+            this.vaultBtn.setAttribute('data-aether-tooltip', `BÓVEDA DE ${authorName} · ACTIVA`);
+            break;
+        }
+      }
+    }
+
+    // 2. Actualizar botón dentro del popover (#btn-sync-vault)
+    const syncBtn = document.getElementById('btn-sync-vault') as HTMLButtonElement | null;
+    if (syncBtn) {
+      syncBtn.classList.remove('is-syncing', 'is-synced', 'is-error');
+
+      switch (status) {
+        case 'syncing':
+          syncBtn.disabled = true;
+          syncBtn.classList.add('is-syncing');
+          syncBtn.innerHTML = '<span class="vault-sync-spin-icon">⟳</span><span>Sincronizando...</span>';
+          break;
+        case 'synced':
+          syncBtn.disabled = false;
+          syncBtn.classList.add('is-synced');
+          syncBtn.innerHTML = '<span class="vault-sync-check-icon">✓</span><span>Bóveda Sincronizada</span>';
+          break;
+        case 'error':
+          syncBtn.disabled = false;
+          syncBtn.classList.add('is-error');
+          syncBtn.innerHTML = '<span class="vault-sync-warn-icon">⚠</span><span>Reintentar Sincronización</span>';
+          break;
+        case 'idle':
+        default:
+          syncBtn.disabled = false;
+          syncBtn.innerHTML = '<span>⟳</span><span>Sincronizar Bóveda</span>';
+          break;
+      }
+    }
+
+    // 3. Actualizar texto de metadatos del popover (#popover-meta-sync)
+    const metaContainer = document.getElementById('popover-meta-sync');
+    if (metaContainer) {
+      const dot = metaContainer.querySelector('.popover-meta-dot') as HTMLElement | null;
+      const text = metaContainer.querySelector('.popover-meta-text') as HTMLElement | null;
+
+      if (status === 'syncing') {
+        if (dot) dot.style.color = '#d9ba85';
+        if (text) text.innerText = 'Sincronizando con AWS España (eu-south-2)...';
+      } else if (status === 'error') {
+        if (dot) dot.style.color = '#e57373';
+        if (text) text.innerText = detail || 'Error en sincronización';
+      } else {
+        const lastSync = cloudSync.getLastSyncedAt();
+        if (dot) dot.style.color = '#5eb3a9';
+        if (text) {
+          if (lastSync) {
+            text.innerText = 'Sincronizado: hace unos momentos (eu-south-2)';
+          } else {
+            text.innerText = 'Bóveda activa en España (eu-south-2)';
+          }
+        }
+      }
+    }
+  }
+
   private renderVaultButton(state: AuthState): void {
     if (!this.vaultBtn) return;
 
@@ -260,6 +352,9 @@ export class AuthModalController {
         <span class="vault-sync-dot"></span>
       `;
     }
+
+    // Reflejar clases y estado de sincronización actual
+    this.renderSyncStatus(cloudSync.getStatus(), cloudSync.getLastError() || undefined);
   }
 
   private updatePopoverDetails(state: AuthState): void {

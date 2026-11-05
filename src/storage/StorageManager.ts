@@ -331,6 +331,15 @@ export class StorageManager {
     return this.currentWorkId;
   }
 
+  /**
+   * Obtiene el paquete íntegro de la obra activa, garantizando persistencia previa.
+   */
+  public async getActiveWorkPackage(): Promise<WorkPackage | null> {
+    await this.saveImmediately();
+    await this.db.init();
+    return this.db.loadWorkPackage(this.currentWorkId);
+  }
+
   public async getWorksCatalog(): Promise<WorkSummary[]> {
     await this.db.init();
     return this.db.getWorksCatalog();
