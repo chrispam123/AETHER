@@ -703,7 +703,27 @@ class AetherApp {
         }
       }
 
-      this.stateMachine.transitionTo(targetPhase);
+      // Asegurar que el portal se oculte físicamente
+      const portal = document.getElementById('portal-view');
+      if (portal) {
+        portal.classList.add('hidden');
+        portal.style.display = 'none';
+        portal.style.pointerEvents = 'none';
+      }
+
+      if (this.stateMachine.getPhase() === targetPhase) {
+        document.body.dataset.activePhase = targetPhase;
+        this.dock.update(targetPhase);
+        this.editor.setVisible(targetPhase === 'crystal');
+        this.gutter.setVisible(targetPhase === 'crystal');
+        this.rawGutter.setVisible(targetPhase === 'crystal');
+        if (targetPhase === 'crystal') {
+          this.focusManager.showPresenceHalo();
+          setTimeout(() => this.focusManager.updatePresencePosition(), 50);
+        }
+      } else {
+        this.stateMachine.transitionTo(targetPhase);
+      }
 
       this.bridge.sync();
       this.rawGutter.render();
@@ -740,8 +760,28 @@ class AetherApp {
       this.rawGutter.render();
       this.gutter.render();
 
-      if (pkg.activePhase && pkg.activePhase !== 'portal') {
-        this.stateMachine.transitionTo(pkg.activePhase);
+      const targetPhase: Phase = (pkg.activePhase && pkg.activePhase !== 'portal') ? pkg.activePhase : 'crystal';
+
+      // Forzar que el portal se oculte físicamente en pantalla
+      const portal = document.getElementById('portal-view');
+      if (portal) {
+        portal.classList.add('hidden');
+        portal.style.display = 'none';
+        portal.style.pointerEvents = 'none';
+      }
+
+      if (this.stateMachine.getPhase() === targetPhase) {
+        document.body.dataset.activePhase = targetPhase;
+        this.dock.update(targetPhase);
+        this.editor.setVisible(targetPhase === 'crystal');
+        this.gutter.setVisible(targetPhase === 'crystal');
+        this.rawGutter.setVisible(targetPhase === 'crystal');
+        if (targetPhase === 'crystal') {
+          this.focusManager.showPresenceHalo();
+          setTimeout(() => this.focusManager.updatePresencePosition(), 50);
+        }
+      } else {
+        this.stateMachine.transitionTo(targetPhase);
       }
 
       this.portalManager.refresh();

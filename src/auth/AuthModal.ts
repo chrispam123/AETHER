@@ -169,11 +169,13 @@ export class AuthModalController {
 
     // Sincronizar Bóveda (Bidireccional)
     document.getElementById('btn-sync-vault')?.addEventListener('click', async () => {
+      this.closePopover();
       await cloudSync.syncVault();
     });
 
     // Traer de la Bóveda (Descarga forzada y rehidratación)
     document.getElementById('btn-pull-vault')?.addEventListener('click', async () => {
+      this.closePopover();
       await cloudSync.pullFromVault();
     });
 

@@ -220,6 +220,7 @@ export class PortalManager {
         </div>
         <div class="portal-work-status">
           <span class="portal-work-phase-tag phase-${work.activePhase}">${phaseLabel}</span>
+          ${work.wordCount ? `<span class="portal-work-time" style="color: var(--amber-glow, #d4a373);">${work.wordCount} pal.</span>` : ''}
           <span class="portal-work-time">${timeLabel}</span>
           <button class="portal-work-hide-btn" aria-label="Retirar obra de la vista rápida" type="button">
             <svg class="portal-hide-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -231,8 +232,8 @@ export class PortalManager {
         </div>
       `;
 
-      // Clic simple: Selecciona la obra y despierta los 3 orbes inmediatamente
-      itemEl.addEventListener('click', (e) => {
+      // Clic simple: Abre directamente la obra en la fase donde se guardó
+      itemEl.addEventListener('click', async (e) => {
         const hideBtn = (e.target as HTMLElement).closest('.portal-work-hide-btn');
         if (hideBtn) {
           e.stopPropagation();
@@ -254,6 +255,8 @@ export class PortalManager {
         }
 
         this.selectWork(work.id, true);
+        this.audio.play(528, 'sine', 0.45, 0.12);
+        await this.onSelectWorkCallback(work.id, work.activePhase);
       });
 
       // Doble clic: Acceso rápido directo en la fase donde se guardó

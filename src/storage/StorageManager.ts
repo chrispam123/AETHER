@@ -181,7 +181,7 @@ export class StorageManager {
    * Ejecuta el guardado atómico inmediato en IndexedDB en un hilo secundario asíncrono.
    */
   public async saveImmediately(): Promise<void> {
-    if (!this.isHydrated || this.isSaving) return;
+    if (!this.isHydrated || this.isSaving || this.stateMachine.getPhase() === 'portal') return;
     this.isSaving = true;
 
     try {
@@ -475,11 +475,16 @@ export class StorageManager {
    * Cambia de obra activa guardando previamente la actual.
    */
   public async switchWork(workId: string): Promise<WorkPackage | null> {
-    await this.saveImmediately();
+    if (this.currentWorkId !== workId && this.stateMachine.getPhase() !== 'portal') {
+      await this.saveImmediately();
+    }
     const pkg = await this.db.loadWorkPackage(workId);
     if (!pkg) return null;
 
     this.currentWorkId = workId;
+    this.currentWorkUpdatedAt = pkg.updatedAt || Date.now();
+    this.hasUserEdits = !!pkg.hasUserEdits;
+    this.isDirty = false;
     if (pkg.activePhase && pkg.activePhase !== 'portal') {
       this.lastCognitivePhase = pkg.activePhase;
     }
