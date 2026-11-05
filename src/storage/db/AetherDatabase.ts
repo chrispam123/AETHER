@@ -53,8 +53,10 @@ export interface WorkPackage {
   cameraStates?: Partial<Record<Phase, { x: number; y: number; zoom: number }>>;
   atmosphereLandscapeId?: string | null;
   syncedAt?: number;
+  syncedChecksum?: string;
   checksum?: string;
   hasUserEdits?: boolean;
+  isDirty?: boolean;
 }
 
 export class AetherDatabase {
