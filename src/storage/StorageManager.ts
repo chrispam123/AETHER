@@ -93,7 +93,7 @@ export class StorageManager {
         if (!isPersisted) {
           const granted = await navigator.storage.persist();
           if (granted) {
-            console.log('[Aether Storage] Persistencia blindada concedida por el navegador.');
+            // Persistencia concedida
           }
         }
       }
