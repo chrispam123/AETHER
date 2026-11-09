@@ -321,6 +321,26 @@
   text-decoration: underline;
 }
 
+.auth-modal-legal {
+  margin-top: 14px;
+  font-size: 10.5px;
+  color: #7d7a73;
+  text-align: center;
+  font-family: var(--font-mono, monospace);
+  line-height: 1.45;
+}
+
+.auth-modal-legal a {
+  color: #d9ba85;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s ease;
+}
+
+.auth-modal-legal a:hover {
+  color: #f5e0a6;
+}
+
 /* ==============================================================================
  * POPOVER DE AUTOR AUTENTICADO (#author-popover) - CÁPSULA HORIZONTAL NO INVASIVA
  * ============================================================================== */

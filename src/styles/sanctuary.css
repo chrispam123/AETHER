@@ -548,6 +548,31 @@ body[data-active-phase="portal"] #portal-view {
   margin-top: 2px;
 }
 
+.portal-legal-footer {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.portal-privacy-link {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+  opacity: 0.38;
+  text-decoration: none;
+  transition: opacity 0.25s ease, color 0.25s ease;
+}
+
+.portal-privacy-link:hover {
+  opacity: 0.85;
+  color: var(--crystal-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .portal-action-btn {
   background: transparent;
   border: 1px dashed rgba(255, 255, 255, 0.15);

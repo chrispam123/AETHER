@@ -73,6 +73,9 @@ export class AuthModalController {
           <button class="auth-modal-local-btn" id="btn-auth-local">
             Permanecer en modo local anónimo (sin cuenta)
           </button>
+          <div class="auth-modal-legal">
+            Al identificarte aceptas la <a href="https://christiangohring.com/posts/politicas-privacidad-aether/" target="_blank" rel="noopener noreferrer">Política de Privacidad y Soberanía</a> de la Bóveda.
+          </div>
         </div>
       </div>
     `;
