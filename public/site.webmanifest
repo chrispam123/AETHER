@@ -1,7 +1,7 @@
 {
-  "name": "Aether — El Primer Editor de Texto",
+  "name": "Aether — Donde las Ideas se Cristalizan",
   "short_name": "Aether",
-  "description": "El primer editor de texto termodinámico y soberano. Foco monástico, custodia local-first y sincronización cifrada en AWS España.",
+  "description": "Donde las ideas se cristalizan. Escribe con foco monástico, custodia local-first y sincronización soberana en AWS España.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#111215",

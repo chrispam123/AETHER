@@ -205,7 +205,7 @@ def generate_og_image():
     draw.text((x_text, 180), "A E T H E R", font=font_title, fill=COLOR_INK_LIGHT)
 
     # Subtítulo lírico
-    draw.text((x_text, 280), "El Primer Editor de Texto Termodinámico", font=font_subtitle, fill=(*COLOR_GOLD_LIGHT, 240))
+    draw.text((x_text, 280), "Donde las Ideas se Cristalizan", font=font_subtitle, fill=(*COLOR_GOLD_LIGHT, 240))
 
     # Párrafo descriptivo
     desc_line1 = "Escribe con foco monástico, custodia local-first y sincronización soberana."
