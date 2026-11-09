@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <style>
+    /* Dark Mode (por defecto en navegadores modernos y temas oscuros) */
+    .orbit-ring { stroke: rgba(217, 186, 133, 0.48); }
+    .tension-lines { stroke: rgba(255, 255, 255, 0.18); }
+    .dot-crystal { fill: #f5e0a6; }
+    .dot-crystal-core { fill: #ffffff; }
+    .dot-vapor { fill: #cbbddc; }
+    .dot-liquid { fill: #95c4b1; }
+
+    /* Light Mode (pestañas claras de Safari / Chrome / Firefox) */
+    @media (prefers-color-scheme: light) {
+      .orbit-ring { stroke: rgba(146, 115, 63, 0.65); }
+      .tension-lines { stroke: rgba(0, 0, 0, 0.2); }
+      .dot-crystal { fill: #8a682f; }
+      .dot-crystal-core { fill: #ffffff; }
+      .dot-vapor { fill: #65507d; }
+      .dot-liquid { fill: #366551; }
+    }
+  </style>
+
+  <!-- Órbita circular que conecta las 3 fases -->
+  <circle class="orbit-ring" cx="50" cy="52" r="32" stroke-width="3" stroke-dasharray="3 5"/>
+  
+  <!-- Líneas sutiles de tensión armónica trinitaria -->
+  <path class="tension-lines" d="M50 22 L26 68 L74 68 Z" stroke-width="1.8"/>
+  
+  <!-- Fase Cristal (Cúspide: Oro Mineral) -->
+  <circle class="dot-crystal" cx="50" cy="22" r="14"/>
+  <circle class="dot-crystal-core" cx="50" cy="22" r="4.5"/>
+  
+  <!-- Fase Vapor (Inferior Izquierda: Lavanda Ópalo) -->
+  <circle class="dot-vapor" cx="26" cy="68" r="11"/>
+  
+  <!-- Fase Líquido (Inferior Derecha: Salvia Celadón) -->
+  <circle class="dot-liquid" cx="74" cy="68" r="11"/>
+</svg>
