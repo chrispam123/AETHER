@@ -80,7 +80,7 @@ export class AuthModalController {
     document.body.appendChild(backdrop);
     this.modalBackdrop = backdrop;
 
-    // 2. Popover de Autor Autenticado
+    // 2. Popover de Autor Autenticado (Cápsula Horizontal)
     const popover = document.createElement('div');
     popover.id = 'author-popover';
     popover.className = 'author-popover';
@@ -89,25 +89,25 @@ export class AuthModalController {
         <div id="popover-avatar-slot"></div>
         <div class="popover-author-info">
           <div class="popover-author-name" id="popover-author-name">Autor</div>
-          <div class="popover-author-email" id="popover-author-email">...</div>
+          <div class="popover-author-email" id="popover-author-email" style="display:none;">...</div>
         </div>
       </div>
       <div class="popover-meta" id="popover-meta-sync">
         <span class="popover-meta-dot">●</span>
-        <span class="popover-meta-text">Bóveda activa en España (eu-south-2)</span>
+        <span class="popover-meta-text">Bóveda activa</span>
       </div>
       <div class="popover-actions">
-        <button class="popover-action-btn" id="btn-sync-vault">
+        <button class="popover-action-btn" id="btn-sync-vault" title="Sincronizar Bóveda en AWS">
           <span>⟳</span>
-          <span>Sincronizar Bóveda</span>
+          <span>Sincronizar</span>
         </button>
-        <button class="popover-action-btn" id="btn-pull-vault">
+        <button class="popover-action-btn" id="btn-pull-vault" title="Traer de la Bóveda">
           <span>⤓</span>
-          <span>Traer de la Bóveda</span>
+          <span>Traer</span>
         </button>
-        <button class="popover-action-btn logout" id="btn-logout">
+        <button class="popover-action-btn logout" id="btn-logout" title="Cerrar Sesión">
           <span>⎋</span>
-          <span>Cerrar Sesión</span>
+          <span>Salir</span>
         </button>
       </div>
     `;
@@ -289,17 +289,17 @@ export class AuthModalController {
         case 'synced':
           syncBtn.disabled = false;
           syncBtn.classList.add('is-synced');
-          syncBtn.innerHTML = '<span class="vault-sync-check-icon">✓</span><span>Bóveda Sincronizada</span>';
+          syncBtn.innerHTML = '<span class="vault-sync-check-icon">✓</span><span>Sincronizado</span>';
           break;
         case 'error':
           syncBtn.disabled = false;
           syncBtn.classList.add('is-error');
-          syncBtn.innerHTML = '<span class="vault-sync-warn-icon">⚠</span><span>Reintentar Sincronización</span>';
+          syncBtn.innerHTML = '<span class="vault-sync-warn-icon">⚠</span><span>Reintentar</span>';
           break;
         case 'idle':
         default:
           syncBtn.disabled = false;
-          syncBtn.innerHTML = '<span>⟳</span><span>Sincronizar Bóveda</span>';
+          syncBtn.innerHTML = '<span>⟳</span><span>Sincronizar</span>';
           break;
       }
     }
@@ -318,10 +318,10 @@ export class AuthModalController {
 
       if (status === 'syncing') {
         if (dot) dot.style.color = '#d9ba85';
-        if (text) text.innerText = detail || 'Sincronizando con AWS España (eu-south-2)...';
+        if (text) text.innerText = detail || 'Sincronizando...';
       } else if (status === 'error') {
         if (dot) dot.style.color = '#e57373';
-        if (text) text.innerText = detail || 'Error en sincronización';
+        if (text) text.innerText = detail || 'Error';
       } else {
         const lastSync = cloudSync.getLastSyncedAt();
         if (dot) dot.style.color = '#5eb3a9';
@@ -329,9 +329,9 @@ export class AuthModalController {
           if (detail) {
             text.innerText = detail;
           } else if (lastSync) {
-            text.innerText = 'Sincronizado: hace unos momentos (eu-south-2)';
+            text.innerText = 'Sincronizado';
           } else {
-            text.innerText = 'Bóveda activa en España (eu-south-2)';
+            text.innerText = 'Bóveda activa';
           }
         }
       }
@@ -382,7 +382,12 @@ export class AuthModalController {
     const avatarSlot = document.getElementById('popover-avatar-slot');
 
     if (state.status === 'authenticated' && state.author) {
-      if (nameEl) nameEl.innerText = state.author.name || 'Autor';
+      if (nameEl) {
+        nameEl.innerText = state.author.name || 'Autor';
+        if (state.author.email) {
+          nameEl.setAttribute('title', `${state.author.name || 'Autor'} (${state.author.email})`);
+        }
+      }
       if (emailEl) emailEl.innerText = state.author.email;
 
       if (avatarSlot) {
@@ -390,7 +395,7 @@ export class AuthModalController {
           avatarSlot.innerHTML = `<img class="popover-author-avatar" src="${state.author.picture}" alt="${state.author.name}" />`;
         } else {
           const initial = (state.author.name || 'A').charAt(0).toUpperCase();
-          avatarSlot.innerHTML = `<div class="vault-avatar-fallback" style="width:36px;height:36px;font-size:14px;">${initial}</div>`;
+          avatarSlot.innerHTML = `<div class="vault-avatar-fallback" style="width:22px;height:22px;font-size:11px;">${initial}</div>`;
         }
       }
     }
