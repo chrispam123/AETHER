@@ -489,6 +489,36 @@ export class StorageManager {
   }
 
   /**
+   * Bifurca una obra creando una copia protegida independiente con un nuevo identificador en IndexedDB.
+   * Preserva el 100% del texto, nodos y descartes en caso de conflicto concurrente (3-Way Checksum).
+   */
+  public async forkWorkPackage(pkg: WorkPackage, suffixLabel: string = 'Borrador local'): Promise<WorkPackage> {
+    await this.db.init();
+    const forkedId = `work_fork_${Date.now()}`;
+    const cleanTitle = (pkg.title || '').trim() || 'Sobre la naturaleza del pensamiento';
+    const forkedTitle = `${cleanTitle} (${suffixLabel})`;
+
+    const forkedPkg: WorkPackage = {
+      ...JSON.parse(JSON.stringify(pkg)),
+      id: forkedId,
+      title: forkedTitle,
+      updatedAt: Date.now(),
+      isDirty: false,
+      syncedChecksum: undefined,
+      hasUserEdits: true,
+      document: {
+        ...pkg.document,
+        id: forkedId,
+        title: forkedTitle,
+        updatedAt: Date.now()
+      }
+    };
+
+    await this.db.saveWorkPackage(forkedPkg);
+    return forkedPkg;
+  }
+
+  /**
    * Cambia de obra activa guardando previamente la actual.
    */
   public async switchWork(workId: string): Promise<WorkPackage | null> {

@@ -409,7 +409,7 @@ export class EditorialEditor {
   /**
    * Muestra un aviso mineral flotante en pantalla.
    */
-  private showToast(message: string): void {
+  public showToast(message: string, durationMs: number = 2800): void {
     if (!this.thesisToast) return;
 
     this.thesisToast.innerText = message;
@@ -418,7 +418,7 @@ export class EditorialEditor {
     if (this.toastTimer) window.clearTimeout(this.toastTimer);
     this.toastTimer = window.setTimeout(() => {
       this.thesisToast?.classList.remove('visible');
-    }, 2200);
+    }, durationMs);
   }
 
   /**

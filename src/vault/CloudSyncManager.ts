@@ -62,11 +62,26 @@ export class CloudSyncManager {
     return CloudSyncManager.instance;
   }
 
+  private onNotificationCallback: ((message: string) => void) | null = null;
+
   /**
    * Conecta el callback para rehidratar la UI cuando la nube descarga una versión más fresca.
    */
   public setOnWorkHydrated(callback: (pkg: WorkPackage) => void): void {
     this.onWorkHydratedCallback = callback;
+  }
+
+  /**
+   * Conecta el callback para emitir avisos discretos al autor (toasts serenos).
+   */
+  public setOnNotification(callback: (message: string) => void): void {
+    this.onNotificationCallback = callback;
+  }
+
+  public notifyUser(message: string): void {
+    if (this.onNotificationCallback) {
+      this.onNotificationCallback(message);
+    }
   }
 
   /**
@@ -194,13 +209,22 @@ export class CloudSyncManager {
 
           // 2. Si el autor tiene ediciones locales pendientes en este equipo (isItemDirty === true):
           if (isItemDirty) {
-            // NUNCA sobreescribir lo que el autor escribió en este equipo si es más reciente o igual a la nube:
-            if ((localPkg.updatedAt || 0) >= (remote.updatedAt || 0)) {
-              this.log(`[Aether Vault] ⇪ Preservando ediciones locales y subiendo cambios frescos de "${localPkg.title}"...`);
-              await this.uploadWorkPackage(localPkg, idToken);
-            } else {
-              // Conflicto raro: la nube fue actualizada desde otro equipo con fecha estrictamente posterior
-              this.log(`[Aether Vault] ⚠ Conflicto detectado en "${remote.title}": la versión remota es más reciente que las ediciones locales.`);
+            // Comprobación de linaje 3-Way Checksum:
+            // ¿La nube cambió desde la última vez que este equipo sincronizó?
+            const cloudChangedSinceBase = localSyncedChecksum
+              ? remote.checksum !== localSyncedChecksum
+              : ((remote.updatedAt || 0) > (localPkg.updatedAt || 0));
+
+            if (cloudChangedSinceBase) {
+              // ¡CONFLICTO CONCURRENTE DETECTADO! (Ambos avanzaron por caminos diferentes)
+              // Da igual si el reloj local marca antes o después: NUNCA se sobreescribe ni se pisa.
+              this.log(`[Aether Vault] ⚡ Conflicto 3-Way detectado en "${localPkg.title}". Activando bifurcación protectora...`);
+
+              // 1. Clonar el borrador local para blindar el 100% de los textos del autor en IndexedDB
+              const forked = await this.storageManager.forkWorkPackage(localPkg, 'Borrador local');
+              this.log(`[Aether Vault] ✓ Borrador local preservado con éxito en: "${forked.title}" (ID: ${forked.id})`);
+
+              // 2. Descargar la versión más reciente de la nube a la obra principal
               const downloaded = await this.downloadRemoteWork(remote.workId, remote.checksum);
               if (downloaded) {
                 const isActive = downloaded.id === currentWorkId;
@@ -210,6 +234,21 @@ export class CloudSyncManager {
                 }
                 this.storageManager.markClean();
               }
+
+              // 3. Firma acústica litúrgica de resolución armónica (432 Hz -> 528 Hz)
+              if (this.audio) {
+                this.audio.play(432, 'sine', 0.4, 0.1);
+                setTimeout(() => this.audio?.play(528, 'sine', 0.5, 0.14), 140);
+              }
+
+              // 4. Notificación serena al autor
+              this.notifyUser('✦ Versión remota sincronizada. Tu borrador local se ha protegido en tus Obras.');
+              this.setStatus('synced', 'Bifurcación protegida: borrador local guardado');
+            } else {
+              // La nube NO ha cambiado desde la base (remote.checksum === localSyncedChecksum):
+              // Solo este equipo tiene ediciones nuevas. Subida limpia segura (Fast-Forward Push).
+              this.log(`[Aether Vault] ⇪ Preservando ediciones locales y subiendo cambios frescos de "${localPkg.title}"...`);
+              await this.uploadWorkPackage(localPkg, idToken);
             }
             continue;
           }

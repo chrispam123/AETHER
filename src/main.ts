@@ -286,6 +286,10 @@ class AetherApp {
     cloudSync.setOnWorkHydrated((pkg) => {
       this.hydrateActiveWork(pkg);
     });
+    cloudSync.setOnNotification((message) => {
+      this.editor.showToast(message, 5000);
+      this.portalManager?.refresh();
+    });
     authModal.mountVaultButton();
   }
 
