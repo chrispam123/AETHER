@@ -1,0 +1,29 @@
+{
+  "name": "Aether — El Primer Editor de Texto",
+  "short_name": "Aether",
+  "description": "El primer editor de texto termodinámico y soberano. Foco monástico, custodia local-first y sincronización cifrada en AWS España.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111215",
+  "theme_color": "#111215",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

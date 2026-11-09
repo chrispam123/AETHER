@@ -6,8 +6,17 @@
  * - Colores minerales para el sustrato (elimina la halación en OLED).
  * - Tintas humanistas (marfil / lino cálido en lugar de blanco puro).
  * - Acentos cromáticos para los tres estados de la materia cognitiva.
- * - Fuentes tipográficas: editorial (Newsreader) y monoespaciada (Geist Mono).
+ * - Fuentes tipográficas: editorial (Newsreader), monumental (Chevalier) y monoespaciada (Geist Mono).
  */
+
+/* Tipografía Monumental del Portal */
+@font-face {
+  font-family: 'Chevalier';
+  src: url('/fonts/Chevalier-AT-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   /* --- SUSTconfigURACIÓN MINERAL (FONDOS) --- */
@@ -47,6 +56,9 @@
 
   /* Tipografía activa de prosa (conmutable dinámicamente) */
   --font-prose: var(--font-temperament-piedra);
+
+  /* Tipografía monumental del portal ontológico */
+  --font-portal: 'Chevalier', 'Newsreader', Georgia, serif;
 
   /* Interfaz, métricas y metadatos: Monospace arquitectónica */
   --font-mono: 'Geist Mono', monospace, -apple-system, sans-serif;
