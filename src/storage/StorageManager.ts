@@ -414,7 +414,7 @@ export class StorageManager {
     const hasP2New = text.includes('Zoom Semántico en Cristal');
     const hasP3New = text.includes('La Regla del Pensamiento');
 
-    if (isDefaultTitle && (hasP1Old || hasP2Old || hasP3Old || hasP1New || hasP2New || hasP3New) && text.length < 1500) {
+    if (isDefaultTitle && (hasP1Old || hasP2Old || hasP3Old || hasP1New || hasP2New || hasP3New) && text.length < 3000) {
       return true;
     }
 
