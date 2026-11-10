@@ -163,41 +163,65 @@ export class CloudSyncManager {
       const remoteWorks = await this.listRemoteWorks();
       this.log(`[Aether Vault] 📚 Obras encontradas en la Bóveda: ${remoteWorks.length}`);
 
-      // 4. Obtener obra activa local
-      const activeLocalPkg = await this.storageManager.getActiveWorkPackage();
+      // 4. Obtener estado de la obra activa local
       const currentWorkId = this.storageManager.getCurrentWorkId();
+      const activeLocalPkg = await this.storageManager.getActiveWorkPackage();
       const localScreenIsVirgin = this.storageManager.isVirginStarterWork(activeLocalPkg);
-      const isLocalDirty = this.storageManager.getIsDirty();
 
-      this.log(`[Aether Vault] 📊 Estado local: dirty=${isLocalDirty}, virgin=${localScreenIsVirgin}, currentWorkId=${currentWorkId}`);
+      // 5. Procesar obras existentes en la nube
+      const processedRemoteIds = new Set<string>();
 
-      // 5. Comparar obras y resolver sincronización
       if (remoteWorks.length > 0) {
-        // Ordenar obras remotas por fecha de actualización descendente (la más reciente primero)
+        // Ordenar obras remotas por fecha de actualización descendente
         const sortedRemote = [...remoteWorks].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
         for (const remote of sortedRemote) {
+          processedRemoteIds.add(remote.workId);
+
           const localPkg = await this.storageManager.getWorkPackage(remote.workId);
+          const isActive =
+            remote.workId === currentWorkId ||
+            (localScreenIsVirgin && currentWorkId === 'default_work');
+
+          // Caso A: La obra no existe localmente en este dispositivo
+          if (!localPkg) {
+            this.log(`[Aether Vault] ⤓ Obra remota no presente localmente: "${remote.title}" (${remote.workId}). Descargando...`);
+            const downloaded = await this.downloadRemoteWork(remote.workId, remote.checksum);
+            if (downloaded) {
+              await this.storageManager.applyWorkPackageFromCloud(downloaded, isActive);
+              if (isActive && this.onWorkHydratedCallback) {
+                this.onWorkHydratedCallback(downloaded);
+              }
+              this.storageManager.markClean();
+            }
+            continue;
+          }
+
+          // Caso B: La obra existe en ambos lados. Calculamos el hash de contenido real determinista
+          const localChecksum = await this.calculateWorkChecksum(localPkg);
+          const localSyncedChecksum = localPkg.syncedChecksum || null;
+          const remoteChecksum = remote.checksum || '';
           const localIsVirgin = this.storageManager.isVirginStarterWork(localPkg);
-          const localChecksum = (localPkg as any)?.checksum;
-          const localSyncedChecksum = (localPkg as any)?.syncedChecksum;
-          const isChecksumEqual = Boolean(localChecksum && remote.checksum && localChecksum === remote.checksum);
-          const isItemDirty = (localPkg?.id === currentWorkId ? isLocalDirty : false) || Boolean((localPkg as any)?.isDirty);
 
-          // Si el archivo local y el remoto ya tienen el mismo checksum, están en total armonía
-          if (isChecksumEqual) {
+          this.log(`[Aether Vault] ⚖ Comparando "${localPkg.title}" (${localPkg.id}): local=${localChecksum.slice(0, 8)}, synced=${localSyncedChecksum?.slice(0, 8) || 'none'}, remote=${remoteChecksum.slice(0, 8)}`);
+
+          // Sub-caso B.1: Armonía total (el contenido es idéntico)
+          if (localChecksum === remoteChecksum) {
+            this.log(`[Aether Vault] ☯ "${localPkg.title}" está en total armonía.`);
+            if (localPkg.syncedChecksum !== remoteChecksum) {
+              localPkg.syncedChecksum = remoteChecksum;
+              localPkg.checksum = remoteChecksum;
+              localPkg.isDirty = false;
+              await this.storageManager.applyWorkPackageFromCloud(localPkg, false);
+            }
             continue;
           }
 
-          // 1. Si no existe en este dispositivo o es la plantilla virgen inicial: DESCARGA obligatoria
-          if (!localPkg || localIsVirgin) {
-            this.log(`[Aether Vault] ⤓ Descargando obra por primera vez: "${remote.title}" (${remote.workId})...`);
+          // Sub-caso B.2: Plantilla virgen local sin sincronizar
+          if (localIsVirgin && !localSyncedChecksum) {
+            this.log(`[Aether Vault] ⤓ Reemplazando plantilla virgen con obra real de la nube: "${remote.title}"...`);
             const downloaded = await this.downloadRemoteWork(remote.workId, remote.checksum);
             if (downloaded) {
-              const isActive =
-                downloaded.id === currentWorkId ||
-                localScreenIsVirgin ||
-                (currentWorkId === 'default_work' && remote.workId === 'default_work');
               await this.storageManager.applyWorkPackageFromCloud(downloaded, isActive);
               if (isActive && this.onWorkHydratedCallback) {
                 this.onWorkHydratedCallback(downloaded);
@@ -207,90 +231,86 @@ export class CloudSyncManager {
             continue;
           }
 
-          // 2. Si el autor tiene ediciones locales pendientes en este equipo (isItemDirty === true):
-          if (isItemDirty) {
-            // Comprobación de linaje 3-Way Checksum:
-            // ¿La nube cambió desde la última vez que este equipo sincronizó?
-            const cloudChangedSinceBase = localSyncedChecksum
-              ? remote.checksum !== localSyncedChecksum
-              : ((remote.updatedAt || 0) > (localPkg.updatedAt || 0));
+          // Sub-caso B.3: Fast-Forward Push
+          // La nube NO ha cambiado desde que este dispositivo sincronizó (remote.checksum === localSyncedChecksum),
+          // pero este dispositivo SÍ tiene cambios (localChecksum !== localSyncedChecksum).
+          const cloudUnchangedFromBase = Boolean(localSyncedChecksum && remoteChecksum === localSyncedChecksum);
+          const localHasEdits = localChecksum !== localSyncedChecksum;
 
-            if (cloudChangedSinceBase) {
-              // ¡CONFLICTO CONCURRENTE DETECTADO! (Ambos avanzaron por caminos diferentes)
-              // Da igual si el reloj local marca antes o después: NUNCA se sobreescribe ni se pisa.
-              this.log(`[Aether Vault] ⚡ Conflicto 3-Way detectado en "${localPkg.title}". Activando bifurcación protectora...`);
-
-              // 1. Clonar el borrador local para blindar el 100% de los textos del autor en IndexedDB
-              const forked = await this.storageManager.forkWorkPackage(localPkg, 'Borrador local');
-              this.log(`[Aether Vault] ✓ Borrador local preservado con éxito en: "${forked.title}" (ID: ${forked.id})`);
-
-              // 2. Descargar la versión más reciente de la nube a la obra principal
-              const downloaded = await this.downloadRemoteWork(remote.workId, remote.checksum);
-              if (downloaded) {
-                const isActive = downloaded.id === currentWorkId;
-                await this.storageManager.applyWorkPackageFromCloud(downloaded, isActive);
-                if (isActive && this.onWorkHydratedCallback) {
-                  this.onWorkHydratedCallback(downloaded);
-                }
-                this.storageManager.markClean();
-              }
-
-              // 3. Firma acústica litúrgica de resolución armónica (432 Hz -> 528 Hz)
-              if (this.audio) {
-                this.audio.play(432, 'sine', 0.4, 0.1);
-                setTimeout(() => this.audio?.play(528, 'sine', 0.5, 0.14), 140);
-              }
-
-              // 4. Notificación serena al autor
-              this.notifyUser('✦ Versión remota sincronizada. Tu borrador local se ha protegido en tus Obras.');
-              this.setStatus('synced', 'Bifurcación protegida: borrador local guardado');
-            } else {
-              // La nube NO ha cambiado desde la base (remote.checksum === localSyncedChecksum):
-              // Solo este equipo tiene ediciones nuevas. Subida limpia segura (Fast-Forward Push).
-              this.log(`[Aether Vault] ⇪ Preservando ediciones locales y subiendo cambios frescos de "${localPkg.title}"...`);
-              await this.uploadWorkPackage(localPkg, idToken);
-            }
+          if (cloudUnchangedFromBase && localHasEdits) {
+            this.log(`[Aether Vault] ⇪ Fast-Forward Push: Subiendo cambios locales de "${localPkg.title}" a la nube...`);
+            await this.uploadWorkPackage(localPkg, idToken);
             continue;
           }
 
-          // 3. Si el cliente local NO tiene ediciones pendientes (!isItemDirty):
-          // Este cliente no ha tocado nada localmente. Si la nube difiere de lo último sincronizado o es más reciente: DESCARGA
-          const remoteIsNewer = (remote.updatedAt || 0) > (localPkg.updatedAt || 0);
-          const remoteDiffersFromSynced = Boolean(remote.checksum && remote.checksum !== localSyncedChecksum);
+          // Sub-caso B.4: Fast-Forward Pull
+          // Este dispositivo NO ha realizado cambios desde la última base (localChecksum === localSyncedChecksum),
+          // pero la nube SÍ tiene cambios nuevos de otro equipo (remoteChecksum !== localSyncedChecksum).
+          const localUnchangedFromBase = Boolean(localSyncedChecksum && localChecksum === localSyncedChecksum);
+          const cloudHasEdits = remoteChecksum !== localSyncedChecksum;
 
-          if (remoteIsNewer || remoteDiffersFromSynced || !localChecksum) {
-            this.log(`[Aether Vault] ⤓ Descargando versión más reciente de "${remote.title}" (${remote.workId})...`);
+          if (localUnchangedFromBase && cloudHasEdits) {
+            this.log(`[Aether Vault] ⤓ Fast-Forward Pull: Descargando versión más reciente de "${remote.title}"...`);
             const downloaded = await this.downloadRemoteWork(remote.workId, remote.checksum);
             if (downloaded) {
-              const isActive =
-                downloaded.id === currentWorkId ||
-                localScreenIsVirgin ||
-                (currentWorkId === 'default_work' && remote.workId === 'default_work');
               await this.storageManager.applyWorkPackageFromCloud(downloaded, isActive);
               if (isActive && this.onWorkHydratedCallback) {
                 this.onWorkHydratedCallback(downloaded);
               }
               this.storageManager.markClean();
             }
+            continue;
           }
-        }
 
-        // Si la obra activa local no existe en la nube y el autor escribió en ella (isLocalDirty):
-        if (activeLocalPkg && !remoteWorks.some((rw) => rw.workId === activeLocalPkg.id)) {
-          if (isLocalDirty && !this.storageManager.isVirginStarterWork(activeLocalPkg)) {
-            this.log(`[Aether Vault] ⇪ Subiendo nueva obra local activa "${activeLocalPkg.title}"...`);
-            await this.uploadWorkPackage(activeLocalPkg, idToken);
+          // Sub-caso B.5: Divergencia concurrente (Ambos modificaron respecto a la base, o no hay base común)
+          const localTime = localPkg.updatedAt || 0;
+          const remoteTime = remote.updatedAt || 0;
+
+          if (localTime > remoteTime) {
+            // Edición local más reciente en el tiempo: subir a la nube preservando versión previa
+            this.log(`[Aether Vault] ⚡ Edición local más reciente en "${localPkg.title}" (${localTime} > ${remoteTime}). Subiendo a la nube...`);
+            await this.uploadWorkPackage(localPkg, idToken);
+          } else {
+            // La nube es más reciente: bifurcar borrador local para no perder nada y descargar nube
+            this.log(`[Aether Vault] ⚡ Nube más reciente en "${remote.title}" (${remoteTime} > ${localTime}). Bifurcando borrador local y descargando...`);
+            const forked = await this.storageManager.forkWorkPackage(localPkg, 'Borrador local');
+            this.log(`[Aether Vault] ✓ Borrador local preservado con éxito en: "${forked.title}" (ID: ${forked.id})`);
+
+            const downloaded = await this.downloadRemoteWork(remote.workId, remote.checksum);
+            if (downloaded) {
+              await this.storageManager.applyWorkPackageFromCloud(downloaded, isActive);
+              if (isActive && this.onWorkHydratedCallback) {
+                this.onWorkHydratedCallback(downloaded);
+              }
+              this.storageManager.markClean();
+            }
+
+            if (this.audio) {
+              this.audio.play(432, 'sine', 0.4, 0.1);
+              setTimeout(() => this.audio?.play(528, 'sine', 0.5, 0.14), 140);
+            }
+            this.notifyUser('✦ Versión remota sincronizada. Tu borrador local se ha protegido en tus Obras.');
           }
-        }
-      } else {
-        // La Bóveda está vacía: si tenemos obra activa con contenido real, la subimos
-        if (activeLocalPkg && !this.storageManager.isVirginStarterWork(activeLocalPkg)) {
-          this.log(`[Aether Vault] ⇪ Bóveda vacía. Registrando primera obra del autor "${activeLocalPkg.title}"...`);
-          await this.uploadWorkPackage(activeLocalPkg, idToken);
         }
       }
 
-      // 6. Culminación exitosa
+      // 6. Subir obras locales que no existen en el catálogo remoto
+      const localCatalog = await this.storageManager.getWorksCatalog();
+      for (const item of localCatalog) {
+        if (!processedRemoteIds.has(item.id)) {
+          const localPkg = await this.storageManager.getWorkPackage(item.id);
+          if (localPkg && !this.storageManager.isVirginStarterWork(localPkg)) {
+            const hasText = (localPkg.document?.bodyText || '').trim().length > 0;
+            const hasNodes = (localPkg.nodes || []).length > 0;
+            if (hasText || hasNodes) {
+              this.log(`[Aether Vault] ⇪ Subiendo nueva obra local al catálogo de la Bóveda: "${localPkg.title}" (${localPkg.id})...`);
+              await this.uploadWorkPackage(localPkg, idToken);
+            }
+          }
+        }
+      }
+
+      // 7. Culminación exitosa
       this.lastSyncedAt = Date.now();
       this.lastError = null;
       this.setStatus('synced', 'Bóveda sincronizada (eu-south-2)');
@@ -347,6 +367,17 @@ export class CloudSyncManager {
       const targetWork = sorted[0];
 
       this.log(`[Aether Vault] ⤓ Descargando obra seleccionada: "${targetWork.title}" (ID: ${targetWork.workId})...`);
+
+      // Salvaguarda: si el autor tenía ediciones locales activas, protegerlas en un borrador antes de descargar
+      const activePkg = await this.storageManager.getActiveWorkPackage();
+      if (activePkg && activePkg.id === targetWork.workId) {
+        const localHash = await this.calculateWorkChecksum(activePkg);
+        if (targetWork.checksum && localHash !== targetWork.checksum && (activePkg.hasUserEdits || this.storageManager.getIsDirty())) {
+          this.log('[Aether Vault] 🛡 Protegiendo borrador local antes de forzar descarga manual...');
+          await this.storageManager.forkWorkPackage(activePkg, 'Borrador local antes de descarga');
+        }
+      }
+
       const downloaded = await this.downloadRemoteWork(targetWork.workId, targetWork.checksum);
 
       if (downloaded) {
@@ -382,17 +413,21 @@ export class CloudSyncManager {
    * Sube un paquete de obra a la Bóveda (DynamoDB + S3 con Presigned URL).
    */
   private async uploadWorkPackage(pkg: WorkPackage, idToken: string): Promise<boolean> {
+    // 1. Calcular el checksum de contenido determinista y sellarlo en el paquete
+    const checksum = await this.calculateWorkChecksum(pkg);
+    pkg.checksum = checksum;
+    pkg.syncedChecksum = checksum;
     pkg.syncedAt = Date.now();
+    pkg.isDirty = false;
+
+    // Asegurar que el payload enviado a S3 incluya el checksum y estado sellado
     const jsonPayload = JSON.stringify(pkg);
     const sizeBytes = new Blob([jsonPayload]).size;
-    const checksum = await this.calculateSha256(jsonPayload);
-    pkg.checksum = checksum;
-
     const wordCount = this.countWords(pkg.document?.bodyText || '');
 
     this.log(`[Aether Vault] ⇪ Solicitando Presigned URL para "${pkg.title}" (${sizeBytes} bytes, checksum: ${checksum.slice(0, 8)}...)...`);
 
-    // 1. Inicialización en API Gateway y DynamoDB
+    // 2. Inicialización en API Gateway y DynamoDB
     const initResponse = await fetch(`${this.apiUrl}/vault/sync/init`, {
       method: 'POST',
       headers: {
@@ -420,7 +455,7 @@ export class CloudSyncManager {
       throw new Error('No se recibió la URL de subida de S3 desde la Bóveda.');
     }
 
-    // 2. Subida directa a S3 vía Presigned PUT
+    // 3. Subida directa a S3 vía Presigned PUT
     this.log('[Aether Vault] ⇪ Subiendo paquete cifrado directamente a S3 en España...');
     const s3UploadResponse = await fetch(initData.uploadUrl, {
       method: 'PUT',
@@ -434,7 +469,7 @@ export class CloudSyncManager {
       throw new Error(`Error al depositar en S3: HTTP ${s3UploadResponse.status}`);
     }
 
-    // 3. Persistir localmente la marca de sincronización
+    // 4. Persistir localmente la marca de sincronización en IndexedDB
     if (this.storageManager) {
       await this.storageManager.applyWorkPackageFromCloud(pkg, false);
       this.storageManager.markClean();
@@ -511,9 +546,9 @@ export class CloudSyncManager {
       }
 
       const pkg: WorkPackage = await fileRes.json();
-      if (remoteChecksum) {
-        pkg.checksum = remoteChecksum;
-      }
+      const verifiedChecksum = remoteChecksum || (await this.calculateWorkChecksum(pkg));
+      pkg.checksum = verifiedChecksum;
+      pkg.syncedChecksum = verifiedChecksum;
       return pkg;
     } catch (err) {
       console.error('[Aether Vault] Error al descargar obra remota:', err);
@@ -548,6 +583,45 @@ export class CloudSyncManager {
   // ============================================================================
   // UTILIDADES CRIPTOGRÁFICAS Y TEXTUALES NATIVAS
   // ============================================================================
+
+  /**
+   * Calcula un hash SHA-256 criptográfico, determinista y normalizado
+   * del contenido semántico de una obra (título, texto, ideas, conexiones, descartes).
+   * Es 100% reproducible en cualquier dispositivo e inmune a desfases de reloj local o variables volátiles.
+   */
+  public async calculateWorkChecksum(pkg: WorkPackage): Promise<string> {
+    const normalized = {
+      title: (pkg.title || '').trim(),
+      bodyHtml: (pkg.document?.bodyHtml || '').trim(),
+      bodyText: (pkg.document?.bodyText || '').trim(),
+      nodes: (pkg.nodes || [])
+        .map((n) => ({
+          id: n.id,
+          text: (n.text || '').trim(),
+          pos: {
+            x: Math.round(n.position?.x ?? 0),
+            y: Math.round(n.position?.y ?? 0)
+          },
+          phase: n.phase
+        }))
+        .sort((a, b) => a.id.localeCompare(b.id)),
+      bridges: (pkg.bridges || [])
+        .map((b) => ({
+          id: b.id,
+          source: b.sourceId,
+          target: b.targetId
+        }))
+        .sort((a, b) => a.id.localeCompare(b.id)),
+      discards: (pkg.discards || [])
+        .map((d) => ({
+          id: d.id,
+          text: (d.text || '').trim()
+        }))
+        .sort((a, b) => a.id.localeCompare(b.id))
+    };
+
+    return this.calculateSha256(JSON.stringify(normalized));
+  }
 
   private countWords(text: string): number {
     if (!text) return 0;

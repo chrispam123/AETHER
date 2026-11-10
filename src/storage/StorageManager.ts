@@ -397,24 +397,27 @@ export class StorageManager {
    */
   public isVirginStarterWork(pkg: WorkPackage | null): boolean {
     if (!pkg) return true;
-    if (pkg.hasUserEdits === false) return true;
+    // Si la obra ya tiene un checksum de sincronización en la nube, es una obra viva de la Bóveda, NUNCA virgen
+    if (pkg.syncedChecksum) return false;
+    // Si el autor ha realizado ediciones explícitas o está sucia, NUNCA es virgen
+    if (pkg.hasUserEdits || pkg.isDirty) return false;
 
     const title = (pkg.document?.title || '').trim();
     const text = (pkg.document?.bodyText || '').trim();
-    const isDefaultTitle = title === 'Guía de Bienvenida a Aether' || title === 'Sobre la naturaleza del pensamiento' || title === 'Sin título' || title === '';
 
     if (text.length === 0) return true;
 
+    const isDefaultTitle =
+      title === 'Guía de Bienvenida a Aether' ||
+      title === 'Sobre la naturaleza del pensamiento' ||
+      title === 'Sin título' ||
+      title === '';
+
     // Firmas de los párrafos iniciales (plantilla histórica y nueva Guía de Bienvenida)
     const hasP1Old = text.includes('Escribir no es registrar palabras que ya estaban completas en la mente');
-    const hasP2Old = text.includes('Cuando retiramos la tiranía del cursor mecánico');
-    const hasP3Old = text.includes('Si el pensamiento pasa de vapor a líquido y a cristal');
-
     const hasP1New = text.includes('Bienvenido a Aether, tu santuario para pensar y estructurar ideas');
-    const hasP2New = text.includes('Zoom Semántico en Cristal');
-    const hasP3New = text.includes('La Regla del Pensamiento');
 
-    if (isDefaultTitle && (hasP1Old || hasP2Old || hasP3Old || hasP1New || hasP2New || hasP3New) && text.length < 3000) {
+    if (isDefaultTitle && (hasP1Old || hasP1New) && !pkg.hasUserEdits) {
       return true;
     }
 
@@ -535,7 +538,8 @@ export class StorageManager {
     this.currentWorkId = workId;
     this.currentWorkUpdatedAt = pkg.updatedAt || Date.now();
     this.hasUserEdits = !!pkg.hasUserEdits;
-    this.isDirty = false;
+    this.isDirty = !!pkg.isDirty;
+    this.currentWorkSyncedChecksum = pkg.syncedChecksum || null;
     if (pkg.activePhase && pkg.activePhase !== 'portal') {
       this.lastCognitivePhase = pkg.activePhase;
     }
@@ -573,6 +577,7 @@ export class StorageManager {
     this.currentWorkUpdatedAt = newPkg.updatedAt;
     this.hasUserEdits = false;
     this.isDirty = false;
+    this.currentWorkSyncedChecksum = null;
     await this.db.saveWorkPackage(newPkg);
     await this.db.setActiveWorkId(newId);
     return newPkg;
