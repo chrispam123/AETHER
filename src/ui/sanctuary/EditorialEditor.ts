@@ -546,12 +546,14 @@ export class EditorialEditor {
    */
   public hydrateDocument(title: string, bodyHtml: string): void {
     const titleEl = this.getTitleElement();
-    if (titleEl && title) {
-      titleEl.innerText = title;
+    if (titleEl) {
+      titleEl.innerText = (!title || title === 'Sin título') ? '' : title;
     }
-    if (this.bodyElement && bodyHtml) {
-      this.bodyElement.innerHTML = bodyHtml;
+    if (this.bodyElement) {
+      this.bodyElement.innerHTML = bodyHtml || '';
+      this.cachedRawText = this.bodyElement.innerText;
       this.updateMetrics();
+      this.updateChips();
     }
   }
 
