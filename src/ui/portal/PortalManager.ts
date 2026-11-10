@@ -22,10 +22,12 @@ export class PortalManager {
   private worksContainer: HTMLElement | null = null;
   private worksListEl: HTMLElement | null = null;
   private openAetherBtn: HTMLElement | null = null;
+  private newWorkBtn: HTMLElement | null = null;
   private storageManager: StorageManager;
   private audio: HarmonicSynthesizer;
   private onSelectWorkCallback: (workId: string, phase?: Phase) => Promise<void>;
   private onImportAetherCallback: (file?: File) => Promise<void>;
+  private onNewWorkCallback: () => Promise<void>;
 
   private selectedWorkId: string | null = null;
   private worksCatalog: WorkSummary[] = [];
@@ -34,12 +36,14 @@ export class PortalManager {
     storageManager: StorageManager,
     audio: HarmonicSynthesizer,
     onSelectWork: (workId: string, phase?: Phase) => Promise<void>,
-    onImportAether: (file?: File) => Promise<void>
+    onImportAether: (file?: File) => Promise<void>,
+    onNewWork: () => Promise<void>
   ) {
     this.storageManager = storageManager;
     this.audio = audio;
     this.onSelectWorkCallback = onSelectWork;
     this.onImportAetherCallback = onImportAether;
+    this.onNewWorkCallback = onNewWork;
 
     this.cacheElements();
     this.bindEvents();
@@ -49,9 +53,18 @@ export class PortalManager {
     this.worksContainer = document.getElementById('portal-continuity');
     this.worksListEl = document.getElementById('portal-works-list');
     this.openAetherBtn = document.getElementById('btn-portal-open-aether');
+    this.newWorkBtn = document.getElementById('btn-portal-new-work');
   }
 
   private bindEvents(): void {
+    if (this.newWorkBtn) {
+      this.newWorkBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        this.audio.play(528, 'sine', 0.4, 0.1);
+        await this.onNewWorkCallback();
+      });
+    }
+
     if (this.openAetherBtn) {
       this.openAetherBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
