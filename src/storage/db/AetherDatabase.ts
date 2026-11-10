@@ -418,7 +418,7 @@ export class AetherDatabase {
 
     // 1. Obtener catálogo previo ANTES de abrir la transacción de escritura
     const catalog = await this.getWorksCatalog();
-    const cleanTitle = pkg.title.trim() || 'Sobre la naturaleza del pensamiento';
+    const cleanTitle = pkg.title.trim() || 'Guía de Bienvenida a Aether';
     const text = (pkg.document?.bodyText || '').trim();
     const wordCount = text ? text.split(/\s+/).length : 0;
     const preview = text ? text.substring(0, 100).replace(/\s+/g, ' ').trim() : '';

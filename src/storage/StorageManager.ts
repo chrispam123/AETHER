@@ -198,7 +198,7 @@ export class StorageManager {
       const titleEl = this.editor?.getTitleElement() || document.getElementById('crystal-title');
       const bodyEl = this.editor?.getBodyElement() || (document.querySelector('.crystal-body') as HTMLElement | null);
 
-      const title = titleEl ? titleEl.innerText.trim() : 'Sobre la naturaleza del pensamiento';
+      const title = titleEl ? titleEl.innerText.trim() : 'Guía de Bienvenida a Aether';
       const bodyHtml = bodyEl ? bodyEl.innerHTML : '';
       const bodyText = bodyEl ? bodyEl.innerText : '';
 
@@ -319,12 +319,12 @@ export class StorageManager {
       if (hasData) {
         const initialPkg: WorkPackage = {
           id: this.currentWorkId,
-          title: document?.title || 'Sobre la naturaleza del pensamiento',
+          title: document?.title || 'Guía de Bienvenida a Aether',
           updatedAt: document?.updatedAt || Date.now(),
           activePhase: state?.activePhase || 'crystal',
           document: document || {
             id: 'active_document',
-            title: 'Sobre la naturaleza del pensamiento',
+            title: 'Guía de Bienvenida a Aether',
             bodyHtml: '',
             bodyText: '',
             updatedAt: Date.now()
@@ -401,16 +401,20 @@ export class StorageManager {
 
     const title = (pkg.document?.title || '').trim();
     const text = (pkg.document?.bodyText || '').trim();
-    const isDefaultTitle = title === 'Sobre la naturaleza del pensamiento' || title === 'Sin título' || title === '';
+    const isDefaultTitle = title === 'Guía de Bienvenida a Aether' || title === 'Sobre la naturaleza del pensamiento' || title === 'Sin título' || title === '';
 
     if (text.length === 0) return true;
 
-    // Firmas de los párrafos iniciales de index.html
-    const hasP1 = text.includes('Escribir no es registrar palabras que ya estaban completas en la mente');
-    const hasP2 = text.includes('Cuando retiramos la tiranía del cursor mecánico');
-    const hasP3 = text.includes('Si el pensamiento pasa de vapor a líquido y a cristal');
+    // Firmas de los párrafos iniciales (plantilla histórica y nueva Guía de Bienvenida)
+    const hasP1Old = text.includes('Escribir no es registrar palabras que ya estaban completas en la mente');
+    const hasP2Old = text.includes('Cuando retiramos la tiranía del cursor mecánico');
+    const hasP3Old = text.includes('Si el pensamiento pasa de vapor a líquido y a cristal');
 
-    if (isDefaultTitle && (hasP1 || hasP2 || hasP3) && text.length < 550) {
+    const hasP1New = text.includes('Bienvenido a Aether, tu santuario para pensar y estructurar ideas');
+    const hasP2New = text.includes('Zoom Semántico en Cristal');
+    const hasP3New = text.includes('La Regla del Pensamiento');
+
+    if (isDefaultTitle && (hasP1Old || hasP2Old || hasP3Old || hasP1New || hasP2New || hasP3New) && text.length < 1500) {
       return true;
     }
 
@@ -495,7 +499,7 @@ export class StorageManager {
   public async forkWorkPackage(pkg: WorkPackage, suffixLabel: string = 'Borrador local'): Promise<WorkPackage> {
     await this.db.init();
     const forkedId = `work_fork_${Date.now()}`;
-    const cleanTitle = (pkg.title || '').trim() || 'Sobre la naturaleza del pensamiento';
+    const cleanTitle = (pkg.title || '').trim() || 'Guía de Bienvenida a Aether';
     const forkedTitle = `${cleanTitle} (${suffixLabel})`;
 
     const forkedPkg: WorkPackage = {
@@ -548,12 +552,12 @@ export class StorageManager {
     const newId = 'work_' + Date.now();
     const newPkg: WorkPackage = {
       id: newId,
-      title: 'Sobre la naturaleza del pensamiento',
+      title: 'Guía de Bienvenida a Aether',
       updatedAt: Date.now(),
       activePhase: initialPhase,
       document: {
         id: newId,
-        title: 'Sobre la naturaleza del pensamiento',
+        title: 'Guía de Bienvenida a Aether',
         bodyHtml: '',
         bodyText: '',
         updatedAt: Date.now()
