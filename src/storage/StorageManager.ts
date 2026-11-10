@@ -546,18 +546,18 @@ export class StorageManager {
   /**
    * Crea una nueva obra virgen en blanco.
    */
-  public async createNewWork(initialPhase: Phase = 'vapor'): Promise<WorkPackage> {
+  public async createNewWork(initialPhase: Phase = 'crystal'): Promise<WorkPackage> {
     await this.saveImmediately();
 
     const newId = 'work_' + Date.now();
     const newPkg: WorkPackage = {
       id: newId,
-      title: 'Guía de Bienvenida a Aether',
+      title: 'Sin título',
       updatedAt: Date.now(),
       activePhase: initialPhase,
       document: {
         id: newId,
-        title: 'Guía de Bienvenida a Aether',
+        title: 'Sin título',
         bodyHtml: '',
         bodyText: '',
         updatedAt: Date.now()
@@ -570,6 +570,9 @@ export class StorageManager {
     };
 
     this.currentWorkId = newId;
+    this.currentWorkUpdatedAt = newPkg.updatedAt;
+    this.hasUserEdits = false;
+    this.isDirty = false;
     await this.db.saveWorkPackage(newPkg);
     await this.db.setActiveWorkId(newId);
     return newPkg;

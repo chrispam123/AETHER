@@ -218,7 +218,8 @@ class AetherApp {
       this.storageManager,
       this.audio,
       async (workId, phase) => this.switchActiveWork(workId, phase),
-      async (providedFile?: File) => this.importAetherBackup(providedFile)
+      async (providedFile?: File) => this.importAetherBackup(providedFile),
+      async () => this.createAndOpenNewWork('crystal')
     );
 
     this.archiveDrawer = new ArchiveDrawer(
@@ -595,6 +596,14 @@ class AetherApp {
         this.importAetherBackup();
         return;
       }
+
+      // 5. Crear Nueva Obra (Alt + N)
+      if (e.altKey && !e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        const currentPhase = this.stateMachine.getPhase();
+        this.createAndOpenNewWork(currentPhase !== 'portal' ? currentPhase : 'crystal');
+        return;
+      }
     });
 
     // 5. Invocación y Cierre del Archivo de la Memoria (Alt + O / Esc)
@@ -802,6 +811,42 @@ class AetherApp {
     } finally {
       this.storageManager.setHydrating(false);
       this.storageManager.markClean();
+    }
+  }
+
+  /**
+   * Crea una nueva obra virgen en blanco y la abre de inmediato en la fase solicitada.
+   */
+  public async createAndOpenNewWork(initialPhase: Phase = 'crystal'): Promise<void> {
+    try {
+      // 1. Guardar atómico de la obra actual viva
+      await this.storageManager.saveImmediately();
+
+      // 2. Crear nueva obra virgen en base de datos
+      const newPkg = await this.storageManager.createNewWork(initialPhase);
+
+      // 3. Abrir la obra virgen en la fase solicitada
+      await this.openWorkInPhase(newPkg.id, initialPhase);
+
+      // 4. Foco elegante en el título en Cristal
+      if (initialPhase === 'crystal') {
+        setTimeout(() => {
+          const titleEl = document.getElementById('crystal-title');
+          if (titleEl) {
+            titleEl.focus();
+            const range = document.createRange();
+            range.selectNodeContents(titleEl);
+            const sel = window.getSelection();
+            sel?.removeAllRanges();
+            sel?.addRange(range);
+          }
+        }, 150);
+      }
+
+      this.audio.play(528, 'sine', 0.5, 0.12);
+      await this.portalManager.refresh();
+    } catch (e) {
+      console.error('[Aether] Error al crear nueva obra:', e);
     }
   }
 
