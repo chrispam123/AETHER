@@ -617,7 +617,7 @@ class AetherApp {
     const bodyEl = document.querySelector('.crystal-body') as HTMLElement | null;
 
     ExportManager.exportToAetherFile({
-      title: titleEl?.innerText.trim() || 'Sobre la naturaleza del pensamiento',
+      title: titleEl?.innerText.trim() || 'Guía de Bienvenida a Aether',
       bodyHtml: bodyEl?.innerHTML || '',
       bodyText: bodyEl?.innerText || '',
       nodes: this.graph.getAllNodes(),
@@ -638,7 +638,7 @@ class AetherApp {
     const bodyEl = document.querySelector('.crystal-body') as HTMLElement | null;
 
     ExportManager.exportToMarkdownFile({
-      title: titleEl?.innerText.trim() || 'Sobre la naturaleza del pensamiento',
+      title: titleEl?.innerText.trim() || 'Guía de Bienvenida a Aether',
       bodyHtml: bodyEl?.innerHTML || '',
       bodyText: bodyEl?.innerText || '',
       nodesCount: this.graph.getAllNodes().length,

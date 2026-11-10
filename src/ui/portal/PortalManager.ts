@@ -207,7 +207,7 @@ export class PortalManager {
 
       const phaseLabel = this.formatPhaseLabel(work.activePhase);
       const timeLabel = this.formatRelativeTime(work.updatedAt);
-      const title = work.title.trim() || 'Sobre la naturaleza del pensamiento';
+      const title = work.title.trim() || 'Guía de Bienvenida a Aether';
       const preview = work.previewText ? `«${work.previewText}»` : 'Lienzo de pensamiento vivo';
 
       itemEl.innerHTML = `
