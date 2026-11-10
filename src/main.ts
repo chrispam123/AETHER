@@ -445,6 +445,15 @@ class AetherApp {
         if (brandText) brandText.innerText = 'AETHER';
         this.audio.play(320, 'sine', 0.8, 0.12);
       } else if (phase === 'liquid') {
+        if (hint) {
+          const docNodes = this.graph.getAllNodes().filter((n) => n.inDocument);
+          if (docNodes.length === 0) {
+            hint.innerText = 'Corriente en reposo · Haz doble clic en el éter o escribe en Cristal';
+          } else {
+            hint.innerText = 'Fluido vivo · Conecta tarjetas o haz doble clic en el éter';
+          }
+          hint.classList.add('visible');
+        }
         if (brandDot) {
           brandDot.style.display = 'block';
           brandDot.style.background = 'var(--liquid-accent)';
