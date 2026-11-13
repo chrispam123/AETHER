@@ -591,7 +591,9 @@ export class EditorialEditor {
 
       while (node && node !== this.bodyElement) {
         if (node.parentElement === this.bodyElement) {
-          targetChild = node as HTMLElement;
+          if (node instanceof HTMLElement) {
+            targetChild = node;
+          }
           break;
         }
         node = node.parentElement;
@@ -599,7 +601,7 @@ export class EditorialEditor {
 
       if (targetChild) {
         const pIndex = children.indexOf(targetChild);
-        const nodeId = targetChild.dataset.nodeId;
+        const nodeId = targetChild.dataset?.nodeId;
         let charOffset = 0;
         try {
           const range = sel.getRangeAt(0);
@@ -655,7 +657,7 @@ export class EditorialEditor {
 
     // 1. Intentar encontrar por nodeId si existía
     if (this.savedCaret.nodeId) {
-      targetEl = children.find((c) => c.dataset.nodeId === this.savedCaret?.nodeId) || null;
+      targetEl = children.find((c) => c?.dataset?.nodeId === this.savedCaret?.nodeId) || null;
     }
 
     // 2. Si no, por índice del párrafo
@@ -997,14 +999,14 @@ export class EditorialEditor {
     currentElements.forEach((el) => {
       if (usedElements.has(el)) return;
       // Si el elemento ya forma parte de un nodo ordenado, NO duplicarlo
-      if (el.dataset.nodeId && orderedNodeIds.has(el.dataset.nodeId)) return;
+      if (el?.dataset?.nodeId && orderedNodeIds.has(el.dataset.nodeId)) return;
 
       const clean = this.extractElementText(el);
       if (!clean) return;
 
       const isSubsumed = reorderedElements.some(
         (r) =>
-          (r.dataset.nodeId && el.dataset.nodeId && r.dataset.nodeId === el.dataset.nodeId) ||
+          (r?.dataset?.nodeId && el?.dataset?.nodeId && r.dataset.nodeId === el.dataset.nodeId) ||
           r.innerText.trim() === clean ||
           r.innerText.includes(clean)
       );
