@@ -30,6 +30,13 @@ export interface SyncInitResponse {
   expiresInSeconds: number;
 }
 
+export interface SyncCompleteResponse {
+  success: boolean;
+  workId: string;
+  checksum: string;
+  syncedAt: number;
+}
+
 export interface SyncDownloadResponse {
   success: boolean;
   workId: string;

@@ -9,7 +9,7 @@
  */
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, QueryCommand, PutCommand, DeleteCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION }));
@@ -67,11 +67,11 @@ export async function handler(event) {
     }
 
     // ------------------------------------------------------------------------
-    // 2. POST /vault/sync/init -> Registra metadatos y entrega Presigned PUT URL
+    // 2. POST /vault/sync/init -> Entrega Presigned PUT URL (Fase 1 de 2PC)
     // ------------------------------------------------------------------------
     if (method === 'POST' && rawPath === '/vault/sync/init') {
       const body = JSON.parse(event.body || '{}');
-      const { workId, title, updatedAt, wordCount, activePhase, sizeBytes, checksum } = body;
+      const { workId } = body;
 
       if (!workId) {
         return {
@@ -83,26 +83,8 @@ export async function handler(event) {
 
       const s3Key = `authors/${userId}/${workId}/archive.aether`;
 
-      // Guardar o actualizar metadatos atómicos en DynamoDB
-      const item = {
-        userId,
-        workId,
-        title: title || 'Sin título',
-        updatedAt: updatedAt || Date.now(),
-        wordCount: wordCount || 0,
-        activePhase: activePhase || 'crystal',
-        sizeBytes: sizeBytes || 0,
-        checksum: checksum || '',
-        s3Key,
-        syncedAt: Date.now()
-      };
-
-      await ddb.send(new PutCommand({
-        TableName: TABLE_NAME,
-        Item: item
-      }));
-
       // Generar URL firmada de S3 para subida directa (15 minutos de validez)
+      // NOTA ARQUITECTÓNICA: NO se escribe en DynamoDB todavía. La persistencia ocurre en /vault/sync/complete
       const putCommand = new PutObjectCommand({
         Bucket: BUCKET_NAME,
         Key: s3Key,
@@ -120,6 +102,69 @@ export async function handler(event) {
           uploadUrl,
           s3Key,
           expiresInSeconds: 900
+        })
+      };
+    }
+
+    // ------------------------------------------------------------------------
+    // 3. POST /vault/sync/complete -> Verifica S3 y sella en DynamoDB (Fase 2 de 2PC)
+    // ------------------------------------------------------------------------
+    if (method === 'POST' && rawPath === '/vault/sync/complete') {
+      const body = JSON.parse(event.body || '{}');
+      const { workId, title, updatedAt, wordCount, activePhase, sizeBytes, checksum } = body;
+
+      if (!workId || !checksum) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'workId y checksum son requeridos para confirmar sincronización' })
+        };
+      }
+
+      const s3Key = `authors/${userId}/${workId}/archive.aether`;
+
+      // 1. Verificar físicamente que el archivo existe en S3 antes de alterar el catálogo
+      try {
+        await s3.send(new HeadObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: s3Key
+        }));
+      } catch (err) {
+        console.error(`[Aether Vault Lambda] HeadObject falló para ${s3Key}:`, err);
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'El archivo aún no existe en S3 o la subida no fue completada.' })
+        };
+      }
+
+      // 2. Guardar o actualizar metadatos atómicos en DynamoDB
+      const item = {
+        userId,
+        workId,
+        title: title || 'Sin título',
+        updatedAt: updatedAt || Date.now(),
+        wordCount: wordCount || 0,
+        activePhase: activePhase || 'crystal',
+        sizeBytes: sizeBytes || 0,
+        checksum,
+        s3Key,
+        syncedAt: Date.now()
+      };
+
+      await ddb.send(new PutCommand({
+        TableName: TABLE_NAME,
+        Item: item
+      }));
+
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({
+          success: true,
+          workId,
+          checksum,
+          syncedAt: item.syncedAt
         })
       };
     }

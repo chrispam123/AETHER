@@ -227,6 +227,7 @@ resource "aws_apigatewayv2_route" "routes" {
   for_each = toset([
     "GET /vault/works",
     "POST /vault/sync/init",
+    "POST /vault/sync/complete",
     "GET /vault/works/{workId}/download",
     "DELETE /vault/works/{workId}"
   ])

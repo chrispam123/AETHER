@@ -427,8 +427,45 @@ export class CloudSyncManager {
 
     this.log(`[Aether Vault] ⇪ Solicitando Presigned URL para "${pkg.title}" (${sizeBytes} bytes, checksum: ${checksum.slice(0, 8)}...)...`);
 
-    // 2. Inicialización en API Gateway y DynamoDB
+    // 2. Fase 1 de 2PC: Solicitar Presigned PUT URL a la Bóveda
     const initResponse = await fetch(`${this.apiUrl}/vault/sync/init`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`
+      },
+      body: JSON.stringify({
+        workId: pkg.id
+      })
+    });
+
+    if (!initResponse.ok) {
+      const errJson = await initResponse.json().catch(() => ({}));
+      throw new Error(errJson.error || `HTTP ${initResponse.status} en inicio de sincronización`);
+    }
+
+    const initData: SyncInitResponse = await initResponse.json();
+    if (!initData.uploadUrl) {
+      throw new Error('No se recibió la URL de subida de S3 desde la Bóveda.');
+    }
+
+    // 3. Fase 2 de 2PC: Subida directa de bytes cifrados a S3 vía Presigned PUT
+    this.log('[Aether Vault] ⇪ Subiendo paquete cifrado directamente a S3 en España...');
+    const s3UploadResponse = await fetch(initData.uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: jsonPayload
+    });
+
+    if (!s3UploadResponse.ok) {
+      throw new Error(`Error al depositar en S3: HTTP ${s3UploadResponse.status}. La transacción en DynamoDB fue preservada limpia.`);
+    }
+
+    // 4. Fase 3 de 2PC: Confirmación atómica y catalogación en DynamoDB
+    this.log(`[Aether Vault] ✦ S3 confirmó depósito (HTTP 200). Sellando metadatos atómicos en DynamoDB...`);
+    const completeResponse = await fetch(`${this.apiUrl}/vault/sync/complete`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -445,37 +482,18 @@ export class CloudSyncManager {
       })
     });
 
-    if (!initResponse.ok) {
-      const errJson = await initResponse.json().catch(() => ({}));
-      throw new Error(errJson.error || `HTTP ${initResponse.status} en inicio de sincronización`);
+    if (!completeResponse.ok) {
+      const errJson = await completeResponse.json().catch(() => ({}));
+      throw new Error(errJson.error || `HTTP ${completeResponse.status} al confirmar transacción en DynamoDB`);
     }
 
-    const initData: SyncInitResponse = await initResponse.json();
-    if (!initData.uploadUrl) {
-      throw new Error('No se recibió la URL de subida de S3 desde la Bóveda.');
-    }
-
-    // 3. Subida directa a S3 vía Presigned PUT
-    this.log('[Aether Vault] ⇪ Subiendo paquete cifrado directamente a S3 en España...');
-    const s3UploadResponse = await fetch(initData.uploadUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: jsonPayload
-    });
-
-    if (!s3UploadResponse.ok) {
-      throw new Error(`Error al depositar en S3: HTTP ${s3UploadResponse.status}`);
-    }
-
-    // 4. Persistir localmente la marca de sincronización en IndexedDB
+    // 5. Persistir localmente la marca de sincronización en IndexedDB
     if (this.storageManager) {
       await this.storageManager.applyWorkPackageFromCloud(pkg, false);
       this.storageManager.markClean();
     }
 
-    this.log(`[Aether Vault] ✓ Obra "${pkg.title}" depositada con éxito en la Bóveda.`);
+    this.log(`[Aether Vault] ✓ Obra "${pkg.title}" depositada y catalogada con éxito atómico en la Bóveda.`);
     return true;
   }
 
