@@ -8,8 +8,10 @@ import { COGNITO_CONFIG } from './config';
 import type { AuthTokens, AuthorProfile, AuthState, AuthListener } from './types';
 
 const STORAGE_KEYS = {
-  TOKENS: 'aether_auth_tokens',
-  AUTHOR: 'aether_auth_author',
+  // These two keys are retained only so older persisted credentials can be
+  // removed during migration to in-memory-only authentication.
+  LEGACY_TOKENS: 'aether_auth_tokens',
+  LEGACY_AUTHOR: 'aether_auth_author',
   VERIFIER: 'aether_auth_code_verifier',
   STATE: 'aether_auth_state'
 } as const;
@@ -88,9 +90,13 @@ export class CognitoAuthService {
   // ============================================================================
 
   /**
-   * Inicializa el servicio, procesa callbacks de redirección y restaura sesiones activas
+   * Inicializa el servicio, procesa callbacks y comienza sin sesión persistida
    */
   public async init(): Promise<void> {
+    // Remove credentials persisted by earlier versions. The current version
+    // never restores an authenticated session from browser local storage.
+    this.clearLegacyStoredSession();
+
     // 1. Comprobar si volvemos de una redirección OAuth con código
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
@@ -173,7 +179,7 @@ export class CognitoAuthService {
 
       const author = this.extractAuthorProfile(data.id_token);
 
-      this.saveSession(tokens, author);
+      this.saveSession(tokens);
       this.updateState({ status: 'authenticated', author });
 
       // Limpiar datos temporales de PKCE y limpiar la barra de direcciones
@@ -280,7 +286,7 @@ export class CognitoAuthService {
       };
 
       const author = this.extractAuthorProfile(updatedTokens.idToken);
-      this.saveSession(updatedTokens, author);
+      this.saveSession(updatedTokens);
       this.updateState({ status: 'authenticated', author });
 
       this.scheduleTokenRefresh(updatedTokens.expiresIn);
@@ -310,49 +316,27 @@ export class CognitoAuthService {
   // GESTIÓN DE SESIÓN Y ALMACENAMIENTO
   // ============================================================================
 
-  private saveSession(tokens: AuthTokens, author: AuthorProfile): void {
+  private saveSession(tokens: AuthTokens): void {
+    // Session tokens live only in this page's JavaScript memory.
     this.tokens = tokens;
-    try {
-      localStorage.setItem(STORAGE_KEYS.TOKENS, JSON.stringify(tokens));
-      localStorage.setItem(STORAGE_KEYS.AUTHOR, JSON.stringify(author));
-    } catch (e) {
-      console.warn('[Aether Auth] No se pudo persistir la sesión en localStorage:', e);
-    }
   }
 
   private restoreStoredSession(): void {
+    // Startup intentionally does not restore tokens or an authenticated
+    // profile from persistent browser storage.
+    this.updateState({ status: 'unauthenticated', author: null });
+  }
+
+  private clearLegacyStoredSession(): void {
     try {
-      const storedTokens = localStorage.getItem(STORAGE_KEYS.TOKENS);
-      const storedAuthor = localStorage.getItem(STORAGE_KEYS.AUTHOR);
-
-      if (!storedTokens || !storedAuthor) {
-        this.updateState({ status: 'unauthenticated', author: null });
-        return;
-      }
-
-      const tokens: AuthTokens = JSON.parse(storedTokens);
-      const author: AuthorProfile = JSON.parse(storedAuthor);
-
-      const elapsedSeconds = (Date.now() - tokens.obtainedAt) / 1000;
-      const isExpired = elapsedSeconds >= tokens.expiresIn;
-
-      this.tokens = tokens;
-
-      if (isExpired) {
-        // Si ha expirado pero tenemos refresh token, refrescamos al vuelo
-        this.refreshTokens().then((success) => {
-          if (!success) {
-            this.logout();
-          }
-        });
-      } else {
-        this.updateState({ status: 'authenticated', author });
-        const remainingSeconds = tokens.expiresIn - elapsedSeconds;
-        this.scheduleTokenRefresh(remainingSeconds);
-      }
-    } catch (e) {
-      this.logout();
+      localStorage.removeItem(STORAGE_KEYS.LEGACY_TOKENS);
+      localStorage.removeItem(STORAGE_KEYS.LEGACY_AUTHOR);
+    } catch {
+      // Storage can be unavailable in restricted browser contexts. The app
+      // still does not read or persist tokens there.
     }
+
+    this.tokens = null;
   }
 
   /**
@@ -365,10 +349,7 @@ export class CognitoAuthService {
     }
 
     this.tokens = null;
-    try {
-      localStorage.removeItem(STORAGE_KEYS.TOKENS);
-      localStorage.removeItem(STORAGE_KEYS.AUTHOR);
-    } catch {}
+    this.clearLegacyStoredSession();
 
     this.updateState({ status: 'unauthenticated', author: null });
   }
